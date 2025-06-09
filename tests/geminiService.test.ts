@@ -1,7 +1,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '../test-runner';
 // Adjust the import path according to your project structure
-import { parseJsonFromGeminiResponse } from '../../services/geminiService'; 
+import { parseJsonFromGeminiResponse } from '../services/geminiService'; 
 
 describe('geminiService - parseJsonFromGeminiResponse', () => {
   let originalConsoleError: typeof console.error;

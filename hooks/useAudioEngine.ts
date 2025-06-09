@@ -709,4 +709,578 @@ export const useAudioEngine = (
       };
       managedNativeNodesRef.current.set(instanceId, nodeInfo);
       updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); 
-      appLog(`[AudioEngine NativeNodeSetup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true
+      appLog(`[AudioEngine NativeNodeSetup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
+      onStateChangeForReRender();
+      return true;
+
+    } catch (e) {
+      const errorMsg = `Failed to construct native audio node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
+      console.error(errorMsg, e);
+      appLog(errorMsg, true);
+      return false;
+    }
+  }, [audioContext, appLog, onStateChangeForReRender]);
+
+  const updateManagedNativeNodeParams = useCallback((
+    instanceId: string,
+    parameters: BlockParameter[],
+    currentInputs?: Record<string, any>,
+    currentBpm: number = 120
+  ) => {
+    if (!audioContext || audioContext.state !== 'running') return;
+    const info = managedNativeNodesRef.current.get(instanceId);
+    if (!info) return;
+
+    const { mainProcessingNode, internalGainNode, paramTargetsForCv, definition, allpassInternalNodes, constantSourceValueNode } = info;
+
+    parameters.forEach(param => {
+      const targetAudioParam = paramTargetsForCv?.get(param.id);
+      if (targetAudioParam) {
+        if (typeof param.currentValue === 'number') {
+          targetAudioParam.setTargetAtTime(param.currentValue, audioContext.currentTime, 0.01);
+        }
+      } else if (mainProcessingNode) {
+        if (definition.id === NATIVE_OSCILLATOR_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) {
+          const oscNode = mainProcessingNode as OscillatorNode;
+          if (param.id === 'waveform' && typeof param.currentValue === 'string') {
+            oscNode.type = param.currentValue as OscillatorType;
+          }
+          if (param.id === 'frequency' && definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) {
+             const bpmFractionParam = parameters.find(p => p.id === 'bpm_fraction');
+             const bpmFraction = bpmFractionParam ? parseFloat(bpmFractionParam.currentValue as string) : 1;
+             const beatsPerStep = bpmFraction;
+             const secondsPerBeat = 60.0 / currentBpm;
+             const secondsPerStep = secondsPerBeat * beatsPerStep;
+             const lfoFreq = 1.0 / secondsPerStep;
+             if(isFinite(lfoFreq) && lfoFreq > 0) {
+                oscNode.frequency.setTargetAtTime(lfoFreq, audioContext.currentTime, 0.01);
+             }
+          }
+        } else if (definition.id === NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id) {
+          const biquadNode = mainProcessingNode as BiquadFilterNode;
+          if (param.id === 'type' && typeof param.currentValue === 'string') {
+            biquadNode.type = param.currentValue as BiquadFilterType;
+          }
+        } else if (definition.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
+            const analyserNode = mainProcessingNode as AnalyserNode;
+            if (param.id === 'fftSize' && typeof param.currentValue === 'number') {
+                analyserNode.fftSize = param.currentValue;
+            }
+        } else if (allpassInternalNodes && definition.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id) {
+            if (param.id === 'delayTime' && typeof param.currentValue === 'number') {
+                allpassInternalNodes.inputDelay.delayTime.setTargetAtTime(param.currentValue, audioContext.currentTime, 0.01);
+                allpassInternalNodes.feedbackDelay.delayTime.setTargetAtTime(param.currentValue, audioContext.currentTime, 0.01);
+            }
+            if (param.id === 'coefficient' && typeof param.currentValue === 'number') {
+                allpassInternalNodes.inputPassthroughNode.gain.setTargetAtTime(-param.currentValue, audioContext.currentTime, 0.01); 
+                allpassInternalNodes.feedbackGain.gain.setTargetAtTime(param.currentValue, audioContext.currentTime, 0.01);      
+            }
+        }
+      }
+      if (constantSourceValueNode && definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id && currentInputs && currentInputs.number_in !== undefined) {
+        const numberIn = Number(currentInputs.number_in);
+        const maxExpectedParam = parameters.find(p => p.id === 'max_input_value');
+        const maxExpected = maxExpectedParam ? Number(maxExpectedParam.currentValue) : 255;
+        
+        let normalizedValue = 0;
+        if (maxExpected !== 0) {
+            normalizedValue = (numberIn / maxExpected) * 2 - 1; 
+        }
+        normalizedValue = Math.max(-1, Math.min(1, normalizedValue)); 
+
+        constantSourceValueNode.offset.setTargetAtTime(normalizedValue, audioContext.currentTime, 0.01);
+      }
+    });
+  }, [audioContext]);
+
+  const triggerNativeNodeEnvelope = useCallback((instanceId: string, attackTime: number, decayTime: number, peakLevel: number) => {
+    if (!audioContext || audioContext.state !== 'running') return;
+    const info = managedNativeNodesRef.current.get(instanceId);
+    if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
+
+    const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
+    const now = audioContext.currentTime;
+    constSourceNode.offset.cancelScheduledValues(now);
+    constSourceNode.offset.setValueAtTime(0, now); 
+    constSourceNode.offset.linearRampToValueAtTime(peakLevel, now + attackTime);
+    constSourceNode.offset.linearRampToValueAtTime(0, now + attackTime + decayTime);
+  }, [audioContext]);
+
+  const triggerNativeNodeAttackHold = useCallback((instanceId: string, attackTime: number, sustainLevel: number) => {
+    if (!audioContext || audioContext.state !== 'running') return;
+    const info = managedNativeNodesRef.current.get(instanceId);
+    if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
+
+    const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
+    const now = audioContext.currentTime;
+    constSourceNode.offset.cancelScheduledValues(now);
+    constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now); 
+    constSourceNode.offset.linearRampToValueAtTime(sustainLevel, now + attackTime);
+  }, [audioContext]);
+
+  const triggerNativeNodeRelease = useCallback((instanceId: string, releaseTime: number) => {
+    if (!audioContext || audioContext.state !== 'running') return;
+    const info = managedNativeNodesRef.current.get(instanceId);
+    if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
+
+    const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
+    const now = audioContext.currentTime;
+    constSourceNode.offset.cancelScheduledValues(now);
+    constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now); 
+    constSourceNode.offset.linearRampToValueAtTime(0, now + releaseTime);
+  }, [audioContext]);
+
+
+  const removeManagedNativeNode = useCallback((instanceId: string) => {
+    const info = managedNativeNodesRef.current.get(instanceId);
+    if (info) {
+      try {
+        info.nodeForOutputConnections.disconnect();
+        if (info.mainProcessingNode && info.mainProcessingNode !== info.nodeForOutputConnections && info.mainProcessingNode !== info.nodeForInputConnections) {
+          info.mainProcessingNode.disconnect();
+          if (info.mainProcessingNode instanceof OscillatorNode || info.mainProcessingNode instanceof ConstantSourceNode) {
+            try { info.mainProcessingNode.stop(); } catch(e) {/* already stopped */}
+          }
+        }
+        if (info.nodeForInputConnections !== info.nodeForOutputConnections && info.nodeForInputConnections !== info.mainProcessingNode) {
+             info.nodeForInputConnections.disconnect();
+        }
+        if (info.internalGainNode) info.internalGainNode.disconnect();
+        if (info.allpassInternalNodes) Object.values(info.allpassInternalNodes).forEach(node => node.disconnect());
+        if (info.constantSourceValueNode) {
+            info.constantSourceValueNode.disconnect();
+            try { info.constantSourceValueNode.stop(); } catch(e) {/* already stopped */}
+        }
+      } catch (e) {
+        appLog(`[AudioEngine NativeNodeRemove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
+      }
+      managedNativeNodesRef.current.delete(instanceId);
+      appLog(`[AudioEngine NativeNodeRemove] Removed native node for instance '${instanceId}'.`, true);
+      onStateChangeForReRender();
+    }
+  }, [appLog, onStateChangeForReRender]);
+
+  const removeLyriaServiceForInstance = useCallback((instanceId: string) => {
+    const info = managedLyriaServiceInstancesRef.current.get(instanceId);
+    if (info) {
+      info.service.dispose();
+      try {
+        if (masterGainNodeRef.current && info.outputNode) {
+            try { info.outputNode.disconnect(masterGainNodeRef.current); } 
+            catch(eInnerMaster) { /* console.warn(`Inner disconnect error for Lyria output from masterGain: ${eInnerMaster.message}`); */}
+        }
+        info.outputNode.disconnect();
+      } catch (e) {
+        appLog(`[AudioEngine LyriaRemove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
+      }
+      managedLyriaServiceInstancesRef.current.delete(instanceId);
+      appLog(`[AudioEngine] Lyria Service for instance '${instanceId}' disposed and removed.`, true);
+      onStateChangeForReRender();
+    }
+  }, [appLog, onStateChangeForReRender]);
+
+  const removeAllManagedNodes = useCallback(() => {
+    managedWorkletNodesRef.current.forEach((_, instanceId) => removeManagedAudioWorkletNode(instanceId));
+    managedNativeNodesRef.current.forEach((_, instanceId) => removeManagedNativeNode(instanceId));
+    managedLyriaServiceInstancesRef.current.forEach((_, instanceId) => removeLyriaServiceForInstance(instanceId));
+    appLog("[AudioEngine] All managed nodes removed.", true);
+    onStateChangeForReRender();
+  }, [removeManagedAudioWorkletNode, removeManagedNativeNode, removeLyriaServiceForInstance, onStateChangeForReRender]);
+
+  const getAnalyserNodeForInstance = useCallback((instanceId: string): AnalyserNode | null => {
+    const nativeInfo = managedNativeNodesRef.current.get(instanceId);
+    if (nativeInfo && nativeInfo.definition.id === OSCILLOSCOPE_BLOCK_DEFINITION.id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
+        return nativeInfo.mainProcessingNode;
+    }
+    return null;
+  }, []);
+
+  const updateAudioGraphConnections = useCallback((
+    connections: Connection[],
+    blockInstances: BlockInstance[],
+    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
+  ) => {
+    if (!audioContext || !isAudioGloballyEnabled || audioContext.state !== 'running') {
+      activeWebAudioConnectionsRef.current.forEach(connInfo => {
+        try {
+          if (connInfo.targetParam) connInfo.sourceNode.disconnect(connInfo.targetParam);
+          else connInfo.sourceNode.disconnect(connInfo.targetNode);
+        } catch (e) { /* ignore */ }
+      });
+      activeWebAudioConnectionsRef.current.clear();
+      return;
+    }
+
+    const newActiveConnections = new Map<string, ActiveWebAudioConnection>();
+
+    connections.forEach(conn => {
+      const fromInstance = blockInstances.find(b => b.instanceId === conn.fromInstanceId);
+      const toInstance = blockInstances.find(b => b.instanceId === conn.toInstanceId);
+      if (!fromInstance || !toInstance) return;
+
+      const fromDef = getDefinitionForBlock(fromInstance);
+      const toDef = getDefinitionForBlock(toInstance);
+      if (!fromDef || !toDef) return;
+
+      const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
+      const inputPortDef = toDef.inputs.find(p => p.id === conn.toInputId);
+      if (!outputPortDef || !inputPortDef || outputPortDef.type !== 'audio' || inputPortDef.type !== 'audio') return;
+
+      let sourceAudioNode: AudioNode | undefined;
+      const fromWorkletInfo = managedWorkletNodesRef.current.get(fromInstance.instanceId);
+      const fromNativeInfo = managedNativeNodesRef.current.get(fromInstance.instanceId);
+      const fromLyriaInfo = managedLyriaServiceInstancesRef.current.get(fromInstance.instanceId);
+
+      if (fromWorkletInfo) sourceAudioNode = fromWorkletInfo.node;
+      else if (fromNativeInfo) sourceAudioNode = fromNativeInfo.nodeForOutputConnections;
+      else if (fromLyriaInfo) sourceAudioNode = fromLyriaInfo.outputNode;
+
+
+      let targetAudioNodeOrParam: AudioNode | AudioParam | undefined;
+      const toWorkletInfo = managedWorkletNodesRef.current.get(toInstance.instanceId);
+      const toNativeInfo = managedNativeNodesRef.current.get(toInstance.instanceId);
+
+      if (inputPortDef.audioParamTarget) { 
+        if (toWorkletInfo && toWorkletInfo.node.parameters.has(inputPortDef.audioParamTarget)) {
+          targetAudioNodeOrParam = toWorkletInfo.node.parameters.get(inputPortDef.audioParamTarget);
+        } else if (toNativeInfo && toNativeInfo.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
+          targetAudioNodeOrParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
+        } else if (toNativeInfo && toNativeInfo.allpassInternalNodes && inputPortDef.audioParamTarget === 'delayTime') {
+            targetAudioNodeOrParam = toNativeInfo.allpassInternalNodes.inputDelay.delayTime;
+        } else if (toNativeInfo && toNativeInfo.allpassInternalNodes && inputPortDef.audioParamTarget === 'coefficient') {
+            targetAudioNodeOrParam = toNativeInfo.allpassInternalNodes.feedbackGain.gain;
+        }
+      } else { 
+        if (toWorkletInfo) {
+            targetAudioNodeOrParam = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode) ? toWorkletInfo.inputGainNode : toWorkletInfo.node;
+        } else if (toNativeInfo) {
+            if (toDef.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id && toNativeInfo.allpassInternalNodes) {
+                if (sourceAudioNode && toNativeInfo.allpassInternalNodes.inputGain1 && toNativeInfo.allpassInternalNodes.inputPassthroughNode) {
+                    try {
+                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputGain1);
+                        newActiveConnections.set(`${conn.id}-path1`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputGain1 });
+                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode); 
+                        newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
+                    } catch (e) { console.error(`[AudioEngine Conn] Error connecting to Allpass internal nodes for ${conn.id}: ${(e as Error).message}`); }
+                    targetAudioNodeOrParam = null; 
+                }
+            } else {
+                 targetAudioNodeOrParam = toNativeInfo.nodeForInputConnections;
+            }
+        }
+      }
+      
+      if (sourceAudioNode && targetAudioNodeOrParam) {
+        try {
+          if (targetAudioNodeOrParam instanceof AudioParam) {
+            sourceAudioNode.connect(targetAudioNodeOrParam);
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: (targetAudioNodeOrParam as any).node || targetAudioNodeOrParam, targetParam: targetAudioNodeOrParam });
+          } else { 
+            sourceAudioNode.connect(targetAudioNodeOrParam);
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNodeOrParam });
+          }
+        } catch (e) {
+          console.error(`[AudioEngine Conn] Error making Web Audio connection for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
+        }
+      } else if (sourceAudioNode && targetAudioNodeOrParam === null && toDef.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id) {
+          // Allpass connection already handled
+      }
+    });
+
+    activeWebAudioConnectionsRef.current.forEach((oldConnInfo, oldConnId) => {
+      if (!newActiveConnections.has(oldConnId)) {
+        try {
+          if (oldConnInfo.targetParam) oldConnInfo.sourceNode.disconnect(oldConnInfo.targetParam);
+          else oldConnInfo.sourceNode.disconnect(oldConnInfo.targetNode);
+        } catch (e) { /* ignore */ }
+      }
+    });
+    activeWebAudioConnectionsRef.current = newActiveConnections;
+    onStateChangeForReRender();
+  }, [audioContext, isAudioGloballyEnabled, appLog, onStateChangeForReRender]);
+
+  const requestSamplesFromWorklet = useCallback(async (instanceId: string, timeoutMs: number = 1000): Promise<Float32Array> => {
+    const workletInfo = managedWorkletNodesRef.current.get(instanceId);
+    if (!workletInfo || !workletInfo.node.port) {
+      throw new Error(`WorkletNode or port not found for instance ${instanceId}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        workletInfo.node.port.removeEventListener('message', messageListener);
+        reject(new Error(`Timeout waiting for samples from worklet ${instanceId} after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      const messageListener = (event: MessageEvent) => {
+        if (event.data?.type === 'RECENT_SAMPLES_DATA' && event.data.samples instanceof Float32Array) {
+          clearTimeout(timeoutId);
+          workletInfo.node.port.removeEventListener('message', messageListener);
+          resolve(event.data.samples);
+        }
+      };
+      workletInfo.node.port.addEventListener('message', messageListener);
+      workletInfo.node.port.postMessage({ type: 'GET_RECENT_SAMPLES' });
+    });
+  }, []);
+
+  const listOutputDevices = useCallback(async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      appLog("[AudioEngine] enumerateDevices not supported.", true);
+      return;
+    }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+      setAvailableOutputDevices(audioOutputDevices);
+    } catch (err) {
+      appLog(`[AudioEngine] Error listing output devices: ${(err as Error).message}`, true);
+    }
+  }, [appLog, setAvailableOutputDevices]);
+
+  const setOutputDevice = useCallback(async (sinkId: string): Promise<boolean> => {
+    if (!audioContext || !(audioContext as any).setSinkId) {
+      appLog("[AudioEngine] setSinkId is not supported by this browser or AudioContext not initialized.", true);
+      return false;
+    }
+    try {
+      if (masterGainNodeRef.current && audioContext.destination) {
+        masterGainNodeRef.current.disconnect(audioContext.destination);
+      }
+      await (audioContext as any).setSinkId(sinkId);
+      setSelectedSinkId(sinkId);
+      appLog(`[AudioEngine] Audio output device set to: ${sinkId}`, true);
+      if (masterGainNodeRef.current) {
+        masterGainNodeRef.current.connect(audioContext.destination);
+      }
+      return true;
+    } catch (err) {
+      appLog(`[AudioEngine] Error setting output device: ${(err as Error).message}`, true);
+      if (masterGainNodeRef.current && audioContext?.destination) {
+        try { masterGainNodeRef.current.connect(audioContext.destination); }
+        catch(e) { appLog(`[AudioEngine] Failed to fallback connect masterGain: ${(e as Error).message}`, true); }
+      }
+      return false;
+    }
+  }, [audioContext, appLog, setSelectedSinkId]);
+
+  useEffect(() => {
+    listOutputDevices(); 
+    navigator.mediaDevices?.addEventListener('devicechange', listOutputDevices);
+    return () => {
+      navigator.mediaDevices?.removeEventListener('devicechange', listOutputDevices);
+    };
+  }, [listOutputDevices]);
+
+  const setupLyriaServiceForInstance = useCallback(async (
+    instanceId: string, 
+    definition: BlockDefinition,
+    addBlockLog: (message: string) => void 
+  ): Promise<boolean> => {
+    if (!audioContext || audioContext.state !== 'running') {
+      addBlockLog(`Lyria Service setup failed: AudioContext not ready (state: ${audioContext?.state}).`);
+      return false;
+    }
+    if (!process.env.API_KEY) {
+      addBlockLog("Lyria Service setup failed: API_KEY not configured.");
+      return false;
+    }
+    if (managedLyriaServiceInstancesRef.current.has(instanceId)) {
+      addBlockLog("Lyria Service already initialized for this block.");
+      const existingServiceInfo = managedLyriaServiceInstancesRef.current.get(instanceId);
+      if (existingServiceInfo && masterGainNodeRef.current && existingServiceInfo.outputNode !== masterGainNodeRef.current) {
+        try { existingServiceInfo.outputNode.disconnect(); } catch(e) {/*ignore*/}
+        existingServiceInfo.outputNode.connect(masterGainNodeRef.current);
+      }
+      return true;
+    }
+
+    const initialMusicConfig: Partial<LiveMusicGenerationConfig> = { ...DEFAULT_MUSIC_GENERATION_CONFIG };
+    
+    const serviceCallbacks: LiveMusicServiceCallbacks = {
+      onPlaybackStateChange: (newState) => {
+        addBlockLog(`Lyria playback state: ${newState}`);
+        onStateChangeForReRender(); 
+      },
+      onFilteredPrompt: (promptInfo) => addBlockLog(`Lyria prompt filtered: "${promptInfo.text}", Reason: ${promptInfo.filteredReason}`),
+      onSetupComplete: () => {
+        addBlockLog("Lyria Service setup complete and ready.");
+        onStateChangeForReRender();
+      },
+      onError: (error) => {
+        addBlockLog(`Lyria Service Error: ${error}`);
+        onStateChangeForReRender();
+      },
+      onClose: (message) => {
+        addBlockLog(`Lyria Service closed: ${message}`);
+        onStateChangeForReRender();
+      },
+      onOutputNodeChanged: (newNode) => {
+        appLog(`[AudioEngine] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
+        const lyriaServiceInfo = managedLyriaServiceInstancesRef.current.get(instanceId);
+
+        if (lyriaServiceInfo && masterGainNodeRef.current) {
+            const oldNode = lyriaServiceInfo.outputNode;
+            managedLyriaServiceInstancesRef.current.set(instanceId, { ...lyriaServiceInfo, outputNode: newNode });
+
+            if (oldNode && oldNode !== newNode) {
+                try { oldNode.disconnect(masterGainNodeRef.current); } catch (e) { /* ignore */ }
+            }
+            try { newNode.connect(masterGainNodeRef.current); } 
+            catch (e) { appLog(`[AudioEngine Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+        } else if (masterGainNodeRef.current) {
+            try { newNode.connect(masterGainNodeRef.current); } 
+            catch (e) { appLog(`[AudioEngine Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+        }
+        onStateChangeForReRender();
+      },
+    };
+
+    try {
+      const service = new LiveMusicService(process.env.API_KEY, audioContext, serviceCallbacks, initialMusicConfig);
+      const lyriaOutputNode = service.getOutputNode();
+      if (masterGainNodeRef.current) {
+        lyriaOutputNode.connect(masterGainNodeRef.current);
+      }
+      managedLyriaServiceInstancesRef.current.set(instanceId, { instanceId, service, outputNode: lyriaOutputNode });
+      addBlockLog("Lyria Service initialized and output connected.");
+      await service.connect();
+      onStateChangeForReRender();
+      return true;
+    } catch (error: any) {
+      addBlockLog(`Failed to initialize Lyria Service: ${error.message}`);
+      onStateChangeForReRender();
+      return false;
+    }
+  }, [audioContext, appLog, onStateChangeForReRender]);
+  
+  const getLyriaServiceInstance = useCallback((instanceId: string): LiveMusicService | null => {
+    return managedLyriaServiceInstancesRef.current.get(instanceId)?.service || null;
+  }, []);
+  
+  const updateLyriaServiceState = useCallback((
+    instanceId: string, 
+    blockInternalState: Record<string, any>, 
+    blockParams: Record<string, any>, 
+    blockInputs: Record<string,any>,  
+    clearRequestsFn: () => void 
+  ) => {
+    const service = getLyriaServiceInstance(instanceId);
+    if (!service || !audioContext) return;
+
+    if (blockInternalState.reconnectRequest) {
+      service.reconnect();
+    } else if (blockInternalState.stopRequest) {
+      service.stop();
+      if (blockInternalState.playRequest) { 
+        service.play(blockInternalState.lastEffectivePrompts);
+      }
+    } else if (blockInternalState.playRequest) {
+      service.play(blockInternalState.lastEffectivePrompts);
+    } else if (blockInternalState.pauseRequest) {
+      service.pause();
+    }
+    
+    if (service.isConnected() || service.getPlaybackState() === 'paused') {
+        if (blockInternalState.configUpdateNeeded) {
+            const newConfig: Partial<LiveMusicGenerationConfig> = {};
+            // Ensure GenAIScale is used as a value for Object.values
+            // For GenAIScale, we check if the value is a valid member of the enum
+            if (blockInputs.scale_cv_in !== undefined && blockInputs.scale_cv_in !== null && Object.values(GenAIScale).includes(blockInputs.scale_cv_in as any)) {
+                newConfig.scale = blockInputs.scale_cv_in as GenAIScale; 
+            } else if (blockParams.scale !== undefined && Object.values(GenAIScale).includes(blockParams.scale as any)) {
+                newConfig.scale = blockParams.scale as GenAIScale;
+            }
+            
+            if (blockInputs.brightness_cv_in !== undefined) newConfig.brightness = Number(blockInputs.brightness_cv_in);
+            else if (blockParams.brightness !== undefined) newConfig.brightness = Number(blockParams.brightness);
+
+            if (blockInputs.density_cv_in !== undefined) newConfig.density = Number(blockInputs.density_cv_in);
+            else if (blockParams.density !== undefined) newConfig.density = Number(blockParams.density);
+
+            if (blockInputs.seed_cv_in !== undefined) newConfig.seed = Math.floor(Number(blockInputs.seed_cv_in));
+            else if (blockParams.seed !== undefined && Number(blockParams.seed) !== 0) newConfig.seed = Math.floor(Number(blockParams.seed));
+            else if (blockParams.seed === 0) newConfig.seed = undefined; 
+            
+            if (blockInputs.temperature_cv_in !== undefined) newConfig.temperature = Number(blockInputs.temperature_cv_in);
+            else if (blockParams.temperature !== undefined) newConfig.temperature = Number(blockParams.temperature);
+
+            if (blockInputs.guidance_cv_in !== undefined) newConfig.guidance = Number(blockInputs.guidance_cv_in);
+            else if (blockParams.guidance_scale !== undefined) newConfig.guidance = Number(blockParams.guidance_scale);
+            
+            if (blockInputs.top_k_cv_in !== undefined) newConfig.topK = Math.floor(Number(blockInputs.top_k_cv_in));
+            else if (blockParams.top_k !== undefined) newConfig.topK = Math.floor(Number(blockParams.top_k));
+
+            if (blockInputs.bpm_cv_in !== undefined) newConfig.bpm = Math.floor(Number(blockInputs.bpm_cv_in));
+            else if (blockParams.bpm !== undefined) newConfig.bpm = Math.floor(Number(blockParams.bpm));
+            
+            service.setMusicGenerationConfig(newConfig);
+        }
+        
+        if (blockInternalState.promptsUpdateNeeded) {
+            service.setWeightedPrompts(blockInternalState.lastEffectivePrompts || []);
+        }
+
+        if (blockInternalState.trackMuteUpdateNeeded) {
+            service.setMusicGenerationConfig({
+                muteBass: !!blockInternalState.lastMuteBass,
+                muteDrums: !!blockInternalState.lastMuteDrums,
+                onlyBassAndDrums: !!blockInternalState.lastOnlyBassDrums,
+            });
+        }
+    }
+
+    clearRequestsFn(); 
+    onStateChangeForReRender();
+  }, [audioContext, getLyriaServiceInstance, onStateChangeForReRender]);
+
+  useEffect(() => {
+    return () => {
+        if (audioContext && audioContext.state !== 'closed') {
+            console.log("[AudioEngine] Cleaning up AudioContext on hook unmount.");
+            managedWorkletNodesRef.current.forEach((_, id) => removeManagedAudioWorkletNode(id));
+            managedNativeNodesRef.current.forEach((_, id) => removeManagedNativeNode(id));
+            managedLyriaServiceInstancesRef.current.forEach((_, id) => removeLyriaServiceForInstance(id));
+            
+            if (masterGainNodeRef.current) {
+                try { masterGainNodeRef.current.disconnect(); } catch(e) {}
+            }
+        }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
+
+
+  return {
+    audioContext,
+    masterGainNode: masterGainNodeRef.current,
+    isAudioGloballyEnabled,
+    isAudioWorkletSystemReady,
+    audioInitializationError,
+    toggleGlobalAudio,
+    initializeBasicAudioContext,
+    getSampleRate,
+    setupManagedAudioWorkletNode,
+    updateManagedAudioWorkletNodeParams,
+    sendManagedAudioWorkletNodeMessage,
+    removeManagedAudioWorkletNode,
+    registerWorkletProcessor,
+    setupManagedNativeNode,
+    updateManagedNativeNodeParams,
+    triggerNativeNodeEnvelope,
+    triggerNativeNodeAttackHold,
+    triggerNativeNodeRelease,
+    removeManagedNativeNode,
+    removeAllManagedNodes,
+    getAnalyserNodeForInstance,
+    updateAudioGraphConnections,
+    requestSamplesFromWorklet,
+    availableOutputDevices,
+    selectedSinkId,
+    listOutputDevices,
+    setOutputDevice,
+    setupLyriaServiceForInstance,
+    removeLyriaServiceForInstance,
+    getLyriaServiceInstance,
+    updateLyriaServiceState,
+  };
+};
