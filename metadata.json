@@ -1,0 +1,8 @@
+{
+  "name": "Audio Blocks Playground",
+  "description": "A web application for creating, connecting, and managing audio processing blocks with AI-assisted code generation via Gemini. Users can define block logic, interact with their UIs, and manage data flow between them.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}
