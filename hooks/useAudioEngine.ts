@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale as GenAIScale } from '@google/genai';
 import { BlockDefinition, BlockParameter, Connection, BlockInstance, BlockPort, AudioContextState, WeightedPrompt, LiveMusicGenerationConfig, Scale as AppScale } from '../types';
 import { 
-    OSCILLATOR_BLOCK_DEFINITION, 
-    AUDIO_OUTPUT_BLOCK_DEFINITION, 
+    // OSCILLATOR_BLOCK_DEFINITION, // Will be imported directly
+    // AUDIO_OUTPUT_BLOCK_DEFINITION, // Will be imported directly
     NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION, 
     NATIVE_DELAY_BLOCK_DEFINITION, 
     GAIN_BLOCK_DEFINITION, 
@@ -16,10 +16,16 @@ import {
     NATIVE_AD_ENVELOPE_BLOCK_DEFINITION, 
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION, 
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
-    RULE_110_OSCILLATOR_BLOCK_DEFINITION,
+    // RULE_110_OSCILLATOR_BLOCK_DEFINITION, // Will be imported directly
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
     LYRIA_MASTER_BLOCK_DEFINITION,
 } from '../constants';
+
+// Direct imports for PREDEFINED_WORKLET_DEFS
+import { OSCILLATOR_BLOCK_DEFINITION } from '../blocks/oscillatorBlock';
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '../blocks/audioOutputBlock';
+import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '../blocks/rule110OscillatorBlock';
+
 import { LiveMusicService, LiveMusicServiceCallbacks, PlaybackState, MusicGenerationMode, DEFAULT_MUSIC_GENERATION_CONFIG } from '../services/LiveMusicService';
 
 
@@ -498,9 +504,11 @@ export const useAudioEngine = (
         processorOptions: {
           instanceId: instanceId,
           sampleRate: audioContext.sampleRate,
+          // Check against ID from directly imported definition for OSCILLATOR_BLOCK_DEFINITION
           ...(definition.id === OSCILLATOR_BLOCK_DEFINITION.id && {
             waveform: initialParams.find(p => p.id === 'waveform')?.currentValue || OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform')?.defaultValue
           }),
+          // Check against ID from directly imported definition for RULE_110_OSCILLATOR_BLOCK_DEFINITION
           ...(definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id && {
             coreLength: initialParams.find(p => p.id === 'core_length')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'core_length')?.defaultValue,
             initialPattern: initialParams.find(p => p.id === 'initial_pattern_plus_boundaries')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_pattern_plus_boundaries')?.defaultValue,
@@ -514,6 +522,7 @@ export const useAudioEngine = (
       appLog(`[AudioEngine WorkletNodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for instance '${instanceId}'.`, true);
 
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
+      // Check against ID from directly imported definition for AUDIO_OUTPUT_BLOCK_DEFINITION
       if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && masterGainNodeRef.current) {
         inputGainNodeForOutputBlock = audioContext.createGain();
         const volumeParam = initialParams.find(p => p.id === 'volume');
@@ -546,6 +555,7 @@ export const useAudioEngine = (
     parameters.forEach(param => {
       const audioParam = info.node.parameters.get(param.id);
       if (audioParam && typeof param.currentValue === 'number') {
+        // Check against ID from directly imported definition
         if (info.definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && param.id === 'volume' && info.inputGainNode) {
             info.inputGainNode.gain.setTargetAtTime(param.currentValue, audioContext.currentTime, 0.01);
         } else {

@@ -1,7 +1,59 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '../types';
-import { ALL_BLOCK_DEFINITIONS, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants';
+
+// Import individual block definitions
+import { OSCILLATOR_BLOCK_DEFINITION } from '../blocks/oscillatorBlock';
+import { NATIVE_OSCILLATOR_BLOCK_DEFINITION } from '../blocks/nativeOscillatorBlock';
+import { GAIN_BLOCK_DEFINITION } from '../blocks/gainBlock';
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '../blocks/audioOutputBlock';
+import { NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION } from '../blocks/nativeBiquadFilterBlock';
+import { NATIVE_DELAY_BLOCK_DEFINITION } from '../blocks/nativeDelayBlock';
+import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '../blocks/nativeAllpassFilterBlock';
+import { OSCILLOSCOPE_BLOCK_DEFINITION } from '../blocks/oscilloscopeBlock';
+import { NATIVE_LFO_BLOCK_DEFINITION } from '../blocks/nativeLfoBlock';
+import { NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION } from '../blocks/nativeLfoBpmSyncBlock';
+import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '../blocks/nativeAdEnvelopeBlock';
+import { NATIVE_AR_ENVELOPE_BLOCK_DEFINITION } from '../blocks/nativeArEnvelopeBlock';
+import { MANUAL_GATE_BLOCK_DEFINITION } from '../blocks/manualGateBlock';
+import { STEP_SEQUENCER_BLOCK_DEFINITION } from '../blocks/stepSequencerBlock';
+import { PROBABILITY_SEQUENCER_BLOCK_DEFINITION } from '../blocks/probabilitySequencerBlock';
+import { RULE_110_BLOCK_DEFINITION } from '../blocks/rule110Block';
+import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '../blocks/rule110OscillatorBlock';
+import { RULE_110_JOIN_BLOCK_DEFINITION } from '../blocks/rule110JoinBlock';
+import { RULE_110_BYTE_READER_BLOCK_DEFINITION } from '../blocks/rule110ByteReaderBlock';
+import { BYTE_REVERSE_BLOCK_DEFINITION } from '../blocks/byteReverseBlock';
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '../blocks/numberToConstantAudioBlock';
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '../blocks/lyriaMasterBlock';
+import { LYRIA_PROMPT_BLOCK_DEFINITION } from '../blocks/lyriaPromptBlock';
+
+
+// Array of all core block definitions, sourced directly
+const LOCAL_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
+  OSCILLATOR_BLOCK_DEFINITION,
+  NATIVE_OSCILLATOR_BLOCK_DEFINITION,
+  GAIN_BLOCK_DEFINITION,
+  NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
+  NATIVE_DELAY_BLOCK_DEFINITION,
+  NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
+  OSCILLOSCOPE_BLOCK_DEFINITION,
+  NATIVE_LFO_BLOCK_DEFINITION,
+  NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
+  NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
+  NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
+  MANUAL_GATE_BLOCK_DEFINITION,
+  STEP_SEQUENCER_BLOCK_DEFINITION,
+  PROBABILITY_SEQUENCER_BLOCK_DEFINITION,
+  RULE_110_BLOCK_DEFINITION,
+  RULE_110_OSCILLATOR_BLOCK_DEFINITION,
+  RULE_110_JOIN_BLOCK_DEFINITION,
+  RULE_110_BYTE_READER_BLOCK_DEFINITION,
+  BYTE_REVERSE_BLOCK_DEFINITION,
+  NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
+  LYRIA_MASTER_BLOCK_DEFINITION,
+  LYRIA_PROMPT_BLOCK_DEFINITION,
+  AUDIO_OUTPUT_BLOCK_DEFINITION,
+];
 
 // --- Helper Functions (co-located with the class) ---
 
@@ -53,7 +105,7 @@ export const getDefaultOutputValue = (portType: BlockPort['type']): any => {
   }
 };
 
-const CORE_DEFINITION_IDS_SET = new Set(ALL_BLOCK_DEFINITIONS.map(def => def.id));
+const CORE_DEFINITION_IDS_SET = new Set(LOCAL_CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id));
 
 // --- BlockStateManager Class ---
 
@@ -113,7 +165,7 @@ export class BlockStateManager {
 
 
   private _loadDefinitions(): BlockDefinition[] {
-    let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(ALL_BLOCK_DEFINITIONS));
+    let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(LOCAL_CORE_BLOCK_DEFINITIONS_ARRAY));
     const definitionsById = new Map<string, BlockDefinition>(mergedDefinitions.map(def => [def.id, def]));
 
     try {
@@ -155,7 +207,7 @@ export class BlockStateManager {
       }
     } catch (error) {
       console.error(`BlockStateManager: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
-      mergedDefinitions = JSON.parse(JSON.stringify(ALL_BLOCK_DEFINITIONS));
+      mergedDefinitions = JSON.parse(JSON.stringify(LOCAL_CORE_BLOCK_DEFINITIONS_ARRAY));
       mergedDefinitions = mergedDefinitions.map(def => ({
         ...def,
         parameters: def.parameters.map((p: any) => {
@@ -306,6 +358,10 @@ export class BlockStateManager {
   public getDefinitionForBlock(instanceOrDefinitionId: BlockInstance | string): BlockDefinition | undefined {
     const id = typeof instanceOrDefinitionId === 'string' ? instanceOrDefinitionId : instanceOrDefinitionId.definitionId;
     return this._blockDefinitions.find(def => def.id === id);
+  }
+
+  public isCoreDefinition(definitionId: string): boolean {
+    return CORE_DEFINITION_IDS_SET.has(definitionId);
   }
 
   public addLogToBlockInstance(instanceId: string, message: string): void {

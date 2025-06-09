@@ -2,8 +2,8 @@
 import { BlockDefinition } from '../types';
 import { createParameterDefinitions } from '../constants';
 
-const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
-const SAMPLE_BUFFER_WORKLET_CODE = `
+export const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
+export const SAMPLE_BUFFER_WORKLET_CODE = `
 class SampleBufferProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [];

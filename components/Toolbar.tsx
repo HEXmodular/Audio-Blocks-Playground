@@ -15,7 +15,7 @@ interface ToolbarProps {
   onExportWorkspace: () => void;
   onImportWorkspace: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDeleteBlockDefinition: (definitionId: string) => void;
-  coreDefinitionIds: Set<string>;
+  isCoreDefinition: (definitionId: string) => boolean; // Changed from coreDefinitionIds
   bpm: number;
   onBpmChange: (newBpm: number) => void;
   availableOutputDevices: MediaDeviceInfo[]; // New prop
@@ -34,7 +34,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onExportWorkspace,
   onImportWorkspace,
   onDeleteBlockDefinition,
-  coreDefinitionIds,
+  isCoreDefinition: isCoreDefinitionProp, // Renamed to avoid conflict if used directly
   bpm,
   onBpmChange,
   availableOutputDevices,
@@ -86,7 +86,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         {isAddBlockMenuOpen && (
           <div className="absolute left-0 mt-2 w-72 bg-gray-700 border border-gray-600 rounded-md shadow-lg py-1 z-30 max-h-96 overflow-y-auto">
             {allBlockDefinitions.map((def) => {
-              const isCoreDefinition = coreDefinitionIds.has(def.id);
+              const isThisBlockCore = isCoreDefinitionProp(def.id);
               return (
                 <div key={def.id} className="flex items-center justify-between hover:bg-gray-600 group">
                   <button
@@ -100,7 +100,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     {def.name}
                     {def.description && <span className="block text-xs text-gray-400 truncate">({def.description.substring(0,30)}{def.description.length > 30 ? '...' : ''})</span>}
                   </button>
-                  {!isCoreDefinition && (
+                  {!isThisBlockCore && (
                     <button
                       onClick={(e) => handleDeleteDefinition(e, def.id)}
                       title={`Delete definition: ${def.name}`}

@@ -7,9 +7,12 @@ import GeminiChatPanel, { GeminiChatPanelRef } from './components/GeminiChatPane
 import TestRunnerModal from './components/TestRunnerModal';
 import BlockDetailPanel from './components/BlockDetailPanel';
 
-// Import ALL_BLOCK_DEFINITIONS which now aggregates from individual files
-import { ALL_BLOCK_DEFINITIONS as CORE_BLOCK_DEFINITIONS_ARRAY } from './constants';
+// CORE_BLOCK_DEFINITIONS_ARRAY is no longer imported from constants.
+// BlockStateManager is now the source of truth for all definitions.
+// App.tsx receives definitions from BlockStateManager.
+
 // Import specific definitions directly if they are used for specific logic beyond just listing/adding
+// These are fine as they are for specific instance checks, not for populating the general list.
 import { GAIN_BLOCK_DEFINITION } from './blocks/gainBlock';
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from './blocks/numberToConstantAudioBlock';
 import { LYRIA_MASTER_BLOCK_DEFINITION } from './blocks/lyriaMasterBlock';
@@ -86,7 +89,8 @@ const App: React.FC = () => {
     setAllConnections,
   } = useConnectionState();
 
-  const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), [CORE_BLOCK_DEFINITIONS_ARRAY]);
+  // coreDefinitionIds is removed, Toolbar will use blockStateManager.isCoreDefinition
+  // const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), [CORE_BLOCK_DEFINITIONS_ARRAY]);
 
   const {
     pendingConnection,
@@ -169,16 +173,42 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!audioEngine) return; 
 
+    // Reset setupFailed flag if audio system is not ready
+    if (!audioEngine.isAudioGloballyEnabled || !audioEngine.audioContext || audioEngine.audioContext.state !== 'running') {
+      appBlockInstances.forEach(instance => {
+        const definition = getDefinitionForBlock(instance);
+        if (definition && definition.runsAtAudioRate) {
+          if (instance.internalState.needsAudioNodeSetup === false || instance.internalState.setupFailed === true) {
+            handleUpdateInstance(instance.instanceId, currentInst => ({
+              ...currentInst,
+              internalState: {
+                ...currentInst.internalState,
+                needsAudioNodeSetup: true,
+                setupFailed: false, // Reset setupFailed status
+                lyriaServiceReady: false,
+              }
+            }));
+          }
+        }
+      });
+    }
+
     appBlockInstances.forEach(instance => {
       const definition = getDefinitionForBlock(instance);
       if (!definition) return;
 
-      if (definition.runsAtAudioRate && audioEngine.audioContext && audioEngine.audioContext.state === 'running') {
+      // Check for the setupFailed flag BEFORE attempting setup
+      if (instance.internalState?.setupFailed) {
+        // appLogCallback(`[App] Skipping setup for previously failed node ${instance.name} (${instance.instanceId}) - waiting for audio system reset.`, true);
+        return;
+      }
+
+      if (definition.runsAtAudioRate && audioEngine.audioContext && audioEngine.audioContext.state === 'running' && audioEngine.isAudioGloballyEnabled) {
         const needsLyriaSetup = definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id && (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup);
         const needsWorkletSetup = definition.audioWorkletProcessorName && instance.internalState.needsAudioNodeSetup && audioEngine.isAudioWorkletSystemReady;
         const needsNativeSetup = !definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id && instance.internalState.needsAudioNodeSetup;
 
-        if (needsLyriaSetup && audioEngine.isAudioGloballyEnabled) {
+        if (needsLyriaSetup) { // audioEngine.isAudioGloballyEnabled is checked in outer if
           audioEngine.setupLyriaServiceForInstance(instance.instanceId, definition, (msg) => blockStateManager.addLogToBlockInstance(instance.instanceId, msg))
             .then(success => {
               handleUpdateInstance(instance.instanceId, currentInst => ({
@@ -187,29 +217,47 @@ const App: React.FC = () => {
                   ...currentInst.internalState,
                   lyriaServiceReady: success,
                   needsAudioNodeSetup: !success,
-                  // autoPlayInitiated is now managed by the block's logic code
+                  setupFailed: !success
                 },
-                error: success ? null : "Lyria Service setup failed on retry."
+                error: success ? null : "Lyria Service setup failed." // Keep error for Lyria
               }));
             });
         } else if (needsWorkletSetup) {
           audioEngine.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters)
             .then(success => {
               if (success) {
-                handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                handleUpdateInstance(instance.instanceId, currentInst => ({
+                  ...currentInst,
+                  internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, setupFailed: false }
+                }));
+              } else {
+                appLogCallback(`[App] Failed to set up worklet node for ${instance.name} (${instance.instanceId}). Marking to prevent retries.`, true);
+                handleUpdateInstance(instance.instanceId, currentInst => ({
+                  ...currentInst,
+                  internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, setupFailed: true }
+                }));
               }
             });
         } else if (needsNativeSetup) {
           audioEngine.setupManagedNativeNode(instance.instanceId, definition, instance.parameters, globalBpm)
             .then(success => {
               if (success) {
-                handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                handleUpdateInstance(instance.instanceId, currentInst => ({
+                  ...currentInst,
+                  internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, setupFailed: false }
+                }));
+              } else {
+                appLogCallback(`[App] Failed to set up native node for ${instance.name} (${instance.instanceId}). Marking to prevent retries.`, true);
+                handleUpdateInstance(instance.instanceId, currentInst => ({
+                  ...currentInst,
+                  internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, setupFailed: true }
+                }));
               }
             });
-        } else if (!instance.internalState.needsAudioNodeSetup && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
+        } else if (!instance.internalState.needsAudioNodeSetup && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) { // Node is already set up, update params
           if (definition.audioWorkletProcessorName) {
             audioEngine.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
-          } else {
+          } else { // Native node
             const currentInputsForParamUpdate: Record<string, any> = {};
             if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
                 const inputPort = definition.inputs.find(ip => ip.id === 'number_in');
@@ -226,9 +274,19 @@ const App: React.FC = () => {
             audioEngine.updateManagedNativeNodeParams(instance.instanceId, instance.parameters, Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined, globalBpm);
           }
         }
-      } else if (definition.runsAtAudioRate && (!audioEngine.audioContext || audioEngine.audioContext.state !== 'running')) {
-        if (!instance.internalState.needsAudioNodeSetup || (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id && instance.internalState.lyriaServiceReady)) {
-           handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false } });
+      } else if (definition.runsAtAudioRate && (!audioEngine.isAudioGloballyEnabled || !audioEngine.audioContext || audioEngine.audioContext.state !== 'running')) {
+        // This part is now handled by the loop at the beginning of the useEffect
+        // However, we ensure needsAudioNodeSetup is true if it wasn't already.
+        if (instance.internalState.needsAudioNodeSetup === false) {
+             handleUpdateInstance(instance.instanceId, currentInst => ({
+                ...currentInst,
+                internalState: {
+                    ...currentInst.internalState,
+                    needsAudioNodeSetup: true,
+                    lyriaServiceReady: false, // Reset Lyria status too
+                    // setupFailed will be reset by the initial loop in this useEffect
+                }
+            }));
         }
       }
 
@@ -359,13 +417,18 @@ const App: React.FC = () => {
           selectedSinkId: importedSinkId,
         } = workspace;
 
-        const coreDefsMap = new Map(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => [def.id, def]));
+        // Use blockStateManager to check for core definitions when processing imported ones
+        const currentDefinitions = blockStateManager.getBlockDefinitions();
+        const definitionsToSet = [...currentDefinitions];
+        const currentDefinitionIds = new Set(currentDefinitions.map(d => d.id));
+
         importedDefinitions.forEach((def: BlockDefinition) => {
-          if (!coreDefsMap.has(def.id)) {
-            coreDefsMap.set(def.id, {...def, isAiGenerated: true });
+          if (!currentDefinitionIds.has(def.id)) {
+            definitionsToSet.push({...def, isAiGenerated: true });
+            currentDefinitionIds.add(def.id);
           }
         });
-        blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
+        blockStateManager.setAllBlockDefinitions(definitionsToSet);
 
         blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
             ...inst,
@@ -447,7 +510,7 @@ const App: React.FC = () => {
         onExportWorkspace={handleExportWorkspace}
         onImportWorkspace={handleImportWorkspace}
         onDeleteBlockDefinition={blockStateManager.deleteBlockDefinition}
-        coreDefinitionIds={coreDefinitionIds}
+        isCoreDefinition={blockStateManager.isCoreDefinition.bind(blockStateManager)}
         bpm={globalBpm}
         onBpmChange={setGlobalBpm}
         availableOutputDevices={audioEngine.availableOutputDevices}
