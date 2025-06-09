@@ -141,6 +141,7 @@ export const useAudioEngine = (
   const managedNativeNodesRef = useRef<Map<string, ManagedNativeNodeInfo>>(new Map());
   const managedLyriaServiceInstancesRef = useRef<Map<string, ManagedLyriaServiceInfo>>(new Map());
   const registeredWorkletNamesRef = useRef<Set<string>>(new Set());
+  const pendingRegistrationsRef = useRef(new Set());
   const activeWebAudioConnectionsRef = useRef<Map<string, ActiveWebAudioConnection>>(new Map());
 
   const [isAudioWorkletSystemReady, _setIsAudioWorkletSystemReady] = useState(false);
@@ -188,6 +189,10 @@ export const useAudioEngine = (
     if (registeredWorkletNamesRef.current.has(processorName)) {
       return true;
     }
+    if (pendingRegistrationsRef.current.has(processorName)) {
+      appLog(`[AudioEngine Info] Worklet registration for '${processorName}' is already pending. Assuming success.`, true);
+      return true;
+    }
     if (!context || !workletCode || !processorName) {
       appLog(`[AudioEngine Critical] Cannot register worklet ${processorName}: missing context, code, or name.`, true);
       return false;
@@ -200,6 +205,7 @@ export const useAudioEngine = (
     let actualClassName: string | null = null;
     let objectURL: string | null = null;
     try {
+      pendingRegistrationsRef.current.add(processorName);
       const classNameMatch = workletCode.match(/class\s+([A-Za-z_][A-Za-z0-9_]*)\s+extends\s+AudioWorkletProcessor/);
 
       if (classNameMatch && classNameMatch[1]) {
@@ -220,6 +226,7 @@ export const useAudioEngine = (
 
       const blob = new Blob([finalCode], { type: 'application/javascript' });
       objectURL = URL.createObjectURL(blob);
+      // pendingRegistrationsRef.current.add(processorName); // This was moved up
       await context.audioWorklet.addModule(objectURL);
       registeredWorkletNamesRef.current.add(processorName);
       return true;
@@ -231,6 +238,7 @@ export const useAudioEngine = (
       if (error.message.includes('is already registered') || (error.name === 'NotSupportedError' && error.message.includes(processorName) && error.message.toLowerCase().includes('already registered'))) {
         appLog(`[AudioEngine Info] Worklet '${processorName}' reported by browser as 'already registered' (Error: ${error.message}). Adding to cache and assuming available.`, true);
         registeredWorkletNamesRef.current.add(processorName);
+        // No need to delete from registeredWorkletNamesRef here if it was just added
         return true;
       }
 
@@ -242,6 +250,7 @@ export const useAudioEngine = (
       return false;
     } finally {
       if (objectURL) URL.revokeObjectURL(objectURL);
+      pendingRegistrationsRef.current.delete(processorName);
     }
   }, [appLog, setAudioInitializationError, onStateChangeForReRender, audioInitializationError]);
 
