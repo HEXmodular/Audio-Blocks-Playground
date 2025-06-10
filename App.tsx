@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BlockInstance, BlockView, Connection, BlockDefinition, BlockPort, BlockParameter, PendingConnection, GeminiRequest } from './types';
+import { BlockInstance, Connection, BlockDefinition, PendingConnection } from './types'; // Removed BlockView, BlockPort, BlockParameter, GeminiRequest as they might be unused or will be re-added if needed by context types
 import Toolbar from './components/Toolbar';
 import BlockInstanceComponent, { getPortColor as getBlockPortBgColor } from './components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from './components/GeminiChatPanel';
@@ -33,7 +33,8 @@ import {
 } from './constants';
 
 import { getDefaultOutputValue } from './state/BlockStateManager';
-import { BlockStateManager } from './state/BlockStateManager';
+// BlockStateManager import removed, will come from context
+import { useBlockState } from './context/BlockStateContext'; // Added
 import { useConnectionState } from './hooks/useConnectionState';
 import { AudioEngine, useAudioEngine } from './hooks/useAudioEngine'; // Correctly import AudioEngine interface and useAudioEngine hook
 import { useConnectionDragHandler } from './hooks/useConnectionDragHandler';
@@ -52,8 +53,26 @@ const App: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [globalBpm, setGlobalBpm] = useState<number>(120);
 
-  const [appBlockDefinitions, setAppBlockDefinitions] = useState<BlockDefinition[]>([]);
-  const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>([]);
+  // appBlockDefinitions, setAppBlockDefinitions, appBlockInstances, setAppBlockInstances will come from context
+  // const [appBlockDefinitions, setAppBlockDefinitions] = useState<BlockDefinition[]>([]);
+  // const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>([]);
+
+  const {
+    blockDefinitions: appBlockDefinitionsFromCtx,
+    blockInstances: appBlockInstancesFromCtx,
+    blockStateManager: ctxBlockStateManager,
+    addBlockInstance: ctxAddBlockInstance,
+    updateBlockInstance: ctxUpdateBlockInstance,
+    deleteBlockInstance: ctxDeleteBlockInstance,
+    // addBlockDefinition: ctxAddBlockDefinition, // Already available via Toolbar
+    updateBlockDefinition: ctxUpdateBlockDefinition,
+    // deleteBlockDefinition: ctxDeleteBlockDefinition, // Already available via Toolbar
+    // getBlockInstanceById: ctxGetBlockInstanceById, // Not directly used in App.tsx top level
+    getDefinitionById: ctxGetDefinitionById,
+    setAllBlockDefinitions: ctxSetAllBlockDefinitions,
+    setAllBlockInstances: ctxSetAllBlockInstances,
+    addLogToBlockInstance: ctxAddLogToBlockInstance,
+  } = useBlockState();
 
   const [, forceUpdate] = React.useReducer(x => x + 1, 0); // Forcing re-render
 
@@ -70,6 +89,13 @@ const App: React.FC = () => {
   // This allows sub-managers to trigger a re-render of App.tsx if necessary.
   const audioEngine = useAudioEngine(appLogCallback, forceUpdate);
 
+  useEffect(() => {
+    // Initialize core definitions once blockStateManager is available from context and definitions are not yet populated
+    if (ctxBlockStateManager && appBlockDefinitionsFromCtx.length === 0) {
+        console.log("[App] Initializing core block definitions into context...");
+        ctxSetAllBlockDefinitions(CORE_BLOCK_DEFINITIONS_ARRAY);
+    }
+  }, [ctxBlockStateManager, appBlockDefinitionsFromCtx, ctxSetAllBlockDefinitions]);
 
   useEffect(() => {
     if (audioEngine) {
@@ -81,20 +107,17 @@ const App: React.FC = () => {
     // If useAudioEngine needs explicit cleanup, it should return a dispose function or be documented.
   }, [audioEngine]);
 
-
-  const blockStateManager = useMemo(() => {
-    return new BlockStateManager(setAppBlockDefinitions, setAppBlockInstances);
-  }, []);
+  // const blockStateManager = useMemo(() => { // Replaced by ctxBlockStateManager from useBlockState
+  //   return new BlockStateManager(setAppBlockDefinitions, setAppBlockInstances);
+  // }, []);
 
 
   const getDefinitionForBlock = useCallback((instance: BlockInstance) => {
-    return appBlockDefinitions.find(def => def.id === instance.definitionId);
-  }, [appBlockDefinitions]);
+    // Use appBlockDefinitionsFromCtx from context
+    return appBlockDefinitionsFromCtx.find(def => def.id === instance.definitionId);
+  }, [appBlockDefinitionsFromCtx]);
 
-  const getDefinitionById = useCallback((definitionId: string) => {
-    return appBlockDefinitions.find(def => def.id === definitionId);
-  }, [appBlockDefinitions]);
-
+  // getDefinitionById is now directly from context as ctxGetDefinitionById
 
   const {
     connections,
@@ -110,20 +133,20 @@ const App: React.FC = () => {
     handleStartConnectionDrag,
   } = useConnectionDragHandler({
     svgRef,
-    blockInstances: appBlockInstances,
+    blockInstances: appBlockInstancesFromCtx, // Use context state
     getDefinitionForBlock,
     updateConnections,
   });
 
 
   const handleAddBlockFromDefinition = useCallback((definition: BlockDefinition, name?: string, position?: {x:number, y:number}) => {
-    if (!audioEngine) return;
-    const newInstance = blockStateManager.addBlockInstance(definition, name, position);
+    if (!audioEngine || !ctxBlockStateManager) return; // Check context manager
+    const newInstance = ctxAddBlockInstance(definition, name, position); // Use context method
     if (newInstance && definition.runsAtAudioRate && audioEngine.audioContext && audioEngine.audioContext.state === 'running') {
       if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
-        audioEngine.setupLyriaServiceForInstance(newInstance.instanceId, definition, (msg) => blockStateManager.addLogToBlockInstance(newInstance.instanceId, msg))
+        audioEngine.setupLyriaServiceForInstance(newInstance.instanceId, definition, (msg) => ctxAddLogToBlockInstance(newInstance.instanceId, msg)) // Use context method
           .then(success => {
-            blockStateManager.updateBlockInstance(newInstance.instanceId, currentInst => ({
+            ctxUpdateBlockInstance(newInstance.instanceId, currentInst => ({ // Use context method
                 ...currentInst,
                 internalState: { ...currentInst.internalState, lyriaServiceReady: success, needsAudioNodeSetup: !success },
                 error: success ? null : "Lyria Service setup failed."
@@ -133,29 +156,29 @@ const App: React.FC = () => {
         audioEngine.setupManagedAudioWorkletNode(newInstance.instanceId, definition, newInstance.parameters)
           .then(success => {
             if (success) {
-              blockStateManager.updateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } });
+              ctxUpdateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } }); // Use context method
             }
           });
       } else if (!definition.audioWorkletProcessorName) {
         audioEngine.setupManagedNativeNode(newInstance.instanceId, definition, newInstance.parameters, globalBpm)
           .then(success => {
             if (success) {
-              blockStateManager.updateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } });
+              ctxUpdateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } }); // Use context method
             }
           });
       }
     } else if (newInstance && definition.runsAtAudioRate) {
-        blockStateManager.updateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false } });
+        ctxUpdateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false } }); // Use context method
     }
-  }, [blockStateManager, audioEngine, globalBpm]);
+  }, [ctxBlockStateManager, ctxAddBlockInstance, ctxUpdateBlockInstance, ctxAddLogToBlockInstance, audioEngine, globalBpm]);
 
   const handleUpdateInstance = useCallback((instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) => {
-    blockStateManager.updateBlockInstance(instanceId, updates);
-  }, [blockStateManager]);
+    ctxUpdateBlockInstance(instanceId, updates); // Use context method
+  }, [ctxUpdateBlockInstance]);
 
   const handleDeleteInstance = useCallback((instanceId: string) => {
     if (!audioEngine) return;
-    const instanceToRemove = appBlockInstances.find(b => b.instanceId === instanceId);
+    const instanceToRemove = appBlockInstancesFromCtx.find(b => b.instanceId === instanceId); // Use context state
     if (instanceToRemove) {
       const definition = getDefinitionForBlock(instanceToRemove);
       if (definition?.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
@@ -166,17 +189,17 @@ const App: React.FC = () => {
         audioEngine.removeManagedNativeNode(instanceId);
       }
     }
-    blockStateManager.deleteBlockInstance(instanceId);
+    ctxDeleteBlockInstance(instanceId); // Use context method
     updateConnections(prev => prev.filter(c => c.fromInstanceId !== instanceId && c.toInstanceId !== instanceId));
     if (selectedInstanceId === instanceId) setSelectedInstanceId(null);
-  }, [blockStateManager, updateConnections, selectedInstanceId, appBlockInstances, getDefinitionForBlock, audioEngine]);
+  }, [ctxDeleteBlockInstance, updateConnections, selectedInstanceId, appBlockInstancesFromCtx, getDefinitionForBlock, audioEngine]); // Use context state for appBlockInstancesFromCtx
 
 
   useLogicExecutionEngine(
-    appBlockInstances,
+    appBlockInstancesFromCtx, // Use context state
     connections,
     getDefinitionForBlock,
-    blockStateManager,
+    ctxBlockStateManager, // Use context manager
     audioEngine,
     globalBpm,
     audioEngine?.audioContextManager.isAudioGloballyEnabled
@@ -184,8 +207,8 @@ const App: React.FC = () => {
 
   // New useEffect for Audio Node Setup
   useEffect(() => {
-    if (!audioEngine || !audioEngine.audioContextManager.audioContext) {
-        appBlockInstances.forEach(instance => {
+    if (!audioEngine || !audioEngine.audioContextManager.audioContext || !ctxBlockStateManager) { // Check context manager
+        appBlockInstancesFromCtx.forEach(instance => { // Use context state
             const definition = getDefinitionForBlock(instance);
             if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
                  handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false } });
@@ -194,7 +217,7 @@ const App: React.FC = () => {
         return;
     }
 
-    appBlockInstances.forEach(instance => {
+    appBlockInstancesFromCtx.forEach(instance => { // Use context state
         const definition = getDefinitionForBlock(instance);
         if (!definition || !definition.runsAtAudioRate) return;
 
@@ -205,46 +228,46 @@ const App: React.FC = () => {
         if (isAudioContextRunning && isAudioGloballyEnabled) {
             if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
                 if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
-                    blockStateManager.addLogToBlockInstance(instance.instanceId, "Lyria service setup initiated from useEffect.");
-                    audioEngine.lyriaServiceManager.setupLyriaServiceForInstance(instance.instanceId, definition, (msg) => blockStateManager.addLogToBlockInstance(instance.instanceId, msg))
+                    ctxAddLogToBlockInstance(instance.instanceId, "Lyria service setup initiated from useEffect."); // Use context method
+                    audioEngine.lyriaServiceManager.setupLyriaServiceForInstance(instance.instanceId, definition, (msg) => ctxAddLogToBlockInstance(instance.instanceId, msg)) // Use context method
                         .then(success => {
                             handleUpdateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
                                 internalState: { ...currentInst.internalState, lyriaServiceReady: success, needsAudioNodeSetup: !success },
                                 error: success ? null : "Lyria Service setup failed from useEffect."
                             }));
-                            if (success) blockStateManager.addLogToBlockInstance(instance.instanceId, "Lyria service ready.");
-                            else blockStateManager.addLogToBlockInstance(instance.instanceId, "Lyria service setup failed in useEffect.", "error");
+                            if (success) ctxAddLogToBlockInstance(instance.instanceId, "Lyria service ready."); // Use context method
+                            else ctxAddLogToBlockInstance(instance.instanceId, "Lyria service setup failed in useEffect.", "error"); // Use context method
                         });
                 }
             }
             else if (definition.audioWorkletProcessorName) {
                 if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
-                    blockStateManager.addLogToBlockInstance(instance.instanceId, "Worklet node setup initiated from useEffect.");
+                    ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup initiated from useEffect."); // Use context method
                     setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters)
                         .then(success => {
                             if (success) {
                                 handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
-                                blockStateManager.addLogToBlockInstance(instance.instanceId, "Worklet node setup successful.");
+                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup successful."); // Use context method
                             } else {
-                                blockStateManager.addLogToBlockInstance(instance.instanceId, "Worklet node setup failed in useEffect.", "error");
+                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup failed in useEffect.", "error"); // Use context method
                                 handleUpdateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                             }
                         });
                 } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
-                     blockStateManager.addLogToBlockInstance(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
+                     ctxAddLogToBlockInstance(instance.instanceId, "Worklet system not ready, deferring setup.", "warn"); // Use context method
                 }
             }
             else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
                 if (instance.internalState.needsAudioNodeSetup) {
-                    blockStateManager.addLogToBlockInstance(instance.instanceId, "Native node setup initiated from useEffect.");
+                    ctxAddLogToBlockInstance(instance.instanceId, "Native node setup initiated from useEffect."); // Use context method
                     audioEngine.nativeNodeManager.setupManagedNativeNode(instance.instanceId, definition, instance.parameters, globalBpm)
                         .then(success => {
                             if (success) {
                                 handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
-                                blockStateManager.addLogToBlockInstance(instance.instanceId, "Native node setup successful.");
+                                ctxAddLogToBlockInstance(instance.instanceId, "Native node setup successful."); // Use context method
                             } else {
-                                blockStateManager.addLogToBlockInstance(instance.instanceId, "Native node setup failed in useEffect.", "error");
+                                ctxAddLogToBlockInstance(instance.instanceId, "Native node setup failed in useEffect.", "error"); // Use context method
                                 handleUpdateInstance(instance.instanceId, { error: "Native node setup failed." });
                             }
                         });
@@ -254,18 +277,19 @@ const App: React.FC = () => {
             handleUpdateInstance(instance.instanceId, {
                 internalState: { ...instance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false }
             });
-            blockStateManager.addLogToBlockInstance(instance.instanceId, "Audio system not active. Node requires setup.", "warn");
+            ctxAddLogToBlockInstance(instance.instanceId, "Audio system not active. Node requires setup.", "warn"); // Use context method
         }
     });
   }, [
-    appBlockInstances,
+    appBlockInstancesFromCtx, // Use context state
     audioEngine.audioContextManager.audioContext,
     audioEngine.audioContextManager.isAudioGloballyEnabled,
     audioEngine.audioWorkletManager.isAudioWorkletSystemReady,
     globalBpm,
     handleUpdateInstance,
     getDefinitionForBlock,
-    blockStateManager,
+    ctxBlockStateManager, // Use context manager
+    ctxAddLogToBlockInstance, // Use context method
     audioEngine.lyriaServiceManager,
     audioEngine.nativeNodeManager,
     setupManagedAudioWorkletNode
@@ -275,7 +299,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!audioEngine.audioContextManager.audioContext || audioEngine.audioContextManager.audioContext.state !== 'running') return;
 
-    appBlockInstances.forEach(instance => {
+    appBlockInstancesFromCtx.forEach(instance => { // Use context state
       const definition = getDefinitionForBlock(instance);
       if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
         return;
@@ -290,7 +314,7 @@ const App: React.FC = () => {
             if (inputPort) {
                 const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
                 if (conn) {
-                    const sourceInstance = appBlockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
+                    const sourceInstance = appBlockInstancesFromCtx.find(bi => bi.instanceId === conn.fromInstanceId); // Use context state
                     currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
                 } else {
                     currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(inputPort.type);
@@ -301,21 +325,21 @@ const App: React.FC = () => {
       }
     });
   }, [
-    appBlockInstances,
+    appBlockInstancesFromCtx, // Use context state
     audioEngine.audioContextManager.audioContext, // Context presence and state
     connections,
     globalBpm,
     getDefinitionForBlock,
     audioEngine.audioWorkletManager, // Manager for worklet updates
     audioEngine.nativeNodeManager,   // Manager for native updates
-    // instance.parameters and instance.internalState.needsAudioNodeSetup are part of appBlockInstances
+    // instance.parameters and instance.internalState.needsAudioNodeSetup are part of appBlockInstancesFromCtx
   ]);
 
   // Modified existing useEffect for Lyria Auto-Play and State Updates
   useEffect(() => {
     if (!audioEngine.audioContextManager.audioContext || !audioEngine.lyriaServiceManager) return;
 
-    appBlockInstances.forEach(instance => {
+    appBlockInstancesFromCtx.forEach(instance => { // Use context state
       const definition = getDefinitionForBlock(instance);
       // This effect is now only for Lyria blocks
       if (!definition || definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
@@ -371,7 +395,7 @@ const App: React.FC = () => {
         definition.inputs.forEach(inputPort => {
             const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
             if (conn) {
-                const sourceInstance = appBlockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
+                const sourceInstance = appBlockInstancesFromCtx.find(bi => bi.instanceId === conn.fromInstanceId); // Use context state
                 blockInputs[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
             } else {
                 blockInputs[inputPort.id] = getDefaultOutputValue(inputPort.type);
@@ -397,7 +421,7 @@ const App: React.FC = () => {
       }
     });
   }, [
-    appBlockInstances, // For parameters, internalState of Lyria blocks
+    appBlockInstancesFromCtx, // Use context state
     connections, // For inputs to Lyria blocks
     getDefinitionForBlock,
     handleUpdateInstance,
@@ -411,13 +435,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!audioEngine || !audioEngine.audioContextManager.audioContext) return;
     if (audioEngine.audioContextManager.isAudioGloballyEnabled) {
-        audioEngine.updateAudioGraphConnections(connections, appBlockInstances, getDefinitionForBlock);
+        audioEngine.updateAudioGraphConnections(connections, appBlockInstancesFromCtx, getDefinitionForBlock); // Use context state
     } else {
-        audioEngine.updateAudioGraphConnections([], appBlockInstances, getDefinitionForBlock); 
+        audioEngine.updateAudioGraphConnections([], appBlockInstancesFromCtx, getDefinitionForBlock); // Use context state
     }
   }, [
     connections,
-    appBlockInstances,
+    appBlockInstancesFromCtx, // Use context state
     getDefinitionForBlock,
     audioEngine.audioContextManager.isAudioGloballyEnabled,
     audioEngine.audioContextManager.audioContext,
@@ -429,8 +453,8 @@ const App: React.FC = () => {
   const handleExportWorkspace = () => {
     if (!audioEngine) return;
     const workspace = {
-      blockDefinitions: appBlockDefinitions.filter(def => def.isAiGenerated),
-      blockInstances: appBlockInstances,
+      blockDefinitions: appBlockDefinitionsFromCtx.filter(def => def.isAiGenerated), // Use context state
+      blockInstances: appBlockInstancesFromCtx, // Use context state
       connections,
       globalBpm,
       selectedSinkId: audioEngine.audioDeviceManager.selectedSinkId, // Use manager
@@ -459,8 +483,8 @@ const App: React.FC = () => {
         const jsonString = e.target?.result as string;
         const workspace = JSON.parse(jsonString);
 
-        if (!workspace || typeof workspace !== 'object') {
-          throw new Error("Invalid workspace file format.");
+        if (!workspace || typeof workspace !== 'object' || !ctxBlockStateManager) { // Check context manager
+          throw new Error("Invalid workspace file format or context not ready.");
         }
 
         if (audioEngine.audioContextManager.isAudioGloballyEnabled) { // Use manager state
@@ -482,9 +506,9 @@ const App: React.FC = () => {
             coreDefsMap.set(def.id, {...def, isAiGenerated: true });
           }
         });
-        blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
+        ctxSetAllBlockDefinitions(Array.from(coreDefsMap.values())); // Use context method
 
-        blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
+        ctxSetAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({ // Use context method
             ...inst,
             internalState: {
                 ...(inst.internalState || {}),
@@ -524,8 +548,8 @@ const App: React.FC = () => {
   };
 
   const selectedBlockInstance = useMemo(() => {
-    return appBlockInstances.find(b => b.instanceId === selectedInstanceId) || null;
-  }, [appBlockInstances, selectedInstanceId]);
+    return appBlockInstancesFromCtx.find(b => b.instanceId === selectedInstanceId) || null; // Use context state
+  }, [appBlockInstancesFromCtx, selectedInstanceId]);
 
   const getPortElementCenterForConnectionLine = (portElement: Element): { x: number; y: number } => {
     const rect = portElement.getBoundingClientRect();
@@ -559,10 +583,10 @@ const App: React.FC = () => {
         onToggleGlobalAudio={audioEngine.toggleGlobalAudio}
         isAudioGloballyEnabled={audioEngine.audioContextManager.isAudioGloballyEnabled} // Use manager
         onToggleTestRunner={() => setIsTestRunnerOpen(!isTestRunnerOpen)}
-        allBlockDefinitions={appBlockDefinitions}
+        allBlockDefinitions={appBlockDefinitionsFromCtx} // Use context state
         onExportWorkspace={handleExportWorkspace}
         onImportWorkspace={handleImportWorkspace}
-        onDeleteBlockDefinition={blockStateManager.deleteBlockDefinition}
+        onDeleteBlockDefinition={ctxDeleteBlockDefinition} // Prop from context, Toolbar already uses useBlockState
         coreDefinitionIds={coreDefinitionIds}
         bpm={globalBpm}
         onBpmChange={setGlobalBpm}
@@ -573,8 +597,8 @@ const App: React.FC = () => {
       <main className="flex-grow pt-14 relative" id="main-workspace-area">
         <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">
           {connections.map(conn => {
-            const fromInstance = appBlockInstances.find(b => b.instanceId === conn.fromInstanceId);
-            const toInstance = appBlockInstances.find(b => b.instanceId === conn.toInstanceId);
+            const fromInstance = appBlockInstancesFromCtx.find(b => b.instanceId === conn.fromInstanceId); // Use context state
+            const toInstance = appBlockInstancesFromCtx.find(b => b.instanceId === conn.toInstanceId); // Use context state
             if (!fromInstance || !toInstance) return null;
 
             const fromDef = getDefinitionForBlock(fromInstance);
@@ -617,7 +641,7 @@ const App: React.FC = () => {
           )}
         </svg>
 
-        {appBlockInstances.map(instance => (
+        {appBlockInstancesFromCtx.map(instance => ( // Use context state
           <BlockInstanceComponent
             key={instance.instanceId}
             blockInstance={instance}
@@ -636,10 +660,10 @@ const App: React.FC = () => {
       {selectedBlockInstance && (
         <BlockDetailPanel
           blockInstance={selectedBlockInstance}
-          getBlockDefinition={getDefinitionById}
-          onUpdateInstance={handleUpdateInstance}
-          onDeleteInstance={handleDeleteInstance}
-          allInstances={appBlockInstances}
+          getBlockDefinition={ctxGetDefinitionById} // Use context method (BlockDetailPanel already uses context)
+          onUpdateInstance={handleUpdateInstance} // Already uses ctxUpdateBlockInstance via useCallback
+          onDeleteInstance={handleDeleteInstance} // Already uses ctxDeleteBlockInstance via useCallback
+          allInstances={appBlockInstancesFromCtx} // Use context state (BlockDetailPanel already uses context)
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
           onUpdateConnections={updateConnections}
@@ -651,18 +675,18 @@ const App: React.FC = () => {
         isOpen={isGeminiPanelOpen}
         onToggle={() => setIsGeminiPanelOpen(!isGeminiPanelOpen)}
         selectedBlockInstance={selectedBlockInstance}
-        getBlockDefinition={getDefinitionById}
+        getBlockDefinition={ctxGetDefinitionById} // Use context method (GeminiChatPanel already uses context)
         onAddBlockFromGeneratedDefinition={(definition, instanceName) => {
-          handleAddBlockFromDefinition(definition, instanceName);
+          handleAddBlockFromDefinition(definition, instanceName); // Already uses context methods via useCallback
           setIsGeminiPanelOpen(false);
         }}
         onUpdateBlockLogicCode={(instanceId, newLogicCode, modificationPrompt) => {
-          const instance = appBlockInstances.find(i => i.instanceId === instanceId);
+          const instance = appBlockInstancesFromCtx.find(i => i.instanceId === instanceId); // Use context state
           if (instance) {
-            const definition = getDefinitionById(instance.definitionId);
+            const definition = ctxGetDefinitionById(instance.definitionId); // Use context method
             if (definition) {
-              blockStateManager.updateBlockDefinition(definition.id, { logicCode: newLogicCode });
-              handleUpdateInstance(instanceId, prev => ({
+              ctxUpdateBlockDefinition(definition.id, { logicCode: newLogicCode }); // Use context method
+              handleUpdateInstance(instanceId, prev => ({ // Already uses ctxUpdateBlockInstance via useCallback
                 ...prev,
                 modificationPrompts: [...(prev.modificationPrompts || []), modificationPrompt],
                 error: null,
@@ -678,7 +702,7 @@ const App: React.FC = () => {
           isOpen={isTestRunnerOpen}
           onClose={() => setIsTestRunnerOpen(false)}
           audioEngineControls={audioEngine}
-          blockInstances={appBlockInstances}
+          blockInstances={appBlockInstancesFromCtx} // Use context state
           connections={connections}
         />
       )}

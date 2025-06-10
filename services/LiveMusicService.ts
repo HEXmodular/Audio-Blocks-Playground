@@ -207,46 +207,111 @@ export class LiveMusicService {
     }
   }
 
-  private async handleServerMessage(e: LiveMusicServerMessage) {
-    // console.log('[LiveMusicService handleServerMessage] Received message type:', Object.keys(e)[0]); // Less verbose
+  private async _handleSetupCompleteMessage(setupCompleteData: NonNullable<LiveMusicServerMessage['setupComplete']>) {
+    console.log('[LiveMusicService _handleSetupCompleteMessage] Received setupComplete.');
+    this.connectionError = false;
 
-    if (e.setupComplete) {
-      console.log('[LiveMusicService handleServerMessage] Received setupComplete.');
-      this.connectionError = false;
-
-      if (this.session) {
-        try {
-          console.log('[LiveMusicService] Attempting to set initial music config on session after setupComplete.');
-          const configToSend: Partial<LiveMusicGenerationConfig> = {};
-          for (const key in this.musicConfig) {
-            if (Object.prototype.hasOwnProperty.call(this.musicConfig, key)) {
-                const typedKey = key as keyof LiveMusicGenerationConfig;
-                if (this.musicConfig[typedKey] !== undefined) {
-                    (configToSend as any)[typedKey] = this.musicConfig[typedKey];
-                }
-            }
+    if (this.session) {
+      try {
+        console.log('[LiveMusicService] Attempting to set initial music config on session after setupComplete.');
+        const configToSend: Partial<LiveMusicGenerationConfig> = {};
+        for (const key in this.musicConfig) {
+          if (Object.prototype.hasOwnProperty.call(this.musicConfig, key)) {
+              const typedKey = key as keyof LiveMusicGenerationConfig;
+              if (this.musicConfig[typedKey] !== undefined) {
+                  (configToSend as any)[typedKey] = this.musicConfig[typedKey];
+              }
           }
-          await this.session.setMusicGenerationConfig({ musicGenerationConfig: configToSend });
-          console.log('[LiveMusicService] Initial music config successfully sent to session.');
-        } catch (error: any) {
-          console.error('[LiveMusicService] Error setting initial music config on session after setupComplete:', error);
-          this.callbacks.onError(`Failed to set initial music config: ${error.message}`);
         }
-      } else {
-        console.warn('[LiveMusicService] setupComplete received, but session is null. Cannot set initial config.');
+        await this.session.setMusicGenerationConfig({ musicGenerationConfig: configToSend });
+        console.log('[LiveMusicService] Initial music config successfully sent to session.');
+      } catch (error: any) {
+        console.error('[LiveMusicService] Error setting initial music config on session after setupComplete:', error);
+        this.callbacks.onError(`Failed to set initial music config: ${error.message}`);
+      }
+    } else {
+      console.warn('[LiveMusicService] setupComplete received, but session is null. Cannot set initial config.');
+    }
+
+    this.callbacks.onSetupComplete();
+
+    if (this.resolveSetupComplete) {
+      this.resolveSetupComplete();
+    }
+    this.resolveSetupComplete = null;
+    this.rejectSetupComplete = null;
+
+    if (this.currentPlaybackState === 'loading') {
+       this.setPlaybackState('paused');
+    }
+  }
+
+  private async _handleAudioChunksMessage(audioChunks: NonNullable<NonNullable<LiveMusicServerMessage['serverContent']>['audioChunks']>) {
+    if (audioChunks.length > 0) {
+      console.log(`[LiveMusicService _handleAudioChunksMessage] Received ${audioChunks.length} audio chunk(s). Current playback state: ${this.currentPlaybackState}`);
+      if (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'stopped') {
+        console.log(`[LiveMusicService _handleAudioChunksMessage] Discarding audio chunk because playback state is ${this.currentPlaybackState}.`);
+        return;
       }
 
-      this.callbacks.onSetupComplete();
+      try {
+        const audioData = audioChunks[0].data;
+        if (!audioData) {
+          console.warn("[LiveMusicService _handleAudioChunksMessage] Received audio chunk with no data.");
+          return;
+        }
+        const decodedBytes = decode(audioData);
+        const audioBuffer = await decodeAudioData(
+          decodedBytes,
+          this.audioContext,
+          48000,
+          2,
+        );
 
-      if (this.resolveSetupComplete) {
-        this.resolveSetupComplete();
-      }
-      this.resolveSetupComplete = null;
-      this.rejectSetupComplete = null;
+        console.log(`[LiveMusicService _handleAudioChunksMessage] Decoded audio buffer. Duration: ${audioBuffer.duration.toFixed(3)}s. Channels: ${audioBuffer.numberOfChannels}, Sample Rate: ${audioBuffer.sampleRate}`);
 
-      if (this.currentPlaybackState === 'loading') {
-         this.setPlaybackState('paused');
+        if (this.callbacks.onAudioBufferProcessed) {
+          const config = this.getCurrentMusicGenerationConfig();
+          this.callbacks.onAudioBufferProcessed(audioBuffer, config.bpm ?? DEFAULT_MUSIC_GENERATION_CONFIG.bpm ?? 120);
+        }
+
+        const source = this.audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(this.outputNode);
+
+        const currentTime = this.audioContext.currentTime;
+        if (this.nextStartTime === 0) {
+          this.nextStartTime = currentTime + this.bufferTime;
+          console.log(`[LiveMusicService _handleAudioChunksMessage] First chunk. Scheduling to start at: ${this.nextStartTime.toFixed(3)} (current: ${currentTime.toFixed(3)})`);
+        } else if (this.nextStartTime < currentTime) {
+          console.warn(`[LiveMusicService _handleAudioChunksMessage] Buffer underrun. NextStartTime: ${this.nextStartTime.toFixed(3)}, CurrentTime: ${currentTime.toFixed(3)}. Re-buffering.`);
+          this.setPlaybackState('loading'); // Indicate re-buffering
+          this.nextStartTime = currentTime + this.bufferTime;
+          this.callbacks.onError('Audio buffer underrun, re-buffering.');
+        }
+
+        source.start(this.nextStartTime);
+
+        if (this.currentPlaybackState === 'loading') {
+            this.setPlaybackState('playing');
+        }
+        console.log(`[LiveMusicService _handleAudioChunksMessage] Scheduled audio chunk to play at ${this.nextStartTime.toFixed(3)}. Next chunk will start at ${ (this.nextStartTime + audioBuffer.duration).toFixed(3)}.`);
+        this.nextStartTime += audioBuffer.duration;
+
+      } catch (decodeError: any) {
+        this.callbacks.onError(`Error processing received audio data: ${decodeError.message}`);
+        console.error('[LiveMusicService _handleAudioChunksMessage] Decode/Processing Error:', decodeError);
+        this.pause();
+        return;
       }
+    } else {
+      console.log("[LiveMusicService _handleAudioChunksMessage] Received serverContent with empty audioChunks array.");
+    }
+  }
+
+  private async handleServerMessage(e: LiveMusicServerMessage) {
+    if (e.setupComplete) {
+      await this._handleSetupCompleteMessage(e.setupComplete);
     }
     if (e.filteredPrompt) {
       const { text, filteredReason } = e.filteredPrompt;
@@ -254,70 +319,8 @@ export class LiveMusicService {
         this.callbacks.onFilteredPrompt({ text, filteredReason });
       }
     }
-
-    if (e.serverContent?.audioChunks !== undefined) {
-      if (e.serverContent.audioChunks.length > 0) {
-        console.log(`[LiveMusicService] Received ${e.serverContent.audioChunks.length} audio chunk(s). Current playback state: ${this.currentPlaybackState}`);
-        if (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'stopped') {
-          console.log(`[LiveMusicService] Discarding audio chunk because playback state is ${this.currentPlaybackState}.`);
-          return;
-        }
-
-        try {
-          const audioData = e.serverContent.audioChunks[0].data;
-          if (!audioData) {
-            console.warn("[LiveMusicService] Received audio chunk with no data.");
-            return;
-          }
-          const decodedBytes = decode(audioData);
-          const audioBuffer = await decodeAudioData(
-            decodedBytes,
-            this.audioContext,
-            48000, 
-            2, 
-          );
-          
-          console.log(`[LiveMusicService] Decoded audio buffer. Duration: ${audioBuffer.duration.toFixed(3)}s. Channels: ${audioBuffer.numberOfChannels}, Sample Rate: ${audioBuffer.sampleRate}`);
-
-
-          if (this.callbacks.onAudioBufferProcessed) {
-            const config = this.getCurrentMusicGenerationConfig(); 
-            this.callbacks.onAudioBufferProcessed(audioBuffer, config.bpm ?? DEFAULT_MUSIC_GENERATION_CONFIG.bpm ?? 120); 
-          }
-
-          const source = this.audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(this.outputNode);
-
-          const currentTime = this.audioContext.currentTime;
-          if (this.nextStartTime === 0) { 
-            this.nextStartTime = currentTime + this.bufferTime;
-            console.log(`[LiveMusicService] First chunk. Scheduling to start at: ${this.nextStartTime.toFixed(3)} (current: ${currentTime.toFixed(3)})`);
-          } else if (this.nextStartTime < currentTime) { 
-            console.warn(`[LiveMusicService] Buffer underrun. NextStartTime: ${this.nextStartTime.toFixed(3)}, CurrentTime: ${currentTime.toFixed(3)}. Re-buffering.`);
-            this.setPlaybackState('loading'); // Indicate re-buffering
-            this.nextStartTime = currentTime + this.bufferTime;
-            this.callbacks.onError('Audio buffer underrun, re-buffering.');
-          }
-          
-          source.start(this.nextStartTime);
-          
-          // If we were loading and now have scheduled audio, we are effectively playing.
-          if (this.currentPlaybackState === 'loading') {
-              this.setPlaybackState('playing');
-          }
-          console.log(`[LiveMusicService] Scheduled audio chunk to play at ${this.nextStartTime.toFixed(3)}. Next chunk will start at ${ (this.nextStartTime + audioBuffer.duration).toFixed(3)}.`);
-          this.nextStartTime += audioBuffer.duration;
-
-        } catch (decodeError: any) {
-          this.callbacks.onError(`Error processing received audio data: ${decodeError.message}`);
-          console.error('[LiveMusicService] Decode/Processing Error:', decodeError);
-          this.pause(); // Pause on error to prevent further issues
-          return;
-        }
-      } else {
-        console.log("[LiveMusicService] Received serverContent with empty audioChunks array.");
-      }
+    if (e.serverContent?.audioChunks) {
+      await this._handleAudioChunksMessage(e.serverContent.audioChunks);
     }
   }
 
