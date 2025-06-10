@@ -1,11 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
-import { AudioContextState } from '../types'; // BlockDefinition no longer needed here
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { AudioContextState } from '../types';
+import { AudioContextService, InitAudioResult as ServiceInitAudioResult } from '../services/AudioContextService'; // Import service and its result type
 
-export interface InitAudioResult {
-  context: AudioContext | null;
-  contextJustResumed?: boolean; // Indicates if an existing context was resumed
-  // workletsReady is removed as it's now managed by useAudioWorkletManager
-}
+// Exporting the same interface for the hook's return type
+export interface InitAudioResult extends ServiceInitAudioResult {} // Re-export for compatibility
 
 export interface AudioContextManager {
   audioContext: AudioContext | null;
@@ -13,29 +11,44 @@ export interface AudioContextManager {
   isAudioGloballyEnabled: boolean;
   audioInitializationError: string | null;
   initializeBasicAudioContext: (logActivity?: boolean, forceNoResume?: boolean) => Promise<InitAudioResult>;
-  toggleGlobalAudio: () => Promise<boolean>; // Returns success of audio enabling/disabling itself
+  toggleGlobalAudio: () => Promise<boolean>;
   getSampleRate: () => number | null;
+  // Expose context state if needed by consumers directly, though isAudioGloballyEnabled often covers UI needs
+  getAudioContextState: () => AudioContextState | null;
 }
 
 interface UseAudioContextManagerProps {
   appLog: (message: string, isSystem?: boolean) => void;
   onStateChangeForReRender: () => void;
-  // predefinedWorkletDefinitions and registeredWorkletNamesRef are removed
 }
 
 export const useAudioContextManager = ({
   appLog,
   onStateChangeForReRender,
 }: UseAudioContextManagerProps): AudioContextManager => {
-  const [audioContext, _setAudioContext] = useState<AudioContext | null>(null);
-  const masterGainNodeRef = useRef<GainNode | null>(null);
   const [isAudioGloballyEnabled, _setIsAudioGloballyEnabled] = useState(false);
   const [audioInitializationError, _setAudioInitializationError] = useState<string | null>(null);
 
-  const setAudioContext = useCallback((ctx: AudioContext | null) => {
-    _setAudioContext(ctx);
-    onStateChangeForReRender();
-  }, [onStateChangeForReRender]);
+  // Callback for the service to notify of AudioContext state changes
+  const handleContextStateChange = useCallback((newState: AudioContextState) => {
+    // This callback could be used to trigger re-renders or update other state
+    // For example, if the context is externally suspended or closed.
+    appLog(`[useAudioContextManager] Received context state change: ${newState}`, true);
+    if (newState === 'closed' || newState === 'suspended') {
+        if (isAudioGloballyEnabled) { // If we thought audio was on, but context closed/suspended externally
+            _setIsAudioGloballyEnabled(false);
+            // Potentially set an error or informational message
+            // _setAudioInitializationError("AudioContext was externally closed or suspended.");
+        }
+    }
+    onStateChangeForReRender(); // Continue to call this for now
+  }, [appLog, onStateChangeForReRender, isAudioGloballyEnabled]);
+
+  const serviceRef = useRef<AudioContextService | null>(null);
+  if (serviceRef.current === null) {
+    serviceRef.current = new AudioContextService(appLog, handleContextStateChange);
+  }
+  const service = serviceRef.current;
 
   const setIsAudioGloballyEnabled = useCallback((enabled: boolean) => {
     _setIsAudioGloballyEnabled(enabled);
@@ -47,161 +60,88 @@ export const useAudioContextManager = ({
     onStateChangeForReRender();
   }, [onStateChangeForReRender]);
 
-  // registerWorkletProcessor and checkAndRegisterPredefinedWorklets are removed.
-  // They are now managed by useAudioWorkletManager.
-
   const initializeBasicAudioContext = useCallback(async (logActivity: boolean = true, forceNoResume: boolean = false): Promise<InitAudioResult> => {
-    let localContextRef = audioContext;
-    let contextJustResumed = false;
-    let contextErrorMessage: string | null = null;
-
-    if (localContextRef && localContextRef.state === 'closed') {
-      if (logActivity) appLog("[AudioContextManager Init] Existing AudioContext was 'closed'. Creating new one.", true);
-      localContextRef = null; // Force creation of a new context
-    }
-
-    if (localContextRef) {
-      if (logActivity) appLog(`[AudioContextManager Init] Existing AudioContext found (state: ${localContextRef.state}).`, true);
-      const currentStateOfExistingContext: AudioContextState = localContextRef.state;
-      if (currentStateOfExistingContext === 'suspended' && !forceNoResume) {
-        if (logActivity) appLog("[AudioContextManager Init] Attempting to resume existing suspended context...", true);
-        try {
-          await localContextRef.resume();
-          contextJustResumed = true; // Mark that resume was attempted and successful (state will confirm)
-          if (logActivity) appLog(`[AudioContextManager Init] Resume attempt finished. Context state: ${localContextRef.state}.`, true);
-        } catch (resumeError) {
-          if (logActivity) appLog(`[AudioContextManager Init Error] Error resuming existing context: ${(resumeError as Error).message}`, true);
-          contextErrorMessage = `Error resuming context: ${(resumeError as Error).message}`;
-        }
-      }
-      // Worklet registration is no longer handled here.
+    // logActivity is implicitly handled by appLog passed to service.
+    // No need to pass it to service.initialize.
+    const result = await service.initialize(forceNoResume);
+    if (!result.context) {
+      setAudioInitializationError(audioInitializationError || "AudioContext initialization failed in service.");
     } else {
-      if (logActivity) appLog(audioContext ? "[AudioContextManager Init] Existing context was closed. Creating new." : "[AudioContextManager Init] No existing context. Creating new.", true);
-      try {
-        const newContext = new AudioContext();
-        if (logActivity) appLog(`[AudioContextManager Init] New AudioContext created (initial state: ${newContext.state}).`, true);
-
-        if (masterGainNodeRef.current) {
-          try { masterGainNodeRef.current.disconnect(); } catch (e) { /* ignore */ }
-        }
-        masterGainNodeRef.current = newContext.createGain();
-        masterGainNodeRef.current.connect(newContext.destination);
-
-        setAudioContext(newContext);
-        localContextRef = newContext; // Update localContextRef to the new context
-
-        // If new context is suspended, attempt to resume it (unless forceNoResume is true)
-        if (localContextRef.state === 'suspended' && !forceNoResume) {
-          if (logActivity) appLog("[AudioContextManager Init] New context is suspended. Attempting resume...", true);
-          await localContextRef.resume();
-          contextJustResumed = true; // Mark that resume was attempted
-          if (logActivity) appLog(`[AudioContextManager Init] Resume attempt finished. New context state: ${localContextRef.state}.`, true);
-        }
-        // Worklet registration is no longer handled here.
-      } catch (creationError) {
-        const errorMsg = `Critical Error initializing new AudioContext: ${(creationError as Error).message}`;
-        if (logActivity) appLog(`[AudioContextManager Init Critical Error] ${errorMsg}`, true);
-        contextErrorMessage = errorMsg;
-        setAudioContext(null); // Ensure context is null on error
-        localContextRef = null; // Ensure local ref is also null
-      }
+      setAudioInitializationError(null); // Clear previous errors on successful init
     }
-
-    if (contextErrorMessage && !audioInitializationError) {
-      setAudioInitializationError(contextErrorMessage);
-    }
-    // workletsReady is removed from return, contextJustResumed is added.
-    return { context: localContextRef, contextJustResumed: contextJustResumed && localContextRef?.state === 'running' };
-  }, [audioContext, audioInitializationError, appLog, setAudioContext, setAudioInitializationError]);
+    // The hook's state (audioContext, masterGainNode) will be updated via getters
+    onStateChangeForReRender(); // Ensure UI updates with new context from service
+    return { context: service.getAudioContext(), contextJustResumed: result.contextJustResumed };
+  }, [service, audioInitializationError, setAudioInitializationError, onStateChangeForReRender]);
 
   const toggleGlobalAudio = useCallback(async (): Promise<boolean> => {
     setAudioInitializationError(null);
-    // initializeBasicAudioContext no longer returns workletsReady directly in its InitAudioResult
-    const { context: localAudioContextRef, contextJustResumed } = await initializeBasicAudioContext(true, false);
+    let currentServiceContext = service.getAudioContext();
 
-    if (!localAudioContextRef) {
+    if (isAudioGloballyEnabled) { // If currently enabled, we want to disable
+      await service.suspendContext();
       setIsAudioGloballyEnabled(false);
-      setAudioInitializationError(audioInitializationError || "AudioContext creation/retrieval failed in toggleGlobalAudio.");
-      appLog("[AudioContextManager Toggle] Failed to get/create AudioContext.", true);
-      return false; // Indicate failure to enable/disable audio
-    }
-
-    let currentContextState = localAudioContextRef.state;
-
-    // If context was just resumed and is not running, it's an issue.
-    if (contextJustResumed && currentContextState !== 'running') {
-        setIsAudioGloballyEnabled(false);
-        setAudioInitializationError(audioInitializationError || "Context did not become 'running' after resume attempt.");
-        appLog(`[AudioContextManager Toggle] Context state is '${currentContextState}' after resume. Audio NOT enabled.`, true);
-        return false;
-    }
-
-    // If context is suspended (and wasn't just successfully resumed to 'running')
-    if (currentContextState === 'suspended' && !contextJustResumed) {
-      appLog(`[AudioContextManager Toggle] Context is suspended. Attempting resume.`, true);
-      try {
-        await localAudioContextRef.resume();
-        currentContextState = localAudioContextRef.state; // Re-read state
-        if (currentContextState !== 'running') {
-            setIsAudioGloballyEnabled(false);
-            setAudioInitializationError(audioInitializationError || "Context remained suspended after resume attempt.");
-            appLog(`[AudioContextManager Toggle] Context state is '${currentContextState}' after resume. Audio NOT enabled.`, true);
-            return false;
+      appLog(`[useAudioContextManager Toggle] Audio globally DISABLED. Context state: ${service.getContextState()}`, true);
+      return true; // Successfully disabled (or was already)
+    } else { // If currently disabled, we want to enable
+      // Ensure context is initialized first
+      if (!currentServiceContext || currentServiceContext.state === 'closed') {
+        appLog("[useAudioContextManager Toggle] No context or context closed, initializing...", true);
+        const initResult = await service.initialize(false); // forceNoResume = false
+        currentServiceContext = initResult.context;
+        if (!currentServiceContext) {
+          setIsAudioGloballyEnabled(false);
+          setAudioInitializationError(audioInitializationError || "AudioContext creation/retrieval failed in toggleGlobalAudio.");
+          appLog("[useAudioContextManager Toggle] Failed to initialize AudioContext for enabling.", true);
+          return false;
         }
-        appLog(`[AudioContextManager Toggle] Resume successful. Context state: ${currentContextState}.`, true);
-      } catch (resumeError) {
-        appLog(`[AudioContextManager Toggle] Error resuming AudioContext: ${(resumeError as Error).message}`, true);
+      }
+
+      // If context is suspended, try to resume
+      if (currentServiceContext.state === 'suspended') {
+        appLog("[useAudioContextManager Toggle] Context is suspended, attempting resume...", true);
+        await service.resumeContext();
+      }
+
+      // Check final state
+      if (service.getContextState() === 'running') {
+        setIsAudioGloballyEnabled(true);
+        appLog(`[useAudioContextManager Toggle] Audio globally ENABLED. Context state: ${service.getContextState()}`, true);
+        return true;
+      } else {
         setIsAudioGloballyEnabled(false);
-        setAudioInitializationError(audioInitializationError || `Resume error: ${(resumeError as Error).message}`);
+        const errMsg = `Failed to enable audio. Context state: ${service.getContextState()}.`;
+        setAudioInitializationError(audioInitializationError || errMsg);
+        appLog(`[useAudioContextManager Toggle] ${errMsg}`, true);
         return false;
       }
-    } else if (currentContextState === 'closed') {
-      // This case should ideally be handled by initializeBasicAudioContext creating a new one.
-      // If we reach here, it means re-initialization within toggle itself might be needed or an error occurred.
-      appLog(`[AudioContextManager Toggle] Context is closed. This should have been handled by initializeBasicAudioContext.`, true);
-      setIsAudioGloballyEnabled(false);
-      setAudioInitializationError(audioInitializationError || "Context is closed, cannot proceed.");
-      return false;
     }
-
-    // Now, perform the toggle action based on the current global state
-    if (isAudioGloballyEnabled) {
-      // Currently enabled, so disable it
-      if (localAudioContextRef.state === 'running') {
-        appLog(`[AudioContextManager Toggle] Suspending AudioContext (was running).`, true);
-        await localAudioContextRef.suspend();
-      }
-      setIsAudioGloballyEnabled(false);
-      appLog(`[AudioContextManager Toggle] Audio globally DISABLED. Context state: ${localAudioContextRef.state}.`, true);
-    } else {
-      // Currently disabled, so enable it
-      // Context should be running at this point (either initially or after resume)
-      if (localAudioContextRef.state === 'running') {
-        setIsAudioGloballyEnabled(true);
-        appLog(`[AudioContextManager Toggle] Audio globally ENABLED. Context state: ${localAudioContextRef.state}.`, true);
-      } else {
-        // This shouldn't happen if logic above is correct
-        appLog(`[AudioContextManager Toggle] Cannot enable audio: Context not running (State: ${localAudioContextRef.state}).`, true);
-        setIsAudioGloballyEnabled(false);
-        setAudioInitializationError(audioInitializationError || "Cannot enable audio, context not running.");
-        return false; // Failed to enable
-      }
-    }
-    return true; // Successfully toggled the intended state
-  }, [isAudioGloballyEnabled, initializeBasicAudioContext, appLog, setIsAudioGloballyEnabled, setAudioInitializationError, audioInitializationError]);
+  }, [isAudioGloballyEnabled, service, setIsAudioGloballyEnabled, setAudioInitializationError, appLog, audioInitializationError]);
 
   const getSampleRate = useCallback((): number | null => {
-    return audioContext?.sampleRate || null;
-  }, [audioContext]);
+    return service.getSampleRate();
+  }, [service]);
+
+  const getAudioContextState = useCallback((): AudioContextState | null => {
+    return service.getContextState();
+  }, [service]);
+
+  // Effect for cleaning up the service's AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      appLog("[useAudioContextManager] Unmounting. Cleaning up AudioContextService.", true);
+      service.cleanupContext();
+    };
+  }, [service, appLog]); // service and appLog are stable
 
   return {
-    audioContext,
-    masterGainNode: masterGainNodeRef.current,
+    audioContext: service.getAudioContext(), // Get current context from service
+    masterGainNode: service.getMasterGainNode(), // Get current gain from service
     isAudioGloballyEnabled,
     audioInitializationError,
     initializeBasicAudioContext,
     toggleGlobalAudio,
     getSampleRate,
-    // registerWorkletProcessor and checkAndRegisterPredefinedWorklets are removed from export
+    getAudioContextState,
   };
 };

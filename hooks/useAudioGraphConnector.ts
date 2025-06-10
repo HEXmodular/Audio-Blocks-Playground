@@ -1,18 +1,12 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react'; // Added useEffect
 import { Connection, BlockInstance, BlockDefinition } from '../types';
-import { ManagedWorkletNodeInfo } from './useAudioWorkletManager'; // Assuming these are exported or in types.ts
-import { ManagedNativeNodeInfo } from './useNativeNodeManager';   // Assuming these are exported or in types.ts
-import { ManagedLyriaServiceInfo } from './useLyriaServiceManager'; // Assuming these are exported or in types.ts
-import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '../constants'; // For specific block checks
+import { AudioGraphConnectorService } from '../services/AudioGraphConnectorService'; // Import the service
+import { ManagedWorkletNodeInfo } from './useAudioWorkletManager';
+import { ManagedNativeNodeInfo } from './useNativeNodeManager';
+import { ManagedLyriaServiceInfo } from './useLyriaServiceManager';
+// ActiveWebAudioConnection is now defined within AudioGraphConnectorService, so not needed here.
 
-// Type moved from useAudioEngine.ts
-export interface ActiveWebAudioConnection {
-  connectionId: string;
-  sourceNode: AudioNode;
-  targetNode: AudioNode;
-  targetParam?: AudioParam;
-}
-
+// Interface for the hook's return type remains the same externally
 export interface AudioGraphConnector {
   updateAudioGraphConnections: (
     connections: Connection[],
@@ -26,19 +20,23 @@ export interface AudioGraphConnector {
 
 interface UseAudioGraphConnectorProps {
   appLog: (message: string, isSystem?: boolean) => void;
-  // onStateChangeForReRender: () => void; // Removed
   audioContext: AudioContext | null;
   isAudioGloballyEnabled: boolean;
 }
 
 export const useAudioGraphConnector = ({
-  appLog, // appLog is not used in the original updateAudioGraphConnections, but kept for consistency
-  // onStateChangeForReRender, // Removed
+  appLog,
   audioContext,
   isAudioGloballyEnabled,
 }: UseAudioGraphConnectorProps): AudioGraphConnector => {
-  const activeWebAudioConnectionsRef = useRef<Map<string, ActiveWebAudioConnection>>(new Map());
+  // Instantiate the service, ensuring it's created only once
+  const serviceRef = useRef<AudioGraphConnectorService | null>(null);
+  if (serviceRef.current === null) {
+    serviceRef.current = new AudioGraphConnectorService(appLog);
+  }
+  const service = serviceRef.current;
 
+  // The core logic is now delegated to the service
   const updateAudioGraphConnections = useCallback((
     connections: Connection[],
     blockInstances: BlockInstance[],
@@ -47,106 +45,35 @@ export const useAudioGraphConnector = ({
     managedNativeNodes: Map<string, ManagedNativeNodeInfo>,
     managedLyriaServices: Map<string, ManagedLyriaServiceInfo>
   ) => {
-    if (!audioContext || !isAudioGloballyEnabled || audioContext.state !== 'running') {
-      activeWebAudioConnectionsRef.current.forEach(connInfo => {
-        try {
-          if (connInfo.targetParam) connInfo.sourceNode.disconnect(connInfo.targetParam);
-          else connInfo.sourceNode.disconnect(connInfo.targetNode);
-        } catch (e) { /* ignore */ }
-      });
-      activeWebAudioConnectionsRef.current.clear();
-      return;
+    // Pass all necessary current state and dependencies to the service method
+    service.updateConnections(
+      audioContext,
+      isAudioGloballyEnabled,
+      connections,
+      blockInstances,
+      getDefinitionForBlock,
+      managedWorkletNodes,
+      managedNativeNodes,
+      managedLyriaServices
+    );
+  }, [service, audioContext, isAudioGloballyEnabled]); // Dependencies: service instance and props that service method depends on
+
+  // Effect to disconnect all connections when the hook unmounts or when audio becomes disabled
+  useEffect(() => {
+    // If audio is not globally enabled, or context is not running, ensure all connections are cleared.
+    // The service's updateConnections method already handles this if called,
+    // but this effect ensures cleanup if isAudioGloballyEnabled changes to false or audioContext becomes invalid.
+    if (!isAudioGloballyEnabled || !audioContext || audioContext.state !== 'running') {
+      service.disconnectAll();
     }
 
-    const newActiveConnections = new Map<string, ActiveWebAudioConnection>();
-
-    connections.forEach(conn => {
-      const fromInstance = blockInstances.find(b => b.instanceId === conn.fromInstanceId);
-      const toInstance = blockInstances.find(b => b.instanceId === conn.toInstanceId);
-      if (!fromInstance || !toInstance) return;
-
-      const fromDef = getDefinitionForBlock(fromInstance);
-      const toDef = getDefinitionForBlock(toInstance);
-      if (!fromDef || !toDef) return;
-
-      const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
-      const inputPortDef = toDef.inputs.find(p => p.id === conn.toInputId);
-      if (!outputPortDef || !inputPortDef || outputPortDef.type !== 'audio' || inputPortDef.type !== 'audio') return;
-
-      let sourceAudioNode: AudioNode | undefined;
-      const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
-      const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
-      const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
-
-      if (fromWorkletInfo) sourceAudioNode = fromWorkletInfo.node;
-      else if (fromNativeInfo) sourceAudioNode = fromNativeInfo.nodeForOutputConnections;
-      else if (fromLyriaInfo) sourceAudioNode = fromLyriaInfo.outputNode;
-
-      let targetAudioNodeOrParam: AudioNode | AudioParam | undefined;
-      const toWorkletInfo = managedWorkletNodes.get(toInstance.instanceId);
-      const toNativeInfo = managedNativeNodes.get(toInstance.instanceId);
-
-      if (inputPortDef.audioParamTarget) {
-        if (toWorkletInfo && toWorkletInfo.node.parameters.has(inputPortDef.audioParamTarget)) {
-          targetAudioNodeOrParam = toWorkletInfo.node.parameters.get(inputPortDef.audioParamTarget);
-        } else if (toNativeInfo && toNativeInfo.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
-          targetAudioNodeOrParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
-        } else if (toNativeInfo && toNativeInfo.allpassInternalNodes && inputPortDef.audioParamTarget === 'delayTime') {
-            targetAudioNodeOrParam = toNativeInfo.allpassInternalNodes.inputDelay.delayTime;
-        } else if (toNativeInfo && toNativeInfo.allpassInternalNodes && inputPortDef.audioParamTarget === 'coefficient') {
-            targetAudioNodeOrParam = toNativeInfo.allpassInternalNodes.feedbackGain.gain;
-        }
-      } else {
-        if (toWorkletInfo) {
-            targetAudioNodeOrParam = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
-                ? toWorkletInfo.inputGainNode
-                : toWorkletInfo.node;
-        } else if (toNativeInfo) {
-            if (toDef.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id && toNativeInfo.allpassInternalNodes) {
-                if (sourceAudioNode && toNativeInfo.allpassInternalNodes.inputGain1 && toNativeInfo.allpassInternalNodes.inputPassthroughNode) {
-                    try {
-                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputGain1);
-                        newActiveConnections.set(`${conn.id}-path1`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputGain1 });
-                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode);
-                        newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
-                    } catch (e) { console.error(`[AudioGraphConnector Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`); }
-                    targetAudioNodeOrParam = null; // Connection handled
-                }
-            } else {
-                 targetAudioNodeOrParam = toNativeInfo.nodeForInputConnections;
-            }
-        }
-      }
-
-      if (sourceAudioNode && targetAudioNodeOrParam) {
-        try {
-          if (targetAudioNodeOrParam instanceof AudioParam) {
-            sourceAudioNode.connect(targetAudioNodeOrParam);
-            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: (targetAudioNodeOrParam as any).node || targetAudioNodeOrParam, targetParam: targetAudioNodeOrParam });
-          } else {
-            sourceAudioNode.connect(targetAudioNodeOrParam);
-            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNodeOrParam });
-          }
-        } catch (e) {
-          console.error(`[AudioGraphConnector Conn] Error for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
-        }
-      } else if (sourceAudioNode && targetAudioNodeOrParam === null && toDef.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id) {
-          // Allpass connection handled above, do nothing here.
-      }
-    });
-
-    activeWebAudioConnectionsRef.current.forEach((oldConnInfo, oldConnId) => {
-      if (!newActiveConnections.has(oldConnId)) {
-        try {
-          if (oldConnInfo.targetParam) oldConnInfo.sourceNode.disconnect(oldConnInfo.targetParam);
-          else oldConnInfo.sourceNode.disconnect(oldConnInfo.targetNode);
-        } catch (e) { /* ignore */ }
-      }
-    });
-    activeWebAudioConnectionsRef.current = newActiveConnections;
-    // onStateChangeForReRender(); // Removed
-  }, [audioContext, isAudioGloballyEnabled]); // onStateChangeForReRender removed from dependencies
-  // appLog removed from dependencies as it's not used internally by this specific function
+    return () => {
+      // Cleanup on unmount: disconnect all active connections
+      // This is important if the component using this hook unmounts,
+      // for example, if the entire audio processing part of the app is removed from the UI.
+      service.disconnectAll();
+    };
+  }, [service, audioContext, isAudioGloballyEnabled]); // Rerun if these change
 
   return {
     updateAudioGraphConnections,

@@ -1,15 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { AudioDeviceService } from '../services/AudioDeviceService'; // Import the service
 
 export interface AudioDeviceManager {
     availableOutputDevices: MediaDeviceInfo[];
     selectedSinkId: string;
-    listOutputDevices: () => Promise<void>;
+    listOutputDevices: () => Promise<void>; // Keep this for explicit refresh if needed
     setOutputDevice: (sinkId: string) => Promise<boolean>;
 }
 
 interface UseAudioDeviceManagerProps {
     appLog: (message: string, isSystem?: boolean) => void;
-    onStateChangeForReRender: () => void;
+    onStateChangeForReRender: () => void; // Still used for triggering re-renders
     audioContext: AudioContext | null;
     masterGainNode: GainNode | null;
 }
@@ -23,81 +24,53 @@ export const useAudioDeviceManager = ({
     const [availableOutputDevices, _setAvailableOutputDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedSinkId, _setSelectedSinkId] = useState<string>('default');
 
-    // Re-wrapped setters to call onStateChangeForReRender, as per original useAudioEngine logic
-    const setAvailableOutputDevices = useCallback((devices: MediaDeviceInfo[]) => {
+    const handleDeviceListChanged = useCallback((devices: MediaDeviceInfo[]) => {
         _setAvailableOutputDevices(devices);
         onStateChangeForReRender();
     }, [onStateChangeForReRender]);
 
-    const setSelectedSinkId = useCallback((sinkId: string) => {
+    const handleSelectedSinkIdChanged = useCallback((sinkId: string) => {
         _setSelectedSinkId(sinkId);
         onStateChangeForReRender();
     }, [onStateChangeForReRender]);
 
+    const serviceRef = useRef<AudioDeviceService | null>(null);
+    if (serviceRef.current === null) {
+        serviceRef.current = new AudioDeviceService(
+            appLog,
+            handleDeviceListChanged,
+            handleSelectedSinkIdChanged
+        );
+    }
+    const service = serviceRef.current;
+
+    // Effect to update the service with the current audioContext and masterGainNode
+    useEffect(() => {
+        service.setAudioNodes(audioContext, masterGainNode);
+    }, [service, audioContext, masterGainNode]);
+
+    // Effect to manage the device change listener lifecycle
+    useEffect(() => {
+        service.startDeviceChangeListener();
+        // Initial listing
+        service.listOutputDevices();
+
+        return () => {
+            service.stopDeviceChangeListener();
+            // service.cleanup(); // Or call cleanup if it does more than just stop listener
+        };
+    }, [service]); // Service is stable
+
     const listOutputDevices = useCallback(async () => {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            appLog("[AudioDeviceManager] enumerateDevices not supported.", true);
-            return;
-        }
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
-            setAvailableOutputDevices(audioOutputDevices); // Uses the wrapped setter
-        } catch (err) {
-            appLog(`[AudioDeviceManager] Error listing output devices: ${(err as Error).message}`, true);
-        }
-    }, [appLog, setAvailableOutputDevices]);
+        // This can now just be a call to the service's method
+        await service.listOutputDevices();
+    }, [service]);
 
     const setOutputDevice = useCallback(async (sinkId: string): Promise<boolean> => {
-        if (!audioContext || !(audioContext as any).setSinkId) {
-            appLog("[AudioDeviceManager] setSinkId is not supported by this browser or AudioContext not initialized.", true);
-            return false;
-        }
-        try {
-            // Disconnect masterGainNode from current destination before changing sinkId
-            if (masterGainNode && audioContext.destination) {
-                 // Check if masterGainNode is connected before trying to disconnect
-                try {
-                    // A bit of a hack: try/catch a disconnect. If it's not connected, it might throw.
-                    // A more robust way would be to track connection state, but that's more involved.
-                    masterGainNode.disconnect(audioContext.destination);
-                } catch(e) {
-                    // appLog(`[AudioDeviceManager] Master gain was not connected or error on disconnect: ${(e as Error).message}`, true);
-                    // If it throws, it might mean it wasn't connected, so we can proceed.
-                }
-            }
+        return service.setOutputDevice(sinkId);
+    }, [service]);
 
-            await (audioContext as any).setSinkId(sinkId);
-            setSelectedSinkId(sinkId); // Uses the wrapped setter
-            appLog(`[AudioDeviceManager] Audio output device set to: ${sinkId}`, true);
-
-            // Reconnect masterGainNode to the new destination
-            if (masterGainNode) {
-                masterGainNode.connect(audioContext.destination);
-            }
-            return true;
-        } catch (err) {
-            appLog(`[AudioDeviceManager] Error setting output device: ${(err as Error).message}`, true);
-            // Attempt to reconnect to the previous or default destination as a fallback
-            if (masterGainNode && audioContext?.destination) {
-                try {
-                    masterGainNode.connect(audioContext.destination);
-                } catch (e) {
-                    appLog(`[AudioDeviceManager] Failed to fallback connect masterGain: ${(e as Error).message}`, true);
-                }
-            }
-            return false;
-        }
-    }, [audioContext, masterGainNode, appLog, setSelectedSinkId]);
-
-    useEffect(() => {
-        listOutputDevices(); // Initial call
-        navigator.mediaDevices?.addEventListener('devicechange', listOutputDevices);
-        return () => {
-            navigator.mediaDevices?.removeEventListener('devicechange', listOutputDevices);
-        };
-    }, [listOutputDevices]);
-
+    // Expose current state from the hook's state variables, which are updated by service callbacks
     return {
         availableOutputDevices,
         selectedSinkId,
