@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { BlockInstance, BlockDefinition, GeminiRequest } from '../types';
 import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '../services/geminiService';
 import { LightBulbIcon } from './icons';
-import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
+import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
 
 interface GeminiChatPanelProps {
   isOpen: boolean;
