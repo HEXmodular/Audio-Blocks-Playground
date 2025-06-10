@@ -7,7 +7,7 @@ import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from './icons'
 import { OSCILLOSCOPE_BLOCK_DEFINITION, NATIVE_LOGIC_CODE_PLACEHOLDER, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants';
 import OscilloscopeDisplay from './OscilloscopeDisplay';
 import { parseFrequencyInput } from '../utils/noteUtils';
-import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
+import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
 
 interface BlockDetailPanelProps {
   blockInstance: BlockInstance | null;

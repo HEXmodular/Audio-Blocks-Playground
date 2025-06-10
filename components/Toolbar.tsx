@@ -3,7 +3,7 @@
 import React from 'react';
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from './icons'; 
 import { BlockDefinition } from '../types';
-import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
+import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
 
 interface ToolbarProps {
   onAddBlockFromDefinition: (definition: BlockDefinition) => void;
