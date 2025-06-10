@@ -604,7 +604,7 @@ const App: React.FC = () => {
         allBlockDefinitions={appBlockDefinitionsFromCtx} // Use context state
         onExportWorkspace={handleExportWorkspace}
         onImportWorkspace={handleImportWorkspace}
-        onDeleteBlockDefinition={ctxDeleteBlockDefinition} // Prop from context, Toolbar already uses useBlockState
+        // onDeleteBlockDefinition={ctxDeleteBlockDefinition} // Removed: Toolbar uses useBlockState directly
         coreDefinitionIds={coreDefinitionIds}
         bpm={globalBpm}
         onBpmChange={setGlobalBpm}
