@@ -1,5 +1,3 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach } from '../test-runner';
-
 describe('Sample Test Suite', () => {
   let count = 0;
   let suiteData: string | undefined;
@@ -74,7 +72,7 @@ describe('Sample Test Suite', () => {
     } catch (e: any) {
         // This test PASSES if the specific error from the above expect() is caught
         // and its message is verified.
-        expect(e.message).toContain("ExpectationFailed: Expected toEqual.");
+        expect(e.message).toContain("expect(received).toEqual(expected)");
         return; 
     }
     // This line should only be reached if the expect() in the try block did NOT throw,
@@ -97,7 +95,7 @@ describe('Sample Test Suite', () => {
     const arr = [1, { id: 2 }, 'hello'];
     const str = "hello world";
     expect(arr).toContain(1);
-    expect(arr).toContain({ id: 2 }); // Uses deepEqual for object comparison
+    expect(arr).toContainEqual({ id: 2 }); // Uses deepEqual for object comparison
     expect(arr).not.toContain(3);
     expect(str).toContain("world");
     expect(str).not.toContain("galaxy");
