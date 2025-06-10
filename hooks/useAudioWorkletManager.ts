@@ -38,13 +38,11 @@ export interface AudioWorkletManager {
 }
 
 interface UseAudioWorkletManagerProps {
-  appLog: (message: string, isSystem?: boolean) => void;
   onStateChangeForReRender: () => void;
   audioContext: AudioContext | null; // Passed from useAudioEngine, sourced from useAudioContextManager
 }
 
 export const useAudioWorkletManager = ({
-  appLog,
   onStateChangeForReRender,
   audioContext,
 }: UseAudioWorkletManagerProps): AudioWorkletManager => {
@@ -63,9 +61,9 @@ export const useAudioWorkletManager = ({
   const setAudioInitializationError = useCallback((error: string | null) => {
     _setAudioInitializationErrorLocal(error);
     // Propagate error upwards if needed, or handle locally. For now, local.
-    if (error) appLog(`[WorkletManager Error] ${error}`, true);
+    if (error) console.error(`[WorkletManager Error] ${error}`);
     onStateChangeForReRender(); // Ensure UI updates if error is displayed
-  }, [appLog, onStateChangeForReRender]);
+  }, [onStateChangeForReRender]);
 
 
   // Moved from useAudioContextManager.ts (originally from useAudioEngine)
@@ -74,18 +72,18 @@ export const useAudioWorkletManager = ({
     workletCode: string
   ): Promise<boolean> => {
     if (!audioContext) {
-      appLog(`[WorkletManager Critical] Cannot register worklet ${processorName}: AudioContext is null.`, true);
+      console.error(`[WorkletManager Critical] Cannot register worklet ${processorName}: AudioContext is null.`);
       return false;
     }
     if (registeredWorkletNamesRef.current.has(processorName)) {
       return true;
     }
     if (!workletCode || !processorName) {
-      appLog(`[WorkletManager Critical] Cannot register worklet ${processorName}: missing code or name.`, true);
+      console.error(`[WorkletManager Critical] Cannot register worklet ${processorName}: missing code or name.`);
       return false;
     }
     if (audioContext.state === 'closed') {
-      appLog(`[WorkletManager Warn] Cannot register worklet ${processorName}: context is closed.`, true);
+      console.warn(`[WorkletManager Warn] Cannot register worklet ${processorName}: context is closed.`);
       return false;
     }
 
@@ -98,11 +96,11 @@ export const useAudioWorkletManager = ({
       } else {
         actualClassName = processorName.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
         actualClassName = actualClassName.charAt(0).toUpperCase() + actualClassName.slice(1);
-        appLog(`[WorkletManager Warn] Could not extract class name for worklet '${processorName}' via regex. Falling back to heuristic: '${actualClassName}'.`, true);
+        console.warn(`[WorkletManager Warn] Could not extract class name for worklet '${processorName}' via regex. Falling back to heuristic: '${actualClassName}'.`);
       }
 
       if (!actualClassName) {
-        appLog(`[WorkletManager Critical] FATAL: Could not determine class name for worklet '${processorName}'.`, true);
+        console.error(`[WorkletManager Critical] FATAL: Could not determine class name for worklet '${processorName}'.`);
         setAudioInitializationError(`Class name determination failed for ${processorName}`);
         return false;
       }
@@ -132,7 +130,7 @@ try {
       const errMsgBase = `Error in registerWorkletProcessor for '${processorName}' (class '${cnForErrorLog}')`;
 
       if (error.message.includes('is already registered') || (error.name === 'NotSupportedError' && error.message.includes(processorName) && error.message.toLowerCase().includes('already registered'))) {
-        appLog(`[WorkletManager Info] Worklet '${processorName}' reported as 'already registered'. Adding to cache.`, true);
+        console.log(`[WorkletManager Info] Worklet '${processorName}' reported as 'already registered'. Adding to cache.`);
         registeredWorkletNamesRef.current.add(processorName);
         return true;
       }
@@ -144,12 +142,12 @@ try {
     } finally {
       if (objectURL) URL.revokeObjectURL(objectURL);
     }
-  }, [audioContext, appLog, setAudioInitializationError]);
+  }, [audioContext, setAudioInitializationError]);
 
   // Moved from useAudioContextManager.ts (originally from useAudioEngine)
   const checkAndRegisterPredefinedWorklets = useCallback(async (logActivity: boolean = true): Promise<boolean> => {
     if (!audioContext) {
-      if (logActivity) appLog(`[WorkletManager Worklets] AudioContext is null. Cannot register worklets.`, true);
+      if (logActivity) console.log(`[WorkletManager Worklets] AudioContext is null. Cannot register worklets.`);
       return false;
     }
     const currentState: AudioContextState = audioContext.state;
@@ -158,36 +156,36 @@ try {
     );
 
     if (currentState === 'suspended') {
-      if (logActivity) appLog(`[WorkletManager Worklets] Context is 'suspended'. All cached: ${allCached}. Cannot actively register.`, true);
+      if (logActivity) console.log(`[WorkletManager Worklets] Context is 'suspended'. All cached: ${allCached}. Cannot actively register.`);
       return allCached;
     }
     if (currentState === 'closed') {
-      if (logActivity) appLog(`[WorkletManager Worklets] Context is 'closed'. Not ready. All cached: ${allCached}. Cannot actively register.`, true);
+      if (logActivity) console.warn(`[WorkletManager Worklets] Context is 'closed'. Not ready. All cached: ${allCached}. Cannot actively register.`);
       return false;
     }
-    if (logActivity) appLog(`[WorkletManager Worklets] Context is 'running'. Proceeding with registration check.`, true);
+    if (logActivity) console.log(`[WorkletManager Worklets] Context is 'running'. Proceeding with registration check.`);
 
     let allEffectivelyRegistered = true;
     for (const def of PREDEFINED_WORKLET_DEFS) {
       if (def.audioWorkletCode && def.audioWorkletProcessorName) {
         if (!registeredWorkletNamesRef.current.has(def.audioWorkletProcessorName)) {
-          if (logActivity) appLog(`[WorkletManager Worklets] Attempting registration for '${def.audioWorkletProcessorName}'...`, true);
+          if (logActivity) console.log(`[WorkletManager Worklets] Attempting registration for '${def.audioWorkletProcessorName}'...`);
           // registerWorkletProcessor now takes (name, code)
           const regSuccess = await registerWorkletProcessor(def.audioWorkletProcessorName, def.audioWorkletCode);
           if (!regSuccess) {
             allEffectivelyRegistered = false;
-            if (logActivity) appLog(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`, true);
+            if (logActivity) console.error(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`);
             break;
           } else {
-            if (logActivity) appLog(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`, true);
+            if (logActivity) console.log(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`);
           }
         } else {
-          if (logActivity) appLog(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' already cached.`, true);
+          if (logActivity) console.log(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' already cached.`);
         }
       }
     }
     return allEffectivelyRegistered;
-  }, [audioContext, registerWorkletProcessor, appLog]);
+  }, [audioContext, registerWorkletProcessor]);
 
   // Moved from useAudioEngine.ts
   const setupManagedAudioWorkletNode = useCallback(async (
@@ -196,27 +194,27 @@ try {
     initialParams: BlockParameter[]
   ): Promise<boolean> => {
     if (!audioContext || audioContext.state !== 'running' || !isAudioWorkletSystemReady) {
-      appLog(`[WorkletManager NodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): System not ready (ctx: ${audioContext?.state}, worklets: ${isAudioWorkletSystemReady}).`, true);
+      console.warn(`[WorkletManager NodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): System not ready (ctx: ${audioContext?.state}, worklets: ${isAudioWorkletSystemReady}).`);
       return false;
     }
     if (!definition.audioWorkletProcessorName || !definition.audioWorkletCode) {
-      appLog(`[WorkletManager NodeSetup] Skipping '${definition.name}' (ID: ${instanceId}): Missing processorName or code.`, true);
+      console.log(`[WorkletManager NodeSetup] Skipping '${definition.name}' (ID: ${instanceId}): Missing processorName or code.`);
       return true; // Not a failure, just a skip.
     }
     if (managedWorkletNodesRef.current.has(instanceId)) {
-      appLog(`[WorkletManager NodeSetup] Node ID '${instanceId}' already exists. Skipping.`, true);
+      console.log(`[WorkletManager NodeSetup] Node ID '${instanceId}' already exists. Skipping.`);
       return true;
     }
 
     if (!registeredWorkletNamesRef.current.has(definition.audioWorkletProcessorName)) {
-      appLog(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' not registered. Attempting registration...`, true);
+      console.log(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' not registered. Attempting registration...`);
       const regSuccess = await registerWorkletProcessor(definition.audioWorkletProcessorName, definition.audioWorkletCode);
       if (!regSuccess) {
-        appLog(`[WorkletManager NodeSetup Critical] Failed to register '${definition.audioWorkletProcessorName}'. Cannot create node.`, true);
+        console.error(`[WorkletManager NodeSetup Critical] Failed to register '${definition.audioWorkletProcessorName}'. Cannot create node.`);
         setAudioInitializationError(`WorkletNode RegFail: ${definition.audioWorkletProcessorName}`);
         return false;
       }
-      appLog(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' registered successfully.`, true);
+      console.log(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' registered successfully.`);
     }
 
     try {
@@ -245,7 +243,7 @@ try {
       };
 
       const newNode = new AudioWorkletNode(audioContext, definition.audioWorkletProcessorName, workletNodeOptions);
-      appLog(`[WorkletManager NodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for '${instanceId}'.`, true);
+      console.log(`[WorkletManager NodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for '${instanceId}'.`);
 
       // Note: Connection to masterGainNode for AUDIO_OUTPUT_BLOCK_DEFINITION is handled by useAudioEngine,
       // as useAudioWorkletManager doesn't have direct access to masterGainNode.
@@ -257,7 +255,7 @@ try {
         inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
         inputGainNodeForOutputBlock.connect(newNode); // Connect gain to worklet input
         // The connection newNode -> masterGainNode will be done in useAudioEngine after this setup.
-         appLog(`[WorkletManager NodeSetup] AudioOutput block '${instanceId}' internal gain node created. Connection to master gain will be handled by AudioEngine.`, true);
+         console.log(`[WorkletManager NodeSetup] AudioOutput block '${instanceId}' internal gain node created. Connection to master gain will be handled by AudioEngine.`);
       }
 
 
@@ -270,7 +268,7 @@ try {
       setAudioInitializationError(`WorkletNode Error: ${definition.audioWorkletProcessorName} - ${e.message.substring(0, 100)}`);
       return false;
     }
-  }, [audioContext, isAudioWorkletSystemReady, registerWorkletProcessor, appLog, setAudioInitializationError, onStateChangeForReRender]);
+  }, [audioContext, isAudioWorkletSystemReady, registerWorkletProcessor, setAudioInitializationError, onStateChangeForReRender]);
 
   // Moved from useAudioEngine.ts
   const updateManagedAudioWorkletNodeParams = useCallback((instanceId: string, parameters: BlockParameter[]) => {
@@ -309,20 +307,20 @@ try {
         info.node.disconnect();
         info.node.port?.close();
       } catch (e) {
-        appLog(`[WorkletManager NodeRemove] Error disconnecting worklet '${instanceId}': ${(e as Error).message}`, true);
+        console.warn(`[WorkletManager NodeRemove] Error disconnecting worklet '${instanceId}': ${(e as Error).message}`);
       }
       managedWorkletNodesRef.current.delete(instanceId);
-      appLog(`[WorkletManager NodeRemove] Removed worklet node for '${instanceId}'.`, true);
+      console.log(`[WorkletManager NodeRemove] Removed worklet node for '${instanceId}'.`);
       onStateChangeForReRender();
     }
-  }, [appLog, onStateChangeForReRender]);
+  }, [onStateChangeForReRender]);
 
   const removeAllManagedWorkletNodes = useCallback(() => {
     managedWorkletNodesRef.current.forEach((info) => {
       removeManagedAudioWorkletNode(info.instanceId);
     });
-     appLog(`[WorkletManager] All managed worklet nodes signal sent for removal.`, true);
-  }, [removeManagedAudioWorkletNode, appLog]);
+     console.log(`[WorkletManager] All managed worklet nodes signal sent for removal.`);
+  }, [removeManagedAudioWorkletNode]);
 
 
   // Moved from useAudioEngine.ts
