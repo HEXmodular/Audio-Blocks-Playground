@@ -3,12 +3,13 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { BlockInstance, BlockDefinition, GeminiRequest } from '../types';
 import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '../services/geminiService';
 import { LightBulbIcon } from './icons';
+import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
 
 interface GeminiChatPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   selectedBlockInstance: BlockInstance | null;
-  getBlockDefinition: (definitionId: string) => BlockDefinition | undefined; // Changed prop type
+  // getBlockDefinition removed from props
   onAddBlockFromGeneratedDefinition: (definition: BlockDefinition, instanceName?: string) => void;
   onUpdateBlockLogicCode: (instanceId: string, newLogicCode: string, modificationPrompt: string) => void;
   apiKeyMissing: boolean;
@@ -29,11 +30,13 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
   isOpen,
   onToggle,
   selectedBlockInstance,
-  getBlockDefinition,
+  // getBlockDefinition, // Removed from destructuring
   onAddBlockFromGeneratedDefinition,
   onUpdateBlockLogicCode,
   apiKeyMissing
 }, ref) => {
+  const { getDefinitionById } = useBlockState(); // Consume context
+
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -66,7 +69,7 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
     try {
       if (selectedBlockInstance) {
         // Modifying existing block's logic code
-        const definition = getBlockDefinition(selectedBlockInstance.definitionId); // Use definitionId
+        const definition = getDefinitionById(selectedBlockInstance.definitionId); // Use context function
         if (!definition) {
             throw new Error(`Definition for block ${selectedBlockInstance.name} not found.`);
         }

@@ -82,6 +82,79 @@ export class BlockStateManager {
     this._saveInstancesToLocalStorage();
   }
 
+  private _handleRule110ParameterAdjustment(updatedInstance: BlockInstance, previousInstance: BlockInstance): BlockInstance {
+    const definition = this._blockDefinitions.find(d => d.id === updatedInstance.definitionId);
+    // Ensure definition is found and it's a Rule 110 type block
+    if (!definition || (definition.id !== RULE_110_BLOCK_DEFINITION.id && definition.id !== RULE_110_OSCILLATOR_BLOCK_DEFINITION.id)) {
+      return updatedInstance; // Return as is if not Rule 110 or no definition
+    }
+
+    const newCoreLengthParam = updatedInstance.parameters.find(p => p.id === 'core_length');
+    const oldCoreLengthParam = previousInstance.parameters.find(p => p.id === 'core_length');
+
+    if (newCoreLengthParam && oldCoreLengthParam && newCoreLengthParam.currentValue !== oldCoreLengthParam.currentValue) {
+      const oldCL = Number(oldCoreLengthParam.currentValue);
+      const newCL = Number(newCoreLengthParam.currentValue);
+      const patternParamInstance = updatedInstance.parameters.find(p => p.id === 'initial_pattern_plus_boundaries');
+
+      if (patternParamInstance && Array.isArray(patternParamInstance.currentValue)) {
+        let modifiedPatternArrayValue = [...(patternParamInstance.currentValue as boolean[])];
+        const idxOldR = oldCL + 1; // Index of the old Right Boundary
+        const idxNewR = newCL + 1; // Index of the new Right Boundary
+        const currentPatternLength = modifiedPatternArrayValue.length;
+        const finalPatternLength = patternParamInstance.steps || 18; // Max possible length
+
+        // Ensure array is long enough to avoid out-of-bounds, fill with false if necessary
+        if (currentPatternLength < finalPatternLength) {
+          modifiedPatternArrayValue = [
+            ...modifiedPatternArrayValue,
+            ...Array(finalPatternLength - currentPatternLength).fill(false),
+          ];
+        }
+
+        if (idxOldR !== idxNewR) { // Only adjust if core_length actually changed where boundaries shift
+            const stateAtOldR = (idxOldR < currentPatternLength && idxOldR >=0) ? modifiedPatternArrayValue[idxOldR] : false;
+
+            if (newCL > oldCL) { // Core length increased, R-boundary moved right
+                // Shift elements from newR to the right, to make space for the new R-boundary value
+                for (let i = Math.min(finalPatternLength - 1, currentPatternLength -1 + (newCL - oldCL)); i > idxNewR; i--) {
+                    if (i - (newCL-oldCL) >=0) {
+                        modifiedPatternArrayValue[i] = modifiedPatternArrayValue[i - (newCL - oldCL)];
+                    } else {
+                        modifiedPatternArrayValue[i] = false;
+                    }
+                }
+                if(idxNewR < finalPatternLength) modifiedPatternArrayValue[idxNewR] = stateAtOldR;
+
+                for (let i = idxOldR; i < idxNewR; i++) {
+                    if (i !== idxOldR && i < finalPatternLength) {
+                         modifiedPatternArrayValue[i] = false;
+                    }
+                }
+                 if (idxOldR < idxNewR && idxOldR !== (idxNewR - (newCL-oldCL)) && idxOldR < finalPatternLength) {
+                    modifiedPatternArrayValue[idxOldR] = false;
+                 }
+
+            } else { // Core length decreased, R-boundary moved left
+               if(idxNewR < finalPatternLength) modifiedPatternArrayValue[idxNewR] = stateAtOldR;
+
+               for (let i = idxNewR + 1; i <= idxOldR && i < finalPatternLength; i++) {
+                  modifiedPatternArrayValue[i] = false;
+               }
+            }
+        }
+
+        updatedInstance.parameters = updatedInstance.parameters.map(p =>
+          p.id === 'initial_pattern_plus_boundaries'
+            ? { ...p, currentValue: modifiedPatternArrayValue.slice(0, finalPatternLength) }
+            : p
+        );
+        console.log(`BlockStateManager: Rule 110 type block (${updatedInstance.instanceId}, def: ${definition.id}): Adjusted initial_pattern_plus_boundaries for core_length change from ${oldCL} to ${newCL}.`);
+      }
+    }
+    return updatedInstance;
+  }
+
   private _loadDefinitions(): BlockDefinition[] {
     let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(ALL_BLOCK_DEFINITIONS));
     const definitionsById = new Map<string, BlockDefinition>(mergedDefinitions.map(def => [def.id, def]));
@@ -415,55 +488,11 @@ export class BlockStateManager {
           newBlockState = { ...currentBlockInst, ...updates };
         }
 
-        // Rule 110 specific logic for initial_pattern_plus_boundaries adjustment
-        const definition = this._blockDefinitions.find(d => d.id === newBlockState.definitionId);
-        if (definition && (definition.id === RULE_110_BLOCK_DEFINITION.id || definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id)) {
-          const newCoreLengthParam = newBlockState.parameters.find(p => p.id === 'core_length');
-          const oldCoreLengthParam = currentBlockInst.parameters.find(p => p.id === 'core_length');
+        // Call Rule 110 specific logic using the helper method
+        // Pass the state *after* generic updates (newBlockState)
+        // and the state *before* generic updates (currentBlockInst)
+        newBlockState = this._handleRule110ParameterAdjustment(newBlockState, currentBlockInst);
 
-          if (newCoreLengthParam && oldCoreLengthParam && newCoreLengthParam.currentValue !== oldCoreLengthParam.currentValue) {
-            const oldCL = Number(oldCoreLengthParam.currentValue);
-            const newCL = Number(newCoreLengthParam.currentValue);
-            const patternParamInstance = newBlockState.parameters.find(p => p.id === 'initial_pattern_plus_boundaries');
-
-            if (patternParamInstance && Array.isArray(patternParamInstance.currentValue)) {
-              let modifiedPatternArrayValue = [...(patternParamInstance.currentValue as boolean[])];
-              const idxOldR = oldCL + 1;
-              const idxNewR = newCL + 1;
-              const maxPatternIndex = (patternParamInstance.steps || 18) -1; // Max index based on steps
-
-              if (idxOldR >= 0 && idxOldR <= maxPatternIndex && idxNewR >= 0 && idxNewR <= maxPatternIndex) {
-                if (idxOldR !== idxNewR) {
-                  const stateAtOldR = modifiedPatternArrayValue[idxOldR];
-                  // const stateAtNewR = modifiedPatternArrayValue[idxNewR]; // This was for swapping; now we shift
-                  
-                  // Shift elements to make or remove space for R-boundary
-                  if (newCL > oldCL) { // Core length increased, R-boundary moved right
-                    // Ensure array is long enough (should be if 'steps' is fixed)
-                    for (let i = Math.min(maxPatternIndex, patternParamInstance.currentValue.length -1); i > idxNewR; i--) {
-                         modifiedPatternArrayValue[i] = modifiedPatternArrayValue[i-1];
-                    }
-                    modifiedPatternArrayValue[idxNewR] = stateAtOldR; // Place old R-boundary state at new R-boundary
-                    if (idxOldR < idxNewR) modifiedPatternArrayValue[idxOldR] = false; // Clear old R-boundary if it's not overwritten
-                  } else { // Core length decreased, R-boundary moved left
-                     modifiedPatternArrayValue[idxNewR] = stateAtOldR; // Place old R-boundary state at new R-boundary
-                     for (let i = idxNewR + 1; i < idxOldR +1 && i <= maxPatternIndex; i++) {
-                        modifiedPatternArrayValue[i] = modifiedPatternArrayValue[i+1] ?? false; // Shift left
-                     }
-                     if(idxOldR <= maxPatternIndex) modifiedPatternArrayValue[idxOldR] = false; // Clear the old R-boundary position
-                  }
-
-                }
-                newBlockState.parameters = newBlockState.parameters.map(p =>
-                  p.id === 'initial_pattern_plus_boundaries'
-                    ? { ...p, currentValue: modifiedPatternArrayValue.slice(0, patternParamInstance.steps || 18) }
-                    : p
-                );
-                console.log(`BlockStateManager: Rule 110 type block (${instanceId}, def: ${definition.id}): Adjusted R-Bnd states for core_length change from ${oldCL} to ${newCL}.`);
-              }
-            }
-          }
-        }
         return newBlockState;
       }
       return currentBlockInst;

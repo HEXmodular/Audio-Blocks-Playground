@@ -3,6 +3,7 @@
 import React from 'react';
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from './icons'; 
 import { BlockDefinition } from '../types';
+import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
 
 interface ToolbarProps {
   onAddBlockFromDefinition: (definition: BlockDefinition) => void;
@@ -11,16 +12,15 @@ interface ToolbarProps {
   onToggleGlobalAudio: () => void;
   isAudioGloballyEnabled: boolean;
   onToggleTestRunner: () => void;
-  allBlockDefinitions: BlockDefinition[];
+  // allBlockDefinitions and onDeleteBlockDefinition removed from props
   onExportWorkspace: () => void;
   onImportWorkspace: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onDeleteBlockDefinition: (definitionId: string) => void;
   coreDefinitionIds: Set<string>;
   bpm: number;
   onBpmChange: (newBpm: number) => void;
-  availableOutputDevices: MediaDeviceInfo[]; // New prop
-  selectedSinkId: string;                   // New prop
-  onSetOutputDevice: (sinkId: string) => Promise<boolean>; // New prop
+  availableOutputDevices: MediaDeviceInfo[];
+  selectedSinkId: string;
+  onSetOutputDevice: (sinkId: string) => Promise<boolean>;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -30,10 +30,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onToggleGlobalAudio,
   isAudioGloballyEnabled,
   onToggleTestRunner,
-  allBlockDefinitions,
+  // allBlockDefinitions, // Removed from destructuring
   onExportWorkspace,
   onImportWorkspace,
-  onDeleteBlockDefinition,
+  // onDeleteBlockDefinition, // Removed from destructuring
   coreDefinitionIds,
   bpm,
   onBpmChange,
@@ -41,6 +41,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   selectedSinkId,
   onSetOutputDevice,
 }) => {
+  const { blockDefinitions, deleteBlockDefinition } = useBlockState(); // Consume context
+
   const [isAddBlockMenuOpen, setIsAddBlockMenuOpen] = React.useState(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -50,8 +52,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => {
     e.stopPropagation(); // Prevent block add
-    if (window.confirm(`Are you sure you want to delete the block definition for "${allBlockDefinitions.find(d=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-      onDeleteBlockDefinition(definitionId);
+    // Use blockDefinitions from context for the confirmation message
+    if (window.confirm(`Are you sure you want to delete the block definition for "${blockDefinitions.find(d=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
+      deleteBlockDefinition(definitionId); // Use context function
       setIsAddBlockMenuOpen(false); // Close menu after action
     }
   };
@@ -85,7 +88,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </button>
         {isAddBlockMenuOpen && (
           <div className="absolute left-0 mt-2 w-72 bg-gray-700 border border-gray-600 rounded-md shadow-lg py-1 z-30 max-h-96 overflow-y-auto">
-            {allBlockDefinitions.map((def) => {
+            {blockDefinitions.map((def) => { // Use blockDefinitions from context
               const isCoreDefinition = coreDefinitionIds.has(def.id);
               return (
                 <div key={def.id} className="flex items-center justify-between hover:bg-gray-600 group">

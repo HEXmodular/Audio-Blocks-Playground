@@ -1,18 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BlockInstance, BlockDefinition, BlockView, BlockPort, BlockParameter, Connection, BlockParameterDefinition } from '../types';
 import CodeLogToggle from './CodeLogToggle';
-import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from './icons'; // Added PlayIcon
-import { OSCILLOSCOPE_BLOCK_DEFINITION, NATIVE_LOGIC_CODE_PLACEHOLDER, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants'; // Added LYRIA_MASTER_BLOCK_DEFINITION
+import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from './icons';
+import { OSCILLOSCOPE_BLOCK_DEFINITION, NATIVE_LOGIC_CODE_PLACEHOLDER, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants';
 import OscilloscopeDisplay from './OscilloscopeDisplay';
 import { parseFrequencyInput } from '../utils/noteUtils';
+import { useBlockState } from '../../context/BlockStateContext'; // Import useBlockState
 
 interface BlockDetailPanelProps {
   blockInstance: BlockInstance | null;
-  getBlockDefinition: (definitionId: string) => BlockDefinition | undefined; // Changed prop type
-  onUpdateInstance: (instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) => void;
-  onDeleteInstance: (instanceId: string) => void;
-  allInstances: BlockInstance[];
+  // getBlockDefinition, onUpdateInstance, onDeleteInstance, allInstances removed from props
   connections: Connection[];
   onClosePanel: () => void;
   onUpdateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
@@ -32,15 +31,22 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
 
 const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   blockInstance,
-  getBlockDefinition,
-  onUpdateInstance,
-  onDeleteInstance,
-  allInstances,
+  // getBlockDefinition, // Removed
+  // onUpdateInstance, // Removed
+  // onDeleteInstance, // Removed
+  // allInstances, // Removed
   connections,
   onClosePanel,
   onUpdateConnections,
   getAnalyserNodeForInstance,
 }) => {
+  const {
+    blockInstances, // Use from context instead of props.allInstances
+    getDefinitionById, // Use from context instead of props.getBlockDefinition
+    updateBlockInstance, // Use from context instead of props.onUpdateInstance
+    deleteBlockInstance: ctxDeleteBlockInstance // Use from context instead of props.onDeleteInstance
+  } = useBlockState();
+
   const [currentViewInternal, setCurrentViewInternal] = useState<BlockView>(BlockView.UI);
   const [editableName, setEditableName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -48,7 +54,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   const [numberInputTextValues, setNumberInputTextValues] = useState<Record<string, string>>({});
 
 
-  const blockDefinition = blockInstance ? getBlockDefinition(blockInstance.definitionId) : null; // Use definitionId
+  const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null; // Use context version
 
   const isSimplifiedNativeBlock = blockInstance && blockDefinition &&
                                   blockDefinition.logicCode === NATIVE_LOGIC_CODE_PLACEHOLDER &&
@@ -93,11 +99,10 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   }
 
   const handleParameterChange = (paramId: string, value: any) => {
-    onUpdateInstance(blockInstance.instanceId, (prevInstance) => {
+    updateBlockInstance(blockInstance.instanceId, (prevInstance) => { // Use context function
         const updatedParams = prevInstance.parameters.map(p =>
             p.id === paramId ? { ...p, currentValue: value } : p
         );
-        // If the updated parameter is a number_input, also update its text representation
         const changedParamDef = blockDefinition.parameters.find(pDef => pDef.id === paramId);
         if (changedParamDef && changedParamDef.type === 'number_input') {
             setNumberInputTextValues(prevTextValues => ({
@@ -121,7 +126,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   const handleNameBlur = () => {
     setIsEditingName(false);
     if (editableName.trim() !== "" && editableName !== blockInstance.name) {
-      onUpdateInstance(blockInstance.instanceId, { name: editableName.trim() });
+      updateBlockInstance(blockInstance.instanceId, { name: editableName.trim() }); // Use context function
     } else {
       setEditableName(blockInstance.name);
     }
@@ -335,7 +340,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   };
 
   const handleLyriaRestart = () => {
-    onUpdateInstance(blockInstance.instanceId, prev => ({
+    updateBlockInstance(blockInstance.instanceId, prev => ({ // Use context function
       ...prev,
       internalState: {
         ...prev.internalState,
@@ -488,11 +493,11 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   };
 
   const renderConnectionsView = () => {
-    const findConnectedBlockName = (instanceId: string) => allInstances.find(b => b.instanceId === instanceId)?.name || 'Unknown Block';
+    const findConnectedBlockName = (instanceId: string) => blockInstances.find(b => b.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
-        const instance = allInstances.find(b => b.instanceId === instanceId);
+        const instance = blockInstances.find(b => b.instanceId === instanceId); // Use context blockInstances
         if (!instance) return undefined;
-        const def = getBlockDefinition(instance.definitionId); // Use definitionId
+        const def = getDefinitionById(instance.definitionId); // Use context function
         if (!def) return undefined;
         return isOutput ? def.outputs.find(p => p.id === portId) : def.inputs.find(p => p.id === portId);
     };
@@ -615,7 +620,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
 
       <div className="p-3 border-t border-gray-700">
         <button
-            onClick={() => onDeleteInstance(blockInstance.instanceId)}
+            onClick={() => ctxDeleteBlockInstance(blockInstance.instanceId)} // Use context function
             className="w-full bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
         >
             <TrashIcon className="w-4 h-4 mr-1.5" /> Delete Block

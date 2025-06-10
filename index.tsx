@@ -2,6 +2,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './index.css'; // Assuming you have this or similar for global styles
+import { BlockStateProvider } from './context/BlockStateContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -11,7 +13,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <BlockStateProvider>
+      <App />
+    </BlockStateProvider>
   </React.StrictMode>
 );
-    
