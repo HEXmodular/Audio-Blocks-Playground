@@ -1,5 +1,4 @@
 export class AudioDeviceService {
-  private appLog: (message: string, isSystem?: boolean) => void;
   private onDeviceListChanged: (devices: MediaDeviceInfo[]) => void;
   private onSelectedSinkIdChanged: (sinkId: string) => void;
 
@@ -9,14 +8,12 @@ export class AudioDeviceService {
   private selectedSinkIdInternal: string = 'default';
 
   constructor(
-    appLog: (message: string, isSystem?: boolean) => void,
     onDeviceListChanged: (devices: MediaDeviceInfo[]) => void,
     onSelectedSinkIdChanged: (sinkId: string) => void
   ) {
-    this.appLog = appLog;
     this.onDeviceListChanged = onDeviceListChanged;
     this.onSelectedSinkIdChanged = onSelectedSinkIdChanged;
-    this.appLog('[AudioDeviceService] Initialized', true);
+    console.log('[AudioDeviceService] Initialized');
   }
 
   public setAudioNodes(audioContext: AudioContext | null, masterGainNode: GainNode | null): void {
@@ -29,7 +26,7 @@ export class AudioDeviceService {
 
   public async listOutputDevices(): Promise<void> {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-      this.appLog("[AudioDeviceService] enumerateDevices not supported.", true);
+      console.warn("[AudioDeviceService] enumerateDevices not supported.");
       this.setAvailableOutputDevices([]); // Clear devices if API not supported
       return;
     }
@@ -38,7 +35,7 @@ export class AudioDeviceService {
       const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
       this.setAvailableOutputDevices(audioOutputDevices);
     } catch (err) {
-      this.appLog(`[AudioDeviceService] Error listing output devices: ${(err as Error).message}`, true);
+      console.error(`[AudioDeviceService] Error listing output devices: ${(err as Error).message}`);
       this.setAvailableOutputDevices([]); // Clear devices on error
     }
   }
@@ -63,7 +60,7 @@ export class AudioDeviceService {
 
   public async setOutputDevice(sinkId: string): Promise<boolean> {
     if (!this.currentAudioContext || !(this.currentAudioContext as any).setSinkId) {
-      this.appLog("[AudioDeviceService] setSinkId is not supported by this browser or AudioContext not initialized.", true);
+      console.warn("[AudioDeviceService] setSinkId is not supported by this browser or AudioContext not initialized.");
       return false;
     }
     try {
@@ -72,13 +69,13 @@ export class AudioDeviceService {
         try {
           this.currentMasterGainNode.disconnect(this.currentAudioContext.destination);
         } catch (e) {
-           //this.appLog(`[AudioDeviceService] Master gain was not connected or error on disconnect: ${(e as Error).message}`, true);
+           //console.warn(`[AudioDeviceService] Master gain was not connected or error on disconnect: ${(e as Error).message}`);
         }
       }
 
       await (this.currentAudioContext as any).setSinkId(sinkId);
       this.setSelectedSinkIdInternal(sinkId);
-      this.appLog(`[AudioDeviceService] Audio output device set to: ${sinkId}`, true);
+      console.log(`[AudioDeviceService] Audio output device set to: ${sinkId}`);
 
       // Reconnect masterGainNode to the new destination
       if (this.currentMasterGainNode) {
@@ -86,13 +83,13 @@ export class AudioDeviceService {
       }
       return true;
     } catch (err) {
-      this.appLog(`[AudioDeviceService] Error setting output device: ${(err as Error).message}`, true);
+      console.error(`[AudioDeviceService] Error setting output device: ${(err as Error).message}`);
       // Attempt to reconnect to the previous or default destination as a fallback
       if (this.currentMasterGainNode && this.currentAudioContext?.destination) {
         try {
           this.currentMasterGainNode.connect(this.currentAudioContext.destination);
         } catch (e) {
-          this.appLog(`[AudioDeviceService] Failed to fallback connect masterGain: ${(e as Error).message}`, true);
+          console.error(`[AudioDeviceService] Failed to fallback connect masterGain: ${(e as Error).message}`);
         }
       }
       return false;
@@ -101,23 +98,23 @@ export class AudioDeviceService {
 
   public startDeviceChangeListener(): void {
     navigator.mediaDevices?.addEventListener('devicechange', this.handleDeviceChange);
-    this.appLog('[AudioDeviceService] Started device change listener.', true);
+    console.log('[AudioDeviceService] Started device change listener.');
   }
 
   public stopDeviceChangeListener(): void {
     navigator.mediaDevices?.removeEventListener('devicechange', this.handleDeviceChange);
-    this.appLog('[AudioDeviceService] Stopped device change listener.', true);
+    console.log('[AudioDeviceService] Stopped device change listener.');
   }
 
   // Ensure 'this' context is correct for the event handler
   private handleDeviceChange = (): void => {
-    this.appLog('[AudioDeviceService] devicechange event detected.', true);
+    console.log('[AudioDeviceService] devicechange event detected.');
     this.listOutputDevices();
   };
 
   public cleanup(): void {
     this.stopDeviceChangeListener();
-    this.appLog('[AudioDeviceService] Cleaned up.', true);
+    console.log('[AudioDeviceService] Cleaned up.');
     // No specific audio nodes owned by this service to disconnect other than what setOutputDevice manages.
   }
 }

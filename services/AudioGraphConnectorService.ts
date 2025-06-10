@@ -13,12 +13,10 @@ export interface ActiveWebAudioConnection {
 
 export class AudioGraphConnectorService {
   private activeWebAudioConnections: Map<string, ActiveWebAudioConnection>;
-  private appLog: (message: string, isSystem?: boolean) => void;
 
-  constructor(appLog: (message: string, isSystem?: boolean) => void) {
-    this.appLog = appLog;
+  constructor() {
     this.activeWebAudioConnections = new Map<string, ActiveWebAudioConnection>();
-    this.appLog('[AudioGraphConnectorService] Initialized', true);
+    console.log('[AudioGraphConnectorService] Initialized');
   }
 
   public updateConnections(
@@ -106,7 +104,7 @@ export class AudioGraphConnectorService {
                         newActiveConnections.set(`${conn.id}-path1`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputGain1 });
                         sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode);
                         newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
-                    } catch (e) { this.appLog(`[AudioGraphConnectorService Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`, true); }
+                    } catch (e) { console.error(`[AudioGraphConnectorService Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`); }
                     targetAudioNode = null;
                 }
             } else {
@@ -120,14 +118,14 @@ export class AudioGraphConnectorService {
           sourceAudioNode.connect(targetAudioParam);
           newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNode, targetParam: targetAudioParam });
         } catch (e) {
-          this.appLog(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`, true);
+          console.error(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
         }
       } else if (sourceAudioNode && targetAudioNode) {
         try {
           sourceAudioNode.connect(targetAudioNode);
           newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNode });
         } catch (e) {
-          this.appLog(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`, true);
+          console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
         }
       }
     });
@@ -147,7 +145,7 @@ export class AudioGraphConnectorService {
   }
 
   public disconnectAll(): void {
-    this.appLog(`[AudioGraphConnectorService] Disconnecting all ${this.activeWebAudioConnections.size} connections.`, true);
+    console.log(`[AudioGraphConnectorService] Disconnecting all ${this.activeWebAudioConnections.size} connections.`);
     this.activeWebAudioConnections.forEach(connInfo => {
         try {
           if (connInfo.targetParam) {
@@ -156,7 +154,7 @@ export class AudioGraphConnectorService {
             connInfo.sourceNode.disconnect(connInfo.targetNode);
           }
         } catch (e) {
-          // this.appLog(`[AudioGraphConnectorService] Error during disconnectAll for connection ${connInfo.connectionId}: ${(e as Error).message}`, true);
+          // console.warn(`[AudioGraphConnectorService] Error during disconnectAll for connection ${connInfo.connectionId}: ${(e as Error).message}`);
         }
       });
     this.activeWebAudioConnections.clear();

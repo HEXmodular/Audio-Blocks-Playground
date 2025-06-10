@@ -61,7 +61,6 @@ export class LogicExecutionService {
   private blockStateManager: BlockStateManager;
   private getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
   private audioEngine: AudioEngine | null = null;
-  private appLog: (message: string, isSystem?: boolean) => void;
 
   private currentBlockInstances: BlockInstance[] = [];
   private currentConnections: Connection[] = [];
@@ -77,14 +76,12 @@ export class LogicExecutionService {
   constructor(
     blockStateManager: BlockStateManager,
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    appLog: (message: string, isSystem?: boolean) => void,
     initialAudioEngine: AudioEngine | null
   ) {
     this.blockStateManager = blockStateManager;
     this.getDefinitionForBlock = getDefinitionForBlock;
-    this.appLog = appLog;
     this.audioEngine = initialAudioEngine;
-    this.appLog('[LogicExecutionService] Initialized', true);
+    console.log('[LogicExecutionService] Initialized');
   }
 
   public updateDependencies(
@@ -169,7 +166,7 @@ export class LogicExecutionService {
       // Ensure audioEngine is available before trying to access its methods
       const postMessageToWorkletInLogic = this.audioEngine
           ? (message: any) => this.audioEngine?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message)
-          : () => this.appLog(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`, true);
+          : () => console.warn(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`);
 
 
       const nextInternalStateOpaque = mainLogicFunction(
@@ -293,7 +290,7 @@ export class LogicExecutionService {
         this.handleRunInstance(instance, audioContextInfo);
       } else {
         // This case should ideally not happen if orderedInstanceIds is derived from currentBlockInstances
-        this.appLog(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`, true);
+        console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
       }
     }
   }
@@ -306,9 +303,9 @@ export class LogicExecutionService {
         this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
       });
       this.runIntervalId = window.setInterval(() => this.runInstancesLoop(), 10);
-      this.appLog('[LogicExecutionService] Logic processing loop STARTED.', true);
+      console.log('[LogicExecutionService] Logic processing loop STARTED.');
     } else if (!this.currentIsAudioGloballyEnabled) {
-        this.appLog('[LogicExecutionService] Did not start logic processing loop because audio is not globally enabled.', true);
+        console.log('[LogicExecutionService] Did not start logic processing loop because audio is not globally enabled.');
     }
   }
 
@@ -316,19 +313,19 @@ export class LogicExecutionService {
     if (this.runIntervalId !== null) {
       clearInterval(this.runIntervalId);
       this.runIntervalId = null;
-      this.appLog('[LogicExecutionService] Logic processing loop STOPPED.', true);
+      console.log('[LogicExecutionService] Logic processing loop STOPPED.');
     }
   }
 
   public clearLogicFunctionCache(): void {
     this.logicFunctionCache.clear();
-    this.appLog('[LogicExecutionService] Logic function cache cleared.', true);
+    console.log('[LogicExecutionService] Logic function cache cleared.');
   }
 
   public clearBlockFromCache(instanceId: string): void {
     if (this.logicFunctionCache.has(instanceId)) {
         this.logicFunctionCache.delete(instanceId);
-        this.appLog(`[LogicExecutionService] Cleared logic function for instance ${instanceId} from cache.`, true);
+        console.log(`[LogicExecutionService] Cleared logic function for instance ${instanceId} from cache.`);
     }
   }
 }

@@ -5,7 +5,6 @@ import { AudioEngine } from './useAudioEngine';
 import { LogicExecutionService } from '../services/LogicExecutionService'; // Import the service
 
 export function useLogicExecutionEngine(
-  appLog: (message: string, isSystem?: boolean) => void, // Added appLog as a direct prop
   appBlockInstances: BlockInstance[],
   connections: Connection[],
   getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
