@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useCallback, RefObject } from 'react'; // Added RefObject
 import { BlockDefinition, BlockParameter } from '../types';
-import { NativeNodeManager as NativeNodeManagerClass, INativeNodeManager, ManagedNativeNodeInfo, AllpassInternalNodes } from '../services/NativeNodeManager';
+import { NativeNodeManager as NativeNodeManagerClass } from '../services/NativeNodeManager';
+import type { INativeNodeManager, ManagedNativeNodeInfo } from '../services/NativeNodeManager';
 
+import type {AllpassInternalNodes } from '../services/NativeNodeManager';
 // Re-export types needed by consumers of the hook
 export { ManagedNativeNodeInfo, AllpassInternalNodes, INativeNodeManager as NativeNodeManager };
 

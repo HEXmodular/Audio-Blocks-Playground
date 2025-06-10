@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useCallback, useState } from 'react';
 import { BlockDefinition, LiveMusicGenerationConfig, WeightedPrompt } from '../types';
-import { LyriaServiceManager as LyriaServiceManagerClass, ILyriaServiceManager, ManagedLyriaServiceInfo } from '../services/LyriaServiceManager';
-import { LiveMusicService, PlaybackState } from '../services/LiveMusicService'; // PlaybackState might be needed for types exposed by the hook
+import { LyriaServiceManager as LyriaServiceManagerClass } from '../services/LyriaServiceManager';
+import type { ILyriaServiceManager, ManagedLyriaServiceInfo } from '../services/LyriaServiceManager';
 
+import { LiveMusicService } from '../services/LiveMusicService'; // PlaybackState might be needed for types exposed by the hook
+import type { PlaybackState } from '../services/LiveMusicService';
 // Re-exporting or defining related types if they are part of the hook's public API
 export { ManagedLyriaServiceInfo, ILyriaServiceManager as LyriaServiceManager, LiveMusicService, PlaybackState };
 
@@ -31,7 +33,7 @@ export const useLyriaServiceManager = ({
       onStateChangeForReRender, // Pass this down for the class to trigger updates
       appLog
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appLog, onStateChangeForReRender]); // Initial context/gain node are passed, then updated via useEffect
 
   useEffect(() => {

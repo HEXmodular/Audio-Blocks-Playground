@@ -140,8 +140,8 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
       }
 
       let newDraggedOverPortValue: { instanceId: string; portId: string } | null = null;
-      const targetElement = e.target as HTMLElement;
-      const portStub = targetElement.closest<HTMLElement>('.js-port-stub');
+      // const targetElement = e.target as HTMLElement;
+      // const portStub = targetElement.closest<HTMLElement>('.js-port-stub');
       if (portStub) {
         const targetInstanceId = portStub.dataset.instanceId;
         const targetPortId = portStub.dataset.portId;

@@ -1,4 +1,4 @@
-import { Connection } from '../../types';
+import { Connection } from '../types';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 

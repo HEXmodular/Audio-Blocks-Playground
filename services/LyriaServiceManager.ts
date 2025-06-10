@@ -1,5 +1,5 @@
 import { BlockDefinition, LiveMusicGenerationConfig, WeightedPrompt } from '../types'; // Adjusted as WeightedPrompt is used by LiveMusicService
-import { LiveMusicService, LiveMusicServiceCallbacks, PlaybackState, MusicGenerationMode, DEFAULT_MUSIC_GENERATION_CONFIG } from '../services/LiveMusicService';
+import { LiveMusicService, LiveMusicServiceCallbacks, DEFAULT_MUSIC_GENERATION_CONFIG } from '../services/LiveMusicService';
 import { Scale as GenAIScale } from '@google/genai'; // GenAIScale is used in updateLyriaServiceState
 
 export type ManagedLyriaServiceInfo = {

@@ -3,7 +3,6 @@ import { BlockInstance, Connection, BlockDefinition, PendingConnection } from '.
 import Toolbar from './components/Toolbar';
 import BlockInstanceComponent, { getPortColor as getBlockPortBgColor } from './components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from './components/GeminiChatPanel';
-import TestRunnerModal from './components/TestRunnerModal';
 import BlockDetailPanel from './components/BlockDetailPanel';
 import {
     AUDIO_OUTPUT_BLOCK_DEFINITION,
@@ -37,8 +36,8 @@ import { AudioEngine, useAudioEngine } from './hooks/useAudioEngine';
 import { useConnectionDragHandler } from './hooks/useConnectionDragHandler';
 // import { useLogicExecutionEngine } from './hooks/useLogicExecutionEngine'; // Removed
 // import { LogicExecutionService } from './services/LogicExecutionService'; // Removed as manager encapsulates it
-import { ConnectionState } from './src/state/ConnectionState';
-import { LogicExecutionEngineManager } from './src/services/LogicExecutionEngineManager';
+import { ConnectionState } from './services/ConnectionState';
+import { LogicExecutionEngineManager } from './services/LogicExecutionEngineManager';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
@@ -738,15 +737,6 @@ const App: React.FC = () => {
         }}
         apiKeyMissing={!process.env.API_KEY}
       />
-      {isTestRunnerOpen && (
-        <TestRunnerModal
-          isOpen={isTestRunnerOpen}
-          onClose={() => setIsTestRunnerOpen(false)}
-          audioEngineControls={audioEngine}
-          blockInstances={appBlockInstancesFromCtx}
-          connections={connections}
-        />
-      )}
     </div>
   );
 };

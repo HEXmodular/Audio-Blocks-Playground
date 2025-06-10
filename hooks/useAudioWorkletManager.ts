@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, RefObject } from 'react';
 import { BlockDefinition, BlockParameter, AudioContextState } from '../types';
-import { AudioWorkletManager as AudioWorkletManagerClass, IAudioWorkletManager, ManagedWorkletNodeInfo } from '../services/AudioWorkletManager';
+import { AudioWorkletManager as AudioWorkletManagerClass } from '../services/AudioWorkletManager';
+import type {IAudioWorkletManager, ManagedWorkletNodeInfo} from '../services/AudioWorkletManager';
+
 
 // Re-exporting or defining related types if they are part of the hook's public API
 export { ManagedWorkletNodeInfo, IAudioWorkletManager as AudioWorkletManager }; // Exporting IAudioWorkletManager as AudioWorkletManager for the hook's return type
