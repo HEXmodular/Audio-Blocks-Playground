@@ -101,52 +101,69 @@ export const useAudioEngine = (
   const {
     audioContext,
     masterGainNode,
-    isAudioGloballyEnabled,
+    isAudioGloballyEnabled, // This is the reactive state value
     audioInitializationError,
+    initializeBasicAudioContext: initContextInternal, // This is the stable function
+    toggleGlobalAudio: toggleGlobalAudioInternal,     // This is the stable function
+    getSampleRate: getCtxSampleRate,                 // This is the stable function
+    isAudioGloballyEnabled: managerIsAudioGloballyEnabled, // Destructured reactive state
+    audioContext: managerAudioContext                     // Destructured reactive state (or current value)
   } = audioContextManager;
+
+  const {
+    checkAndRegisterPredefinedWorklets,
+    setIsAudioWorkletSystemReady,
+    removeAllManagedWorkletNodes // For removeAllManagedNodes callback
+  } = audioWorkletManager;
+
+  const { listOutputDevices: listDev } = audioDeviceManager;
+  const { removeAllManagedNativeNodes } = nativeNodeManager; // For removeAllManagedNodes
+  const { removeAllManagedLyriaServices } = lyriaServiceManager; // For removeAllManagedNodes
+  const { updateAudioGraphConnections: updateConnectionsInternal } = audioGraphConnector; // For updateAudioGraphConnections
 
   // activeWebAudioConnectionsRef is now managed by useAudioGraphConnector
 
   const initializeBasicAudioContext = useCallback(async (logActivity: boolean = true, forceNoResume: boolean = false): Promise<InitAudioResult> => {
-    const contextResult = await audioContextManager.initializeBasicAudioContext(logActivity, forceNoResume);
+    const contextResult = await initContextInternal(logActivity, forceNoResume);
     if (contextResult.context && contextResult.context.state === 'running') {
-      const workletsReady = await audioWorkletManager.checkAndRegisterPredefinedWorklets(logActivity);
-      audioWorkletManager.setIsAudioWorkletSystemReady(workletsReady);
+      const workletsReady = await checkAndRegisterPredefinedWorklets(logActivity);
+      setIsAudioWorkletSystemReady(workletsReady);
     } else {
-      audioWorkletManager.setIsAudioWorkletSystemReady(false);
+      setIsAudioWorkletSystemReady(false);
     }
-    await audioDeviceManager.listOutputDevices();
+    await listDev();
     return contextResult;
-  }, [audioContextManager, audioWorkletManager, audioDeviceManager]);
+  }, [initContextInternal, checkAndRegisterPredefinedWorklets, setIsAudioWorkletSystemReady, listDev]);
 
   const toggleGlobalAudio = useCallback(async (): Promise<boolean> => {
-    const audioEnabledSuccessfully = await audioContextManager.toggleGlobalAudio();
-    if (audioContextManager.audioContext && audioContextManager.isAudioGloballyEnabled && audioEnabledSuccessfully) {
-      if (audioContextManager.audioContext.state === 'running') {
-        const workletsReady = await audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
-        audioWorkletManager.setIsAudioWorkletSystemReady(workletsReady);
+    const audioEnabledSuccessfully = await toggleGlobalAudioInternal();
+    // Use the destructured managerIsAudioGloballyEnabled and managerAudioContext for checks
+    if (managerAudioContext && managerIsAudioGloballyEnabled && audioEnabledSuccessfully) {
+      if (managerAudioContext.state === 'running') {
+        const workletsReady = await checkAndRegisterPredefinedWorklets(true);
+        setIsAudioWorkletSystemReady(workletsReady);
       } else {
-        audioWorkletManager.setIsAudioWorkletSystemReady(false);
+        setIsAudioWorkletSystemReady(false);
       }
     } else {
-      audioWorkletManager.setIsAudioWorkletSystemReady(false);
+      setIsAudioWorkletSystemReady(false);
     }
-    return audioContextManager.isAudioGloballyEnabled && audioEnabledSuccessfully;
-  }, [audioContextManager, audioWorkletManager]);
+    return managerIsAudioGloballyEnabled && audioEnabledSuccessfully;
+  }, [toggleGlobalAudioInternal, managerIsAudioGloballyEnabled, managerAudioContext, checkAndRegisterPredefinedWorklets, setIsAudioWorkletSystemReady]);
 
   const getSampleRate = useCallback((): number | null => {
-    return audioContextManager.getSampleRate();
-  }, [audioContextManager]);
+    return getCtxSampleRate();
+  }, [getCtxSampleRate]);
 
   // setupManagedAudioWorkletNode useCallback wrapper removed.
 
   const removeAllManagedNodes = useCallback(() => {
-    audioWorkletManager.removeAllManagedWorkletNodes();
-    nativeNodeManager.removeAllManagedNativeNodes();
-    lyriaServiceManager.removeAllManagedLyriaServices();
+    removeAllManagedWorkletNodes();
+    removeAllManagedNativeNodes();
+    removeAllManagedLyriaServices();
     appLog("[AudioEngine] All managed nodes removal signaled.", true);
     onStateChangeForReRender();
-  }, [audioWorkletManager, nativeNodeManager, lyriaServiceManager, onStateChangeForReRender]);
+  }, [removeAllManagedWorkletNodes, removeAllManagedNativeNodes, removeAllManagedLyriaServices, onStateChangeForReRender, appLog]);
 
 
   const updateAudioGraphConnections = useCallback((
@@ -154,8 +171,7 @@ export const useAudioEngine = (
     blockInstances: BlockInstance[],
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
   ) => {
-    // Call the connector's update function, passing all necessary data from other managers
-    audioGraphConnector.updateAudioGraphConnections(
+    updateConnectionsInternal( // from audioGraphConnector
       connections,
       blockInstances,
       getDefinitionForBlock,
@@ -163,21 +179,22 @@ export const useAudioEngine = (
       nativeNodeManager.managedNativeNodesRef.current,
       lyriaServiceManager.managedLyriaServiceInstancesRef.current
     );
-  }, [audioGraphConnector, audioWorkletManager, nativeNodeManager, lyriaServiceManager]); // Add other managers if their refs are needed by the connector
-
+  }, [updateConnectionsInternal, audioWorkletManager, nativeNodeManager, lyriaServiceManager]);
+  // Manager objects are kept as deps because their refs' .current property is accessed.
 
   useEffect(() => {
     return () => {
         // Cleanup for all managers if the main engine unmounts
-        if (audioContextManager.audioContext && audioContextManager.audioContext.state !== 'closed') {
+        // Use managerAudioContext here as well for consistency if it represents the latest context for cleanup
+        if (managerAudioContext && managerAudioContext.state !== 'closed') {
             console.log("[AudioEngine] Cleaning up all managed nodes on hook unmount.");
-            audioWorkletManager.removeAllManagedWorkletNodes();
-            nativeNodeManager.removeAllManagedNativeNodes();
-            lyriaServiceManager.removeAllManagedLyriaServices();
+            removeAllManagedWorkletNodes(); // Use destructured stable functions
+            removeAllManagedNativeNodes();  // Use destructured stable functions
+            removeAllManagedLyriaServices();// Use destructured stable functions
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioContextManager.audioContext, audioWorkletManager, nativeNodeManager, lyriaServiceManager]); // Add audioDeviceManager if it had a cleanup
+  }, [managerAudioContext, removeAllManagedWorkletNodes, removeAllManagedNativeNodes, removeAllManagedLyriaServices]);
 
 
   return {

@@ -112,7 +112,7 @@ export const useAudioWorkletManager = ({
 try {
   registerProcessor('${processorName}', ${actualClassName});
 } catch(e) {
-  const err = e as Error;
+  const err = e; // Removed 'as Error'
   if (err.name !== 'NotSupportedError' || (err.message && !err.message.includes('already registered'))) {
     console.error("Error in registerProcessor call for ${processorName} ('${actualClassName}') within worklet script:", err);
     throw err;
