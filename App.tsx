@@ -243,19 +243,35 @@ const App: React.FC = () => {
             }
             else if (definition.audioWorkletProcessorName) {
                 if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
-                    ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup initiated from useEffect."); // Use context method
-                    setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters)
+                    ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup initiated from useEffect.");
+                    audioEngine.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters)
                         .then(success => {
                             if (success) {
                                 handleUpdateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
-                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup successful."); // Use context method
+                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup successful.");
+
+                                // Add this new logic for AUDIO_OUTPUT_BLOCK_DEFINITION connection:
+                                if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+                                    const workletNodeInfo = audioEngine.audioWorkletManager.managedWorkletNodesRef.current?.get(instance.instanceId);
+                                    const masterGain = audioEngine.audioContextManager.masterGainNode;
+                                    if (workletNodeInfo?.node && masterGain) {
+                                        try {
+                                            workletNodeInfo.node.connect(masterGain);
+                                            ctxAddLogToBlockInstance(instance.instanceId, "AUDIO_OUTPUT_BLOCK_DEFINITION connected to master gain.");
+                                        } catch (e: any) {
+                                            ctxAddLogToBlockInstance(instance.instanceId, `Error connecting AUDIO_OUTPUT_BLOCK_DEFINITION to master gain: ${e.message}`, "error");
+                                        }
+                                    } else {
+                                        ctxAddLogToBlockInstance(instance.instanceId, "Could not connect AUDIO_OUTPUT_BLOCK_DEFINITION to master gain: Node or masterGain missing.", "warn");
+                                    }
+                                }
                             } else {
-                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup failed in useEffect.", "error"); // Use context method
+                                ctxAddLogToBlockInstance(instance.instanceId, "Worklet node setup failed in useEffect.", "error");
                                 handleUpdateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                             }
                         });
                 } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
-                     ctxAddLogToBlockInstance(instance.instanceId, "Worklet system not ready, deferring setup.", "warn"); // Use context method
+                     ctxAddLogToBlockInstance(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
                 }
             }
             else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
@@ -292,7 +308,9 @@ const App: React.FC = () => {
     ctxAddLogToBlockInstance, // Use context method
     audioEngine.lyriaServiceManager,
     audioEngine.nativeNodeManager,
-    setupManagedAudioWorkletNode
+    audioEngine.audioWorkletManager, // Added for direct call to setupManagedAudioWorkletNode
+    audioEngine.audioContextManager // Added for direct access to masterGainNode
+    // setupManagedAudioWorkletNode // Removed from dependency array
   ]);
 
   // New useEffect for Node Parameter Updates (Worklet and Native, excluding Lyria)

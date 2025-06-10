@@ -23,9 +23,8 @@ import {
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
     LYRIA_MASTER_BLOCK_DEFINITION,
-    OSCILLOSCOPE_BLOCK_DEFINITION,
-    // AUDIO_OUTPUT_BLOCK_DEFINITION is used by setupManagedAudioWorkletNode wrapper, ensure it's imported if needed
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
+    // OSCILLOSCOPE_BLOCK_DEFINITION, // Removed duplicate
+    // AUDIO_OUTPUT_BLOCK_DEFINITION, // Removed as it's only used in the deleted wrapper
 } from '../constants';
 
 export interface OscillatorWorkletParams {
@@ -42,6 +41,7 @@ export interface AudioEngine {
   isAudioGloballyEnabled: boolean;
   audioInitializationError: string | null;
 
+  audioContextManager: AudioContextManager; // Added
   audioWorkletManager: AudioWorkletManager;
   nativeNodeManager: NativeNodeManager;
   lyriaServiceManager: LyriaServiceManager;
@@ -52,10 +52,9 @@ export interface AudioEngine {
   getSampleRate: () => number | null;
 
   removeAllManagedNodes: () => void;
-  // This signature matches what App.tsx expects
   updateAudioGraphConnections: (connections: Connection[], blockInstances: BlockInstance[], getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined) => void;
+  // setupManagedAudioWorkletNode removed from interface
 }
-
 
 export const useAudioEngine = (
     appLog: (message: string, isSystem?: boolean) => void,
@@ -139,27 +138,7 @@ export const useAudioEngine = (
     return audioContextManager.getSampleRate();
   }, [audioContextManager]);
 
-   const setupManagedAudioWorkletNode = useCallback(async (
-    instanceId: string,
-    definition: BlockDefinition,
-    initialParams: BlockParameter[]
-  ): Promise<boolean> => {
-    const success = await audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
-    if (success && definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
-        const workletInfo = audioWorkletManager.managedWorkletNodesRef.current?.get(instanceId);
-        if (workletInfo?.node && masterGainNode) {
-            try {
-                workletInfo.node.connect(masterGainNode);
-                 appLog(`[AudioEngine] Output worklet '${instanceId}' connected to master gain.`, true);
-            } catch (e: any) {
-                appLog(`[AudioEngine Error] Connecting output worklet '${instanceId}' to master gain: ${e.message}`, true);
-                return false;
-            }
-        }
-    }
-    return success;
-  }, [audioWorkletManager, masterGainNode, appLog]);
-
+  // setupManagedAudioWorkletNode useCallback wrapper removed.
 
   const removeAllManagedNodes = useCallback(() => {
     audioWorkletManager.removeAllManagedWorkletNodes();
@@ -207,6 +186,7 @@ export const useAudioEngine = (
     isAudioGloballyEnabled: audioContextManager.isAudioGloballyEnabled,
     audioInitializationError: audioContextManager.audioInitializationError,
 
+    audioContextManager: audioContextManager, // Added
     audioWorkletManager,
     nativeNodeManager,
     lyriaServiceManager,
