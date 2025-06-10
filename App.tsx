@@ -33,11 +33,12 @@ import {
 
 import { getDefaultOutputValue } from './state/BlockStateManager';
 import { useBlockState } from './context/BlockStateContext';
-import { useConnectionState } from './hooks/useConnectionState';
 import { AudioEngine, useAudioEngine } from './hooks/useAudioEngine';
 import { useConnectionDragHandler } from './hooks/useConnectionDragHandler';
 // import { useLogicExecutionEngine } from './hooks/useLogicExecutionEngine'; // Removed
-import { LogicExecutionService } from './services/LogicExecutionService'; // Added
+// import { LogicExecutionService } from './services/LogicExecutionService'; // Removed as manager encapsulates it
+import { ConnectionState } from './src/state/ConnectionState';
+import { LogicExecutionEngineManager } from './src/services/LogicExecutionEngineManager';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
@@ -90,11 +91,19 @@ const App: React.FC = () => {
     return appBlockDefinitionsFromCtx.find(def => def.id === instance.definitionId);
   }, [appBlockDefinitionsFromCtx]);
 
-  const {
-    connections,
-    updateConnections,
-    setAllConnections,
-  } = useConnectionState();
+  // const {
+  //   connections,
+  //   updateConnections,
+  //   setAllConnections,
+  // } = useConnectionState(); // Replaced by ConnectionState instance
+
+  const connectionState = useMemo(() => new ConnectionState(), []);
+  const [connections, setConnections] = useState<Connection[]>(() => connectionState.getConnections());
+
+  useEffect(() => {
+    const unsubscribe = connectionState.onStateChange(setConnections);
+    return unsubscribe;
+  }, [connectionState]);
 
   const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), []);
 
@@ -106,7 +115,7 @@ const App: React.FC = () => {
     svgRef,
     blockInstances: appBlockInstancesFromCtx,
     getDefinitionForBlock,
-    updateConnections,
+    updateConnections: connectionState.updateConnections, // Updated
   });
 
   const handleAddBlockFromDefinition = useCallback((definition: BlockDefinition, name?: string, position?: {x:number, y:number}) => {
@@ -163,50 +172,70 @@ const App: React.FC = () => {
       }
     }
     ctxDeleteBlockInstance(instanceId);
-    updateConnections(prev => prev.filter(c => c.fromInstanceId !== instanceId && c.toInstanceId !== instanceId));
+    connectionState.updateConnections(prev => prev.filter(c => c.fromInstanceId !== instanceId && c.toInstanceId !== instanceId)); // Updated
     if (selectedInstanceId === instanceId) setSelectedInstanceId(null);
-  }, [ctxDeleteBlockInstance, updateConnections, selectedInstanceId, appBlockInstancesFromCtx, getDefinitionForBlock, audioEngine]);
+  }, [ctxDeleteBlockInstance, connectionState, selectedInstanceId, appBlockInstancesFromCtx, getDefinitionForBlock, audioEngine]);
 
   // --- LogicExecutionService Setup ---
-  const logicExecutionService = useMemo(() => {
-    if (ctxBlockStateManager && audioEngine) {
-        return new LogicExecutionService(
-            ctxBlockStateManager,
-            getDefinitionForBlock,
-            audioEngine
-        );
+  // const logicExecutionService = useMemo(() => {
+  //   if (ctxBlockStateManager && audioEngine) {
+  //       return new LogicExecutionService(
+  //           ctxBlockStateManager,
+  //           getDefinitionForBlock,
+  //           audioEngine
+  //       );
+  //   }
+  //   return null;
+  // }, [ctxBlockStateManager, getDefinitionForBlock, audioEngine]);
+
+  const logicExecutionEngineManager = useMemo(() => {
+    if (ctxBlockStateManager) { // audioEngine can be initially null
+      return new LogicExecutionEngineManager(
+        ctxBlockStateManager,
+        getDefinitionForBlock,
+        audioEngine // Pass audioEngine directly, manager handles null
+      );
     }
     return null;
   }, [ctxBlockStateManager, getDefinitionForBlock, audioEngine]);
 
   // Effect to update LogicExecutionService dependencies
   useEffect(() => {
-    if (logicExecutionService && audioEngine) {
-        logicExecutionService.updateDependencies(
-            appBlockInstancesFromCtx,
-            connections,
-            globalBpm,
-            audioEngine.isAudioGloballyEnabled, // Use new direct property
-            audioEngine
-        );
+    if (logicExecutionEngineManager && audioEngine) { // audioEngine might still be a relevant check here or handled by manager
+      logicExecutionEngineManager.updateCoreDependencies(
+        appBlockInstancesFromCtx,
+        connections, // This should be the state variable 'connections'
+        globalBpm,
+        audioEngine.isAudioGloballyEnabled,
+        audioEngine
+      );
+    } else if (logicExecutionEngineManager && !audioEngine) {
+       // If audioEngine becomes null later, ensure dependencies are updated & loop is stopped
+        logicExecutionEngineManager.updateCoreDependencies(
+           appBlockInstancesFromCtx,
+           connections,
+           globalBpm,
+           false, // isAudioGloballyEnabled would be false
+           null   // audioEngine is null
+       );
     }
   }, [
-      logicExecutionService,
-      appBlockInstancesFromCtx,
-      connections,
-      globalBpm,
-      audioEngine, // audioEngine object includes isAudioGloballyEnabled
+    logicExecutionEngineManager,
+    appBlockInstancesFromCtx,
+    connections, // Ensure this 'connections' is from the new ConnectionState setup
+    globalBpm,
+    audioEngine, // audioEngine itself as a dependency
+    audioEngine?.isAudioGloballyEnabled // Refined dependency
   ]);
 
   // Effect for cleaning up the LogicExecutionService processing loop on unmount
   useEffect(() => {
     return () => {
-        if (logicExecutionService) {
-            console.log("[App.tsx] Cleaning up LogicExecutionService loop on unmount.");
-            logicExecutionService.stopProcessingLoop();
-        }
+      if (logicExecutionEngineManager) {
+        logicExecutionEngineManager.dispose();
+      }
     };
-  }, [logicExecutionService]);
+  }, [logicExecutionEngineManager]);
 
 
   // New useEffect for Audio Node Setup
@@ -534,7 +563,7 @@ const App: React.FC = () => {
             logs: inst.logs || [`Instance '${inst.name}' loaded from file.`],
             modificationPrompts: inst.modificationPrompts || [],
         })));
-        setAllConnections(importedConnections);
+        connectionState.setAllConnections(importedConnections); // Updated
 
         if (typeof importedBpm === 'number' && importedBpm > 0) {
             setGlobalBpm(importedBpm);
@@ -637,7 +666,7 @@ const App: React.FC = () => {
                 x2={endPos.x} y2={endPos.y}
                 className={`connection-line ${portColor} opacity-70 hover:opacity-100`}
                 strokeWidth="3"
-                onDoubleClick={() => updateConnections(prev => prev.filter(c => c.id !== conn.id))}
+                onDoubleClick={() => connectionState.updateConnections(prev => prev.filter(c => c.id !== conn.id))}
                 style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 aria-label={`Connection from ${fromInstance.name} (${outputPortDef.name}) to ${toInstance.name} (${inputPortDef.name}). Double-click to delete.`}
               />
@@ -678,7 +707,7 @@ const App: React.FC = () => {
           allInstances={appBlockInstancesFromCtx}
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
-          onUpdateConnections={updateConnections}
+           onUpdateConnections={connectionState.updateConnections}
           getAnalyserNodeForInstance={audioEngine.nativeNodeManager.getAnalyserNodeForInstance}
         />
       )}
