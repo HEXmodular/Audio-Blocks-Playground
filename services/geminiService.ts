@@ -50,8 +50,11 @@ export function parseJsonFromGeminiResponse(responseText: string): any {
     return JSON.parse(jsonToParse);
   } catch (e) {
     const error = e as SyntaxError;
+    // Make the condition for attempting salvage more general
     if (error instanceof SyntaxError && 
-        (error.message.includes('after JSON data') || error.message.includes('after JSON at position'))) {
+        (error.message.includes('Unexpected token') ||
+         error.message.includes('after JSON data') ||
+         error.message.includes('after JSON at position'))) {
       console.warn("Attempting to salvage JSON due to trailing data. Original error:", error.message);
       let openBraceCount = 0;
       let inString = false;

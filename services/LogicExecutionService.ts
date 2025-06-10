@@ -91,20 +91,20 @@ export class LogicExecutionService {
     isAudioGloballyEnabled: boolean,
     audioEngine: AudioEngine | null
   ): void {
+    this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled; // Update state first
     this.currentBlockInstances = blockInstances;
     this.currentConnections = connections;
     this.currentGlobalBpm = globalBpm;
     this.audioEngine = audioEngine;
 
     // If audio was disabled and is now enabled, and processing isn't running, start it.
-    if (isAudioGloballyEnabled && !this.currentIsAudioGloballyEnabled && this.runIntervalId === null) {
+    if (isAudioGloballyEnabled && !this.runIntervalId) { // Simpler condition: if it's enabled and not running, start
         this.startProcessingLoop();
     }
     // If audio was enabled and is now disabled, and processing is running, stop it.
-    else if (!isAudioGloballyEnabled && this.currentIsAudioGloballyEnabled && this.runIntervalId !== null) {
+    else if (!isAudioGloballyEnabled && this.runIntervalId !== null) { // Simpler: if it's disabled and running, stop
         this.stopProcessingLoop();
     }
-    this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled;
   }
 
   private compileLogicFunction(instanceId: string, logicCode: string): Function {
