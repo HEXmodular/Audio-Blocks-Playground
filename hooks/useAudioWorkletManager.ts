@@ -107,7 +107,20 @@ export const useAudioWorkletManager = ({
         return false;
       }
 
-      const finalCode = `${workletCode}\n\ntry { registerProcessor('${processorName}', ${actualClassName}); } catch(e) { console.error("Error in registerProcessor call for ${processorName} within worklet script:", e); throw e; }`;
+      const finalCode = `${workletCode}
+
+try {
+  registerProcessor('${processorName}', ${actualClassName});
+} catch(e) {
+  const err = e as Error;
+  if (err.name !== 'NotSupportedError' || (err.message && !err.message.includes('already registered'))) {
+    console.error("Error in registerProcessor call for ${processorName} ('${actualClassName}') within worklet script:", err);
+    throw err;
+  } else {
+    // Optional: console.log for debugging that the suppression happened within the blob, e.g.:
+    // console.log("Processor '${processorName}' ('${actualClassName}') already registered, error caught and suppressed within worklet script blob.");
+  }
+}`;
       const blob = new Blob([finalCode], { type: 'application/javascript' });
       objectURL = URL.createObjectURL(blob);
       await audioContext.audioWorklet.addModule(objectURL);

@@ -99,13 +99,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (audioEngine) {
-      audioEngine.initializeBasicAudioContext().then(() => {
-        audioEngine.listOutputDevices();
-      });
+      audioEngine.initializeBasicAudioContext(); // This function now internally calls listOutputDevices
     }
     // No explicit dispose call here; assuming useAudioEngine handles its own lifecycle cleanup.
     // If useAudioEngine needs explicit cleanup, it should return a dispose function or be documented.
-  }, [audioEngine]);
+  }, [audioEngine.initializeBasicAudioContext]);
 
   // const blockStateManager = useMemo(() => { // Replaced by ctxBlockStateManager from useBlockState
   //   return new BlockStateManager(setAppBlockDefinitions, setAppBlockInstances);
