@@ -51,7 +51,7 @@ export class AudioContextService {
     }
   }
 
-  public async initialize(forceNoResume: boolean = false): Promise<InitAudioResult> {
+  public async initialize(resumeContext: boolean = false): Promise<InitAudioResult> {
     let contextJustResumed = false;
     let errorMessage: string | null = null;
 
@@ -64,7 +64,7 @@ export class AudioContextService {
 
     if (this.context) {
       console.log(`[AudioContextService Init] Existing AudioContext found (state: ${this.context.state}).`);
-      if (this.context.state === 'suspended' && !forceNoResume) {
+      if (this.context.state === 'suspended' && resumeContext) {
         console.log("[AudioContextService Init] Attempting to resume existing suspended context...");
         try {
           await this.context.resume();
@@ -91,7 +91,7 @@ export class AudioContextService {
         console.log("[AudioContextService Init] Master gain node created and connected.");
 
 
-        if (newContext.state === 'suspended' && !forceNoResume) {
+        if (newContext.state === 'suspended' && resumeContext) {
           console.log("[AudioContextService Init] New context is suspended. Attempting resume...");
           await newContext.resume();
           contextJustResumed = true;

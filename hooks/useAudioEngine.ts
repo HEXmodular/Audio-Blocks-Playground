@@ -34,7 +34,7 @@ export interface AudioEngine {
     // audioDeviceService: AudioDeviceService;
 
     toggleGlobalAudio: () => Promise<boolean>;
-    initializeBasicAudioContext: (logActivity?: boolean, forceNoResume?: boolean) => Promise<InitAudioResult>;
+    initializeBasicAudioContext: (logActivity?: boolean) => Promise<InitAudioResult>;
     getSampleRate: () => number | null;
     getAudioContextState: () => AudioContextState | null;
     setOutputDevice: (sinkId: string) => Promise<boolean>;
@@ -154,9 +154,9 @@ export const useAudioEngine = (
 
 
     // --- Core Audio Engine Logic ---
-    const initializeBasicAudioContext = useCallback(async (logActivity: boolean = true, forceNoResume: boolean = false): Promise<InitAudioResult> => {
+    const initializeBasicAudioContext = useCallback(async (logActivity: boolean = true): Promise<InitAudioResult> => {
         // logActivity is not used by service anymore, console logs are direct
-        const result = await audioContextService.initialize(forceNoResume);
+        const result = await audioContextService.initialize(false);
         setCurrentAudioContext(result.context);
         setCurrentMasterGainNode(audioContextService.getMasterGainNode()); // Get it after init
         if (!result.context) {
@@ -184,7 +184,7 @@ export const useAudioEngine = (
             console.log(`[useAudioEngine Toggle] Audio globally DISABLED. Context state: ${audioContextService.getContextState()}`);
         } else {
             if (!serviceContext || serviceContext.state === 'closed') {
-                const initResult = await audioContextService.initialize(false);
+                const initResult = await audioContextService.initialize(true); // Attempt to resume/create new
                 serviceContext = initResult.context;
                 setCurrentAudioContext(serviceContext);
                 setCurrentMasterGainNode(audioContextService.getMasterGainNode());
