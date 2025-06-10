@@ -8,7 +8,7 @@ import {
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_LOGIC_CODE,
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_TEST_CODE
 } from '../constants';
-import { testRegistry } from '../test-runner'; // Assuming test-runner is one level up
+// import { testRegistry } from '../test-runner'; // Assuming test-runner is one level up
 
 const API_KEY = process.env.API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -165,7 +165,7 @@ async function executeGeneratedTests(
                 overallResult.failures.push({ testName: fullTestName, error: e.message });
             }
         },
-        expect: testRegistry.expect, 
+        // expect: testRegistry.expect,
     };
 
     try {
