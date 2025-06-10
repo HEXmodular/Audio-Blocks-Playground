@@ -297,7 +297,7 @@ export const useAudioEngine = (
     // currentAudioContext is intentionally omitted from deps here to avoid re-running on its changes,
     // as cleanup should happen with the context instance that was active.
 
-    return {
+    return useMemo(() => ({
         audioContext: currentAudioContext,
         masterGainNode: currentMasterGainNode,
         isAudioGloballyEnabled,
@@ -331,7 +331,16 @@ export const useAudioEngine = (
         removeManagedAudioWorkletNode,
         setupManagedNativeNode,
         removeManagedNativeNode,
-    };
+    }), [
+        currentAudioContext, currentMasterGainNode, isAudioGloballyEnabled, audioInitializationError,
+        availableOutputDevices, selectedSinkId, audioWorkletManager, nativeNodeManager, lyriaServiceManager,
+        initializeBasicAudioContext, toggleGlobalAudio, getSampleRate, getAudioContextState,
+        setOutputDevice, listOutputDevices, removeAllManagedNodes, updateAudioGraphConnections,
+        sendManagedAudioWorkletNodeMessage, triggerNativeNodeEnvelope, triggerNativeNodeAttackHold,
+        triggerNativeNodeRelease, updateManagedNativeNodeParams, setupLyriaServiceForInstance,
+        removeLyriaServiceForInstance, setupManagedAudioWorkletNode, removeManagedAudioWorkletNode,
+        setupManagedNativeNode, removeManagedNativeNode
+    ]);
 };
 
 // Helper types that might have been in other files, ensure they are defined or imported
