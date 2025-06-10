@@ -93,7 +93,7 @@ export const useAudioEngine = (
   
   const audioGraphConnector = useAudioGraphConnector({
     appLog, // Pass appLog if it might be used for debugging in the connector
-    onStateChangeForReRender,
+    // onStateChangeForReRender, // Removed
     audioContext: audioContextManager.audioContext,
     isAudioGloballyEnabled: audioContextManager.isAudioGloballyEnabled,
   });

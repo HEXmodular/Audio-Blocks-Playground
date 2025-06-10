@@ -26,14 +26,14 @@ export interface AudioGraphConnector {
 
 interface UseAudioGraphConnectorProps {
   appLog: (message: string, isSystem?: boolean) => void;
-  onStateChangeForReRender: () => void;
+  // onStateChangeForReRender: () => void; // Removed
   audioContext: AudioContext | null;
   isAudioGloballyEnabled: boolean;
 }
 
 export const useAudioGraphConnector = ({
   appLog, // appLog is not used in the original updateAudioGraphConnections, but kept for consistency
-  onStateChangeForReRender,
+  // onStateChangeForReRender, // Removed
   audioContext,
   isAudioGloballyEnabled,
 }: UseAudioGraphConnectorProps): AudioGraphConnector => {
@@ -144,8 +144,8 @@ export const useAudioGraphConnector = ({
       }
     });
     activeWebAudioConnectionsRef.current = newActiveConnections;
-    onStateChangeForReRender(); // Likely needed if graph changes affect UI
-  }, [audioContext, isAudioGloballyEnabled, onStateChangeForReRender]);
+    // onStateChangeForReRender(); // Removed
+  }, [audioContext, isAudioGloballyEnabled]); // onStateChangeForReRender removed from dependencies
   // appLog removed from dependencies as it's not used internally by this specific function
 
   return {
