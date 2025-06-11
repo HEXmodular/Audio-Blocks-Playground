@@ -14,12 +14,14 @@ export class AudioEngineService {
     private _audioContextState: AudioContextState | null = null;
 
     private _subscribers: (() => void)[] = [];
+    private _audioContextService: AudioContextService;
 
     public audioWorkletManager: AudioWorkletManager;
     public nativeNodeManager: NativeNodeManager;
     public lyriaServiceManager: LyriaServiceManager;
 
     constructor() {
+        this._audioContextService = new AudioContextService(this._notifySubscribers.bind(this));
         this.audioWorkletManager = new AudioWorkletManager(() => this._audioContext, this._notifySubscribers.bind(this));
         this.nativeNodeManager = new NativeNodeManager(() => this._audioContext, this._notifySubscribers.bind(this));
         this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this));
@@ -92,7 +94,11 @@ export class AudioEngineService {
         }
 
         try {
-            this._audioContext = await AudioContextService.getAudioContext();
+            const initResult = await this._audioContextService.initialize(true);
+            this._audioContext = initResult.context;
+            if (!this._audioContext) {
+                throw new Error("AudioContext could not be initialized by AudioContextService.");
+            }
             this._masterGainNode = this._audioContext.createGain();
             this._masterGainNode.connect(this._audioContext.destination);
             this._isAudioGloballyEnabled = true;
@@ -149,13 +155,17 @@ export class AudioEngineService {
         return this._audioContext?.state ?? null;
     };
 
+    public getAudioContextServiceInstance(): AudioContextService {
+        return this._audioContextService;
+    }
+
     public setOutputDevice = async (sinkId: string): Promise<void> => {
-        if (!this._audioContext || !AudioContextService.canChangeOutputDevice(this._audioContext)) {
+        if (!this._audioContext || !this._audioContextService.canChangeOutputDevice()) {
             console.warn('AudioContext not available or does not support setSinkId.');
             const oldSinkId = this._selectedSinkId;
             this._selectedSinkId = sinkId; // Optimistically update
             try {
-                await AudioContextService.setSinkId(this._audioContext, sinkId);
+                await this._audioContextService.setSinkId(sinkId);
             } catch(e) {
                 this._selectedSinkId = oldSinkId; //revert on error
                 console.error("Failed to set output device:", e);
@@ -167,7 +177,7 @@ export class AudioEngineService {
         }
 
         try {
-            await AudioContextService.setSinkId(this._audioContext, sinkId);
+            await this._audioContextService.setSinkId(sinkId);
             this._selectedSinkId = sinkId;
             console.log(`Output device set to: ${sinkId}`);
         } catch (error) {
@@ -181,7 +191,7 @@ export class AudioEngineService {
 
     public listOutputDevices = async (): Promise<void> => {
         try {
-            const devices = await AudioContextService.getAvailableOutputDevices();
+            const devices = await this._audioContextService.getAvailableOutputDevices();
             this._availableOutputDevices = devices;
             if (!this._selectedSinkId && devices.length > 0) {
                 // If no device is selected, pick the default one or the first one.
@@ -200,7 +210,7 @@ export class AudioEngineService {
     };
 
     public removeAllManagedNodes = (): void => {
-        this.audioWorkletManager.removeAllNodes();
+        this.audioWorkletManager.removeAllManagedWorkletNodes();
         this.nativeNodeManager.removeAllNodes();
         // Lyria services might have their own cleanup, TBD
         this._notifySubscribers(); // If UI depends on node list

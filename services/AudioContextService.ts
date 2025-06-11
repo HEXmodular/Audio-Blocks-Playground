@@ -1,4 +1,4 @@
-import { AudioContextState } from '../types'; // Assuming AudioContextState is here or define locally
+import { AudioContextState, OutputDevice } from '../types'; // Assuming AudioContextState is here or define locally
 
 // Define AudioContextState if not available from types.ts
 // export type AudioContextState = 'suspended' | 'running' | 'closed' | 'interrupted';
@@ -159,6 +159,47 @@ export class AudioContextService {
             }
         }
         this.setContext(null);
+    }
+  }
+
+  public async getAvailableOutputDevices(): Promise<OutputDevice[]> {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.warn('[AudioContextService] enumerateDevices() not supported.');
+        return [];
+    }
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        return devices.filter(device => device.kind === 'audiooutput').map(device => ({
+            deviceId: device.deviceId,
+            groupId: device.groupId,
+            kind: device.kind,
+            label: device.label || `Output device ${devices.filter(d => d.kind === 'audiooutput').indexOf(device) + 1}`
+        }));
+    } catch (err) {
+        console.error('[AudioContextService] Error listing output devices:', err);
+        return [];
+    }
+  }
+
+  public canChangeOutputDevice(): boolean {
+    return !!(this.context && typeof (this.context as any).setSinkId === 'function');
+  }
+
+  public async setSinkId(sinkId: string): Promise<void> {
+    if (!this.context) {
+        console.warn('[AudioContextService] AudioContext not available, cannot set sink ID.');
+        return Promise.reject('AudioContext not available');
+    }
+    if (typeof (this.context as any).setSinkId !== 'function') {
+        console.warn('[AudioContextService] AudioContext.setSinkId is not supported by this browser.');
+        return Promise.reject('setSinkId not supported');
+    }
+    try {
+        await (this.context as any).setSinkId(sinkId);
+        console.log(`[AudioContextService] Output device set to: ${sinkId}`);
+    } catch (error) {
+        console.error('[AudioContextService] Error setting output device:', error);
+        throw error; // Re-throw the error to be handled by the caller
     }
   }
 }
