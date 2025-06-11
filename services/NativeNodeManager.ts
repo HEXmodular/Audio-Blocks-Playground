@@ -93,7 +93,7 @@ export class NativeNodeManager implements INativeNodeManager {
         currentBpm: number = 120
     ): Promise<boolean> {
         if (!this.audioContext || this.audioContext.state !== 'running') {
-            console.log(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, true);
+            console.log(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, false);
             return false;
         }
         if (this.managedNativeNodesRef.has(instanceId)) {
