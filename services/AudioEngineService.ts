@@ -331,10 +331,6 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this.audioWorkletManager.sendMessage(nodeId, message);
     }
 
-    public addNativeNode = (type: string, options?: AudioNodeOptions): AudioNode | undefined => {
-        return this.nativeNodeManager.addNode(type, options);
-    }
-
     public removeNativeNode = (nodeId: string): void => {
         this.nativeNodeManager.removeNode(nodeId);
     }
