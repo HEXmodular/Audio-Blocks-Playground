@@ -10,6 +10,7 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '../constants';
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
@@ -28,6 +29,7 @@ export class AudioEngineService {
 
     private _subscribers: (() => void)[] = [];
     private _audioContextService: AudioContextService;
+    private _outputWorkletConnections: Map<string, AudioWorkletNode> = new Map();
 
     public audioWorkletManager: AudioWorkletManager;
     public nativeNodeManager: NativeNodeManager;
@@ -316,6 +318,21 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this.nativeNodeManager.removeAllManagedNativeNodes();
         // Lyria services might have their own cleanup, TBD
         this.audioGraphConnectorService.disconnectAll();
+
+    // --- BEGIN MODIFICATION: Disconnect AUDIO_OUTPUT_BLOCK_DEFINITION worklets ---
+    if (this._masterGainNode) {
+      this._outputWorkletConnections.forEach((node, instanceId) => {
+        try {
+          node.disconnect(this._masterGainNode!); // Ensure _masterGainNode is not null
+          console.log(`AudioEngineService.removeAllManagedNodes: Disconnected AUDIO_OUTPUT worklet '${instanceId}' from masterGainNode.`);
+        } catch (e) {
+          console.error(`AudioEngineService.removeAllManagedNodes: Error disconnecting AUDIO_OUTPUT worklet '${instanceId}':`, e);
+        }
+      });
+    }
+    this._outputWorkletConnections.clear();
+    console.log("AudioEngineService.removeAllManagedNodes: Cleared all tracked AUDIO_OUTPUT worklet connections.");
+    // --- END MODIFICATION ---
         this._notifySubscribers(); // If UI depends on node list
     };
 
@@ -330,15 +347,64 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
             this.nativeNodeManager.getManagedNodesMap(),
             this.lyriaServiceManager.getManagedInstancesMap()
         );
-        // Potentially, re-connect masterGainNode if it was disconnected
-        // This logic might be better handled within updateConnections or based on its outcome
-        if (this._audioContext && this._masterGainNode && this._masterGainNode.numberOfOutputs === 0 && this._isAudioGloballyEnabled) {
-             // Ensure masterGainNode is connected only if audio is supposed to be playing.
-             // The updateConnections might handle all necessary (re)connections, making this redundant or potentially conflicting.
-             // For now, let's assume updateConnections handles all connections including to destination if needed.
-             // If specific logic for masterGainNode is still required, it should be clarified.
-             // Example: this._masterGainNode.connect(this._audioContext.destination);
+    // --- BEGIN MODIFICATION: Connect AUDIO_OUTPUT_BLOCK_DEFINITION worklets to masterGainNode ---
+    if (this._audioContext && this._masterGainNode) {
+      blockInstances.forEach(instance => {
+        const definition = getDefinitionForBlock(instance);
+        if (definition && definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+          const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
+          if (workletInfo && workletInfo.node) {
+            const workletNode = workletInfo.node;
+            const isConnected = this._outputWorkletConnections.has(instance.instanceId);
+
+            if (this._isAudioGloballyEnabled && this._audioContext.state === 'running') {
+              if (!isConnected) {
+                try {
+                  workletNode.connect(this._masterGainNode!);
+                  this._outputWorkletConnections.set(instance.instanceId, workletNode);
+                  console.log(`AudioEngineService: Connected AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode.`);
+                } catch (e) {
+                  console.error(`AudioEngineService: Error connecting AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode:`, e);
+                }
+              }
+            } else {
+              if (isConnected) {
+                try {
+                  workletNode.disconnect(this._masterGainNode!);
+                  this._outputWorkletConnections.delete(instance.instanceId);
+                  console.log(`AudioEngineService: Disconnected AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode.`);
+                } catch (e) {
+                  console.error(`AudioEngineService: Error disconnecting AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode:`, e);
+                }
+              }
+            }
+          }
         }
+      });
+
+      // Cleanup stale connections from _outputWorkletConnections if the instance no longer exists
+      const currentOutputInstanceIds = new Set(
+        blockInstances
+          .filter(instance => {
+            const def = getDefinitionForBlock(instance);
+            return def && def.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id;
+          })
+          .map(instance => instance.instanceId)
+      );
+
+      this._outputWorkletConnections.forEach((node, instanceId) => {
+        if (!currentOutputInstanceIds.has(instanceId)) {
+          try {
+            node.disconnect(this._masterGainNode!);
+            this._outputWorkletConnections.delete(instanceId);
+            console.log(`AudioEngineService: Cleaned up stale AUDIO_OUTPUT connection for '${instanceId}'.`);
+          } catch (e) {
+            console.error(`AudioEngineService: Error cleaning up stale AUDIO_OUTPUT connection for '${instanceId}':`, e);
+          }
+        }
+      });
+    }
+    // --- END MODIFICATION ---
         this._notifySubscribers(); // If graph changes affect UI
     };
 
@@ -389,6 +455,22 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
     public dispose = (): void => {
         console.log('Disposing AudioEngineService...');
         this.audioGraphConnectorService.disconnectAll(); // Ensure all connections are cleared before context is closed
+
+    // --- BEGIN MODIFICATION: Disconnect AUDIO_OUTPUT_BLOCK_DEFINITION worklets during disposal ---
+    if (this._masterGainNode && this._audioContext && this._audioContext.state !== 'closed') {
+      this._outputWorkletConnections.forEach((node, instanceId) => {
+        try {
+          node.disconnect(this._masterGainNode!);
+          console.log(`AudioEngineService.dispose: Disconnected AUDIO_OUTPUT worklet '${instanceId}' from masterGainNode.`);
+        } catch (e) {
+          // Errors might occur if nodes are already disconnected or context is closing.
+          console.warn(`AudioEngineService.dispose: Error disconnecting AUDIO_OUTPUT worklet '${instanceId}' (may already be disconnected):`, e);
+        }
+      });
+    }
+    this._outputWorkletConnections.clear();
+    console.log("AudioEngineService.dispose: Cleared all tracked AUDIO_OUTPUT worklet connections during disposal.");
+    // --- END MODIFICATION ---
 
         if (this._audioContext && this._audioContext.state !== 'closed') {
             // Disconnect master gain node
