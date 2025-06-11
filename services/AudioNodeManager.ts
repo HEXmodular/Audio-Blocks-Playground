@@ -1,3 +1,4 @@
+// Force recompile to address potential caching issue with async keyword detection
 /**
  * This service orchestrates the lifecycle and parameterization of audio nodes within a block-based audio graph.
  * It acts as an intermediary between high-level block instance representations and the underlying `AudioEngineService`, translating block configurations into concrete audio node setups and updates.
