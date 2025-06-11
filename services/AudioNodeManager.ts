@@ -1,0 +1,268 @@
+// services/AudioNodeManager.ts
+import { AudioEngineService } from './AudioEngineService';
+import { BlockInstance, BlockDefinition, Connection, ValueType } from '../types';
+import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // Adjust path
+import {
+    AUDIO_OUTPUT_BLOCK_DEFINITION,
+    LYRIA_MASTER_BLOCK_DEFINITION,
+    NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
+} from '../constants'; // Adjust path
+
+export class AudioNodeManager {
+    private audioEngineService: AudioEngineService;
+    private blockStateManager: BlockStateManager; // For updating instance state & logging
+
+    constructor(audioEngineService: AudioEngineService, blockStateManager: BlockStateManager) {
+        this.audioEngineService = audioEngineService;
+        this.blockStateManager = blockStateManager;
+    }
+
+    // Helper to update instance state and add logs
+    private updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
+        this.blockStateManager.updateBlockInstance(instanceId, updates);
+    }
+    private addLog(instanceId: string, message: string, type: 'info' | 'warn' | 'error' = 'info') {
+        this.blockStateManager.addLogToBlockInstance(instanceId, message, type);
+    }
+    private getDefinition(instance: BlockInstance): BlockDefinition | undefined {
+        return this.blockStateManager.getDefinitionById(instance.definitionId);
+    }
+
+    public processAudioNodeSetupAndTeardown(
+        blockInstances: BlockInstance[],
+        globalBpm: number,
+        isAudioGloballyEnabled: boolean,
+        isWorkletSystemReady: boolean,
+        audioContextCurrent: AudioContext | null
+    ) {
+        if (!audioContextCurrent) { // Audio system not ready at all
+            blockInstances.forEach(instance => {
+                const definition = this.getDefinition(instance);
+                if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
+                    this.updateInstance(instance.instanceId, currentInst => ({
+                        ...currentInst,
+                        internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false }
+                    }));
+                }
+            });
+            return;
+        }
+
+        blockInstances.forEach(instance => {
+            const definition = this.getDefinition(instance);
+            if (!definition || !definition.runsAtAudioRate) return;
+
+            const isAudioContextRunning = audioContextCurrent.state === 'running';
+
+            if (isAudioContextRunning && isAudioGloballyEnabled) {
+                // Setup Lyria Service
+                if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                    if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
+                        this.addLog(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
+                        this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(instance.instanceId, definition, (msg) => this.addLog(instance.instanceId, msg))
+                            .then(success => {
+                                this.updateInstance(instance.instanceId, currentInst => ({
+                                    ...currentInst,
+                                    internalState: { ...currentInst.internalState, lyriaServiceReady: !!success, needsAudioNodeSetup: !success },
+                                    error: success ? null : "Lyria Service setup failed."
+                                }));
+                                if (success) this.addLog(instance.instanceId, "Lyria service ready.");
+                                else this.addLog(instance.instanceId, "Lyria service setup failed.", "error");
+                            }).catch(err => {
+                                this.addLog(instance.instanceId, `Lyria service setup error: ${(err as Error).message}`, "error");
+                                this.updateInstance(instance.instanceId, { error: "Lyria service setup error." });
+                            });
+                    }
+                }
+                // Setup AudioWorklet Node
+                else if (definition.audioWorkletProcessorName) {
+                    if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
+                        this.addLog(instance.instanceId, "Worklet node setup initiated by AudioNodeManager.");
+                        const node = this.audioEngineService.addManagedAudioWorkletNode(instance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: instance.parameters });
+                        if (node) {
+                            this.updateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                            this.addLog(instance.instanceId, "Worklet node setup successful.");
+                            // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION
+                            if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+                                const workletNodeInfo = this.audioEngineService.getManagedAudioWorkletNodeInfo(instance.instanceId);
+                                const masterGain = this.audioEngineService.masterGainNode;
+                                if (workletNodeInfo?.node && masterGain) {
+                                    try {
+                                        (workletNodeInfo.node as AudioWorkletNode).connect(masterGain);
+                                        this.addLog(instance.instanceId, "AUDIO_OUTPUT_BLOCK_DEFINITION connected to master gain.");
+                                    } catch (e: any) {
+                                        this.addLog(instance.instanceId, `Error connecting AUDIO_OUTPUT_BLOCK_DEFINITION to master gain: ${e.message}`, "error");
+                                    }
+                                } else {
+                                    this.addLog(instance.instanceId, "Could not connect AUDIO_OUTPUT_BLOCK_DEFINITION: Node or masterGain missing.", "warn");
+                                }
+                            }
+                        } else {
+                            this.addLog(instance.instanceId, "Worklet node setup failed.", "error");
+                            this.updateInstance(instance.instanceId, { error: "Worklet node setup failed." });
+                        }
+                    } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
+                        this.addLog(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
+                    }
+                }
+                // Setup Native Audio Node
+                else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                    if (instance.internalState.needsAudioNodeSetup) {
+                        this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
+                        const node = this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
+                        if (node) {
+                            this.updateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                            this.addLog(instance.instanceId, "Native node setup successful.");
+                        } else {
+                            this.addLog(instance.instanceId, "Native node setup failed.", "error");
+                            this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
+                        }
+                    }
+                }
+            } else if (definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
+                // Audio system not active, mark nodes as needing setup
+                this.updateInstance(instance.instanceId, currentInst => ({
+                    ...currentInst,
+                    internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false }
+                }));
+                this.addLog(instance.instanceId, "Audio system not active. Node requires setup.", "warn");
+            }
+        });
+    }
+
+    public updateAudioNodeParameters(
+        blockInstances: BlockInstance[],
+        connections: Connection[],
+        globalBpm: number
+    ) {
+        if (!this.audioEngineService.audioContext || this.audioEngineService.audioContext.state !== 'running') return;
+
+        blockInstances.forEach(instance => {
+            const definition = this.getDefinition(instance);
+            if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                return;
+            }
+
+            if (definition.audioWorkletProcessorName) {
+                this.audioEngineService.audioWorkletManager.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
+            } else { // Native Nodes
+                const currentInputsForParamUpdate: Record<string, any> = {};
+                // Special handling for NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION
+                if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
+                    const inputPort = definition.inputs.find(ip => ip.id === 'number_in');
+                    if (inputPort) {
+                        const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
+                        if (conn) {
+                            const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
+                            currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                        } else {
+                             currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                        }
+                    }
+                }
+                this.audioEngineService.nativeNodeManager.updateManagedNativeNodeParams?.(
+                    instance.instanceId,
+                    instance.parameters,
+                    Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined,
+                    globalBpm
+                );
+            }
+        });
+    }
+
+    public manageLyriaServiceUpdates(
+        blockInstances: BlockInstance[],
+        connections: Connection[],
+        isAudioGloballyEnabled: boolean,
+    ) {
+        if (!this.audioEngineService.audioContext || !this.audioEngineService.lyriaServiceManager) return;
+
+        blockInstances.forEach(instance => {
+            const definition = this.getDefinition(instance);
+            if (!definition || definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) return;
+
+            const service = this.audioEngineService.lyriaServiceManager.getLyriaServiceInstance(instance.instanceId);
+            const servicePlaybackState = service?.getPlaybackState();
+            const isServiceEffectivelyPlaying = servicePlaybackState === 'playing' || servicePlaybackState === 'loading';
+
+            // Auto-play logic
+            if (instance.internalState.lyriaServiceReady &&
+                isAudioGloballyEnabled &&
+                !isServiceEffectivelyPlaying &&
+                !instance.internalState.autoPlayInitiated &&
+                !instance.internalState.playRequest &&
+                !instance.internalState.stopRequest &&
+                !instance.internalState.pauseRequest) {
+                this.addLog(instance.instanceId, `AudioNodeManager triggering auto-play for Lyria block: ${instance.name}`);
+                this.updateInstance(instance.instanceId, currentInst => ({
+                    ...currentInst,
+                    internalState: { ...currentInst.internalState, playRequest: true, autoPlayInitiated: true }
+                }));
+            }
+
+            // Reset autoPlayInitiated on stop
+            if (instance.internalState.stopRequest && instance.internalState.autoPlayInitiated) {
+                this.updateInstance(instance.instanceId, currentInst => ({
+                    ...currentInst,
+                    internalState: { ...currentInst.internalState, autoPlayInitiated: false }
+                }));
+            }
+
+            // Sync isPlaying state
+            if (instance.internalState.isPlaying !== isServiceEffectivelyPlaying) {
+                this.updateInstance(instance.instanceId, prevState => ({
+                    ...prevState,
+                    internalState: { ...prevState.internalState, isPlaying: isServiceEffectivelyPlaying }
+                }));
+            }
+
+            // Update Lyria service state (params, inputs, internal commands)
+            if (isAudioGloballyEnabled) {
+                const blockParams: Record<string, any> = {};
+                instance.parameters.forEach(p => blockParams[p.id] = p.currentValue);
+
+                const blockInputs: Record<string, any> = {};
+                definition.inputs.forEach(inputPort => {
+                    const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
+                    if (conn) {
+                        const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
+                        blockInputs[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                    } else {
+                        blockInputs[inputPort.id] = getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                    }
+                });
+
+                this.audioEngineService.lyriaServiceManager.updateLyriaServiceState(
+                    instance.instanceId,
+                    instance.internalState,
+                    blockParams,
+                    blockInputs,
+                    () => { // onProcessedCallback
+                        this.updateInstance(instance.instanceId, prevState => ({
+                            ...prevState,
+                            internalState: {
+                                ...prevState.internalState,
+                                playRequest: false, pauseRequest: false, stopRequest: false, reconnectRequest: false,
+                                configUpdateNeeded: false, promptsUpdateNeeded: false, trackMuteUpdateNeeded: false,
+                            }
+                        }));
+                    }
+                );
+            }
+        });
+    }
+
+    public updateAudioGraphConnections(
+        connections: Connection[],
+        blockInstances: BlockInstance[],
+        isAudioGloballyEnabled: boolean
+    ) {
+        if (!this.audioEngineService.audioContext) return;
+        if (isAudioGloballyEnabled) {
+            this.audioEngineService.updateAudioGraphConnections(connections, blockInstances, (inst) => this.getDefinition(inst));
+        } else {
+            // Clear connections if audio is disabled
+            this.audioEngineService.updateAudioGraphConnections([], blockInstances, (inst) => this.getDefinition(inst));
+        }
+    }
+}
