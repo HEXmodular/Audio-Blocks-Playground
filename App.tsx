@@ -104,12 +104,11 @@ const App: React.FC = () => {
     // initializeBasicAudioContext is called in the service's constructor.
     // If it needs to be re-called or ensured after App mount, it can be done here.
     // For now, assuming constructor call is sufficient.
-    // audioEngineService.initializeBasicAudioContext();
 
     return () => {
       audioEngineService.dispose();
     };
-  }, [audioEngineService]);
+  }, []); // Empty dependency array
 
   const getDefinitionForBlock = useCallback((instance: BlockInstance) => {
     return appBlockDefinitionsFromCtx.find(def => def.id === instance.definitionId);
