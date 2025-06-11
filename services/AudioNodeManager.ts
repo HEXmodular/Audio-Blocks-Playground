@@ -1,3 +1,10 @@
+/**
+ * This service orchestrates the lifecycle and parameterization of audio nodes within a block-based audio graph.
+ * It acts as an intermediary between high-level block instance representations and the underlying `AudioEngineService`, translating block configurations into concrete audio node setups and updates.
+ * Key responsibilities include processing the setup and teardown of various audio nodes (AudioWorklets, native Web Audio nodes, and Lyria services) based on global audio state and block definitions.
+ * The manager also handles real-time updates to audio node parameters, manages specialized updates for Lyria services (like auto-play and state synchronization), and triggers updates to the overall audio graph connections.
+ * It utilizes a `BlockStateManager` for logging and persisting state changes to block instances, ensuring the application's view of the audio graph remains consistent with the audio engine's state.
+ */
 // services/AudioNodeManager.ts
 import { AudioEngineService } from './AudioEngineService';
 import { BlockInstance, BlockDefinition, Connection, ValueType } from '../types';

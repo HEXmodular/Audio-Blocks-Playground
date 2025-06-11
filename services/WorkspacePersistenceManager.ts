@@ -1,3 +1,10 @@
+/**
+ * This service is responsible for exporting and importing the entire user workspace, including AI-generated block definitions, block instances, connections, and global settings like BPM and selected audio output.
+ * It interacts with various state managers and services (`BlockStateManager`, `ConnectionState`, `AudioEngineService`) to gather all necessary data for export and to apply imported data back into the application.
+ * The export functionality serializes the workspace into a JSON string and triggers a file download for the user.
+ * During import, it carefully restores the application state: it clears existing managed audio nodes, sets up block definitions (prioritizing core definitions and adding imported AI-generated ones), recreates block instances with appropriate initial states, re-establishes connections, and applies global settings.
+ * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
+ */
 // services/WorkspacePersistenceManager.ts
 import { BlockDefinition, BlockInstance, Connection } from '../types'; // Adjust path
 import { BlockStateManager } from '../state/BlockStateManager'; // Adjust path

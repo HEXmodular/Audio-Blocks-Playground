@@ -1,4 +1,10 @@
-
+/**
+ * This service acts as the primary interface to Google's Gemini AI model for advanced code generation and modification tasks within the application.
+ * It facilitates the creation of new audio block definitions from user prompts, including their JavaScript logic code (`logicCode`) and associated unit tests (`logicCodeTests`).
+ * A key feature is its automated testing and refinement cycle: it executes AI-generated tests against the generated logic code and, if failures occur, iteratively prompts Gemini to fix either the logic code or the tests themselves until they pass or attempt limits are reached.
+ * The service also enables users to modify existing block logic code using natural language prompts, providing contextual information about the block's structure to the AI.
+ * It includes robust JSON parsing for Gemini's responses, retry mechanisms for API calls, and uses specific system prompts to guide the AI for different generation and modification scenarios.
+ */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { BlockDefinition, GeminiRequest, BlockParameter } from '../types';

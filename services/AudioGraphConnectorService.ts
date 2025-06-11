@@ -1,3 +1,10 @@
+/**
+ * This service is responsible for managing the actual Web Audio API connections within an audio graph.
+ * It dynamically establishes and tears down connections between various audio nodes (representing blocks or services) based on the application's desired state.
+ * The service takes into account different types of audio sources and destinations, including standard AudioNodes, AudioWorklets, and their AudioParams, and handles specific logic for custom block types.
+ * It maintains a record of active connections and intelligently updates them, only making necessary changes to reflect the current graph structure provided by the application.
+ * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
+ */
 import { Connection, BlockInstance, BlockDefinition } from '../types';
 import { ManagedWorkletNodeInfo } from '../hooks/useAudioWorkletManager';
 import { ManagedNativeNodeInfo } from '../hooks/useNativeNodeManager';

@@ -1,3 +1,10 @@
+/**
+ * This module provides essential utility functions for data decoding and audio processing within the application.
+ * It includes a `decode` function for converting base64 encoded strings into `Uint8Array` byte streams, commonly used for handling binary data received from servers.
+ * Another key utility is `decodeAudioData`, which wraps the Web Audio API's `audioContext.decodeAudioData` method in a promise, simplifying the asynchronous conversion of raw audio data (in `ArrayBuffer` or `Uint8Array` format) into playable `AudioBuffer` objects.
+ * The `decodeAudioData` function also includes basic checks and warnings if the decoded audio's properties (like sample rate or channel count) don't match expected targets.
+ * These utilities are foundational for services that handle encoded audio or binary data, such as the `LiveMusicService`.
+ */
 
 // Base64 decoding utility
 export function decode(base64String: string): Uint8Array {

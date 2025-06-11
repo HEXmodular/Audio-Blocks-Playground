@@ -1,3 +1,10 @@
+/**
+ * This service acts as a synchronizer and broadcaster for global audio-related state derived from the main `AudioEngineService`.
+ * It subscribes to state changes within the `AudioEngineService` and maintains a curated snapshot of key audio status indicators.
+ * These indicators include whether audio is globally enabled, the list of available output devices, the currently selected sink ID, the audio context's state, and the readiness of the AudioWorklet system.
+ * The syncer then exposes this aggregated `GlobalAudioState` to its own subscribers, providing a simplified and focused view of the overall audio status.
+ * This allows other application components to easily react to important global audio events without needing to subscribe to the more granular `AudioEngineService` directly.
+ */
 // services/GlobalAudioStateSyncer.ts
 import { AudioEngineService } from './AudioEngineService'; // Assuming path
 import { AudioDevice } from '../types'; // Assuming path

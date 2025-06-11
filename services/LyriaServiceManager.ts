@@ -1,3 +1,10 @@
+/**
+ * This service manages instances of `LiveMusicService`, which interface with Google's Lyria AI for real-time music generation, associating them with specific block instances in the application.
+ * It handles the complete lifecycle of these Lyria service instances, including their setup (which involves creating, configuring, and connecting the `LiveMusicService` to the backend and the application's audio graph via the master gain node) and their removal.
+ * A core function is `updateLyriaServiceState`, which translates block-level parameters, inputs (including CVs for scale, brightness, etc.), and internal state requests (like play, stop, reconnect, or prompt updates) into direct commands and configuration changes for the underlying `LiveMusicService`.
+ * The manager ensures that each Lyria block's audio output is correctly routed and that callbacks are in place to react to changes in the Lyria service's state, triggering application-level updates.
+ * It acts as the specialized controller for all Lyria AI-powered music generation blocks within the system.
+ */
 import { BlockDefinition, LiveMusicGenerationConfig, WeightedPrompt } from '../types'; // Adjusted as WeightedPrompt is used by LiveMusicService
 import { LiveMusicService, LiveMusicServiceCallbacks, DEFAULT_MUSIC_GENERATION_CONFIG } from '../services/LiveMusicService';
 import { Scale as GenAIScale } from '@google/genai'; // GenAIScale is used in updateLyriaServiceState

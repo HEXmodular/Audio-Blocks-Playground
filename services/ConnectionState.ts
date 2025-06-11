@@ -1,3 +1,10 @@
+/**
+ * This service manages the state of logical connections between audio blocks within the application's graph.
+ * It is responsible for persisting these connections to the browser's `localStorage`, allowing the user's graph layout to be saved and restored across sessions.
+ * The class provides methods to get, update, and set all connections, ensuring that any changes trigger notifications to subscribed listeners.
+ * This notification system allows other parts of the application, such as the UI or the audio engine's graph connector, to react dynamically to modifications in the connection topology.
+ * It acts as a centralized store and source of truth for the user-defined connections in the audio block interface.
+ */
 import { Connection } from '../types';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';

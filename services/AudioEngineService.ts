@@ -1,3 +1,10 @@
+/**
+ * This service acts as a comprehensive manager for the application's audio capabilities, providing a centralized interface.
+ * It initializes and oversees the core `AudioContext` via an internal `AudioContextService` instance, managing its lifecycle and state.
+ * The service integrates and coordinates specialized managers: `AudioWorkletManager` for custom audio processing nodes, `NativeNodeManager` for standard Web Audio API nodes, and `LyriaServiceManager` for Lyria-specific audio functionalities.
+ * It features a subscription model, allowing different parts of the application to listen for and react to changes in audio state, such as device changes or global audio enablement.
+ * Responsibilities also include managing audio output devices, handling global audio toggling, and providing a unified API for node management and interaction, often exported as a singleton for global access.
+ */
 import { AudioContextService } from './AudioContextService';
 import { AudioWorkletManager } from './AudioWorkletManager';
 import { NativeNodeManager } from './NativeNodeManager';

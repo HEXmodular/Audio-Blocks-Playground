@@ -1,3 +1,10 @@
+/**
+ * This class serves as the central audio processing and management engine for the application.
+ * It orchestrates various audio services, including context management (`AudioContextService`) and device handling (`AudioDeviceService`).
+ * The AudioEngine integrates specialized managers for different audio node types: `AudioWorkletManager` for custom AudioWorklet-based nodes, `NativeNodeManager` for standard Web Audio API nodes, and `LyriaServiceManager` for proprietary Lyria audio services.
+ * It is responsible for initializing the audio system, managing the global audio state (e.g., enabling/disabling audio), updating audio graph connections based on application logic, and providing a unified interface for controlling and interacting with all managed audio components.
+ * This engine acts as the primary interface for the application to interact with the Web Audio API and custom audio extensions.
+ */
 import {
     BlockDefinition,
     Connection,

@@ -1,3 +1,10 @@
+/**
+ * This service manages the lifecycle and core dependencies of the `LogicExecutionService`.
+ * It acts as a higher-level controller, ensuring that the `LogicExecutionService` is always provided with the most current application state, including block instances, connections, global BPM, and the main `AudioEngine` instance.
+ * A key responsibility of this manager is to start or stop the `LogicExecutionService`'s processing loop based on whether audio is globally enabled and the audio engine is available.
+ * It also provides an interface to clear cached logic functions from the underlying `LogicExecutionService`, which is essential when block functionalities are updated dynamically.
+ * Essentially, this manager orchestrates the operational state of the non-audio-rate logic execution within the application.
+ */
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager } from '../state/BlockStateManager';
 import { AudioEngine } from './AudioEngine'; // Corrected path to the hook's interface

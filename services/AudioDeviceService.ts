@@ -1,3 +1,10 @@
+/**
+ * This service manages audio output devices available in the user's system.
+ * It provides functionality to list all available audio output devices and allows the user or application to select a preferred device.
+ * The service interacts with the `AudioContext` to change the audio output sink to the selected device, if the browser supports this capability.
+ * It also monitors for changes in the available devices, such as when a new audio device is connected or an existing one is disconnected.
+ * This ensures the application can adapt to changes in the user's audio hardware configuration.
+ */
 export class AudioDeviceService {
   private onDeviceListChanged: (devices: MediaDeviceInfo[]) => void;
   private onSelectedSinkIdChanged: (sinkId: string) => void;

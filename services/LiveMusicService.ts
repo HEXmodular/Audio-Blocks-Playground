@@ -1,4 +1,11 @@
 
+/**
+ * This service provides an interface to a real-time AI music generation backend, likely Google's Lyria model.
+ * It manages the connection lifecycle to the `LiveMusicSession`, handling setup, message exchange, errors, and session closure.
+ * Key responsibilities include sending user-defined prompts and generation configurations (like BPM, scale, and instrumental emphasis) to the AI, receiving generated audio chunks, decoding them, and scheduling them for seamless playback via the Web Audio API.
+ * The service maintains playback state (playing, paused, stopped, loading), implements audio buffering to mitigate network latency, and uses a system of callbacks to inform the application about important events such as state changes, errors, or newly available audio data.
+ * It effectively encapsulates the complexities of interacting with a generative music AI, offering controls for playback and content guidance to the main application.
+ */
 // Fix: Import LiveMusicGenerationConfig instead of MusicGenerationConfig
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value

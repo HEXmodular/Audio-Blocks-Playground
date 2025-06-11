@@ -1,3 +1,10 @@
+/**
+ * This service is responsible for executing the user-defined JavaScript logic associated with each non-audio-rate block in the application's graph.
+ * It orchestrates the flow of data between blocks by first determining the correct execution order using a topological sort of the block connections.
+ * For each block, it compiles (and caches) its `logicCode` into a function, then executes it with the necessary inputs, parameters, internal state, and callbacks to interact with the wider system (like setting outputs or logging).
+ * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
+ * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
+ */
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager';
 import { AudioEngine }  from './AudioEngine'; // Assuming AudioEngine is exported or use its path

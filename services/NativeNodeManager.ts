@@ -1,3 +1,10 @@
+/**
+ * This service is responsible for the lifecycle management of standard Web Audio API nodes (native nodes) used within the application's block-based audio graph.
+ * It dynamically creates and configures various native nodes, such as oscillators, LFOs, filters, delays, gain nodes, and envelope generators, based on corresponding block definitions.
+ * The manager handles setting initial parameters, updating them in real-time (including complex behaviors like BPM synchronization for LFOs or CV-to-AudioParam mapping), and provides specialized methods for triggering envelope behaviors.
+ * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
+ * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
+ */
 import { BlockDefinition, BlockParameter } from '../types';
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
