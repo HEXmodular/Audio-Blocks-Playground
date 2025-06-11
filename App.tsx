@@ -32,7 +32,7 @@ import {
 
 import { getDefaultOutputValue } from './state/BlockStateManager';
 import { useBlockState } from './context/BlockStateContext';
-import { AudioEngineService } from './services/AudioEngineService'; // Replaced useAudioEngine
+import { audioEngineService } from './services/AudioEngineService'; // Replaced useAudioEngine
 import { ConnectionDragHandler } from './utils/ConnectionDragHandler'; // Changed import
 // import { useLogicExecutionEngine } from './hooks/useLogicExecutionEngine'; // Removed
 // import { LogicExecutionService } from './services/LogicExecutionService'; // Removed as manager encapsulates it
@@ -66,7 +66,6 @@ const App: React.FC = () => {
     addLogToBlockInstance: ctxAddLogToBlockInstance,
   } = useBlockState();
 
-  const audioEngineService = useMemo(() => new AudioEngineService(), []);
   // const [, forceRender] = useState(0); // Removed forceRender
 
   // State variables to replace direct audioEngineService access in render/effects
@@ -99,16 +98,6 @@ const App: React.FC = () => {
         ctxSetAllBlockDefinitions(CORE_BLOCK_DEFINITIONS_ARRAY);
     }
   }, [ctxBlockStateManager, appBlockDefinitionsFromCtx, ctxSetAllBlockDefinitions]);
-
-  useEffect(() => {
-    // initializeBasicAudioContext is called in the service's constructor.
-    // If it needs to be re-called or ensured after App mount, it can be done here.
-    // For now, assuming constructor call is sufficient.
-
-    return () => {
-      audioEngineService.dispose();
-    };
-  }, []); // Empty dependency array
 
   const getDefinitionForBlock = useCallback((instance: BlockInstance) => {
     return appBlockDefinitionsFromCtx.find(def => def.id === instance.definitionId);

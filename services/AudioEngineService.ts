@@ -374,4 +374,4 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
 }
 
 // Optional: Singleton instance if needed throughout the app
-// export const audioEngineService = new AudioEngineService();
+export const audioEngineService = new AudioEngineService();
