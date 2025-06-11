@@ -52,6 +52,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [numberInputTextValues, setNumberInputTextValues] = useState<Record<string, string>>({});
+  const prevInstanceIdRef = useRef<string | null>(null);
 
 
   const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null; // Use context version
@@ -70,23 +71,40 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
 
   useEffect(() => {
     if (blockInstance) {
-      setEditableName(blockInstance.name);
+      // Only update editableName if the instance ID has changed or the name itself has changed externally
+      if (blockInstance.instanceId !== prevInstanceIdRef.current || blockInstance.name !== editableName) {
+        setEditableName(blockInstance.name);
+      }
+
       if (!availableViewsForToggle.includes(currentViewInternal)) {
         setCurrentViewInternal(BlockView.UI);
       }
-      const initialTextValues: Record<string, string> = {};
+
+      const newInitialTextValues: Record<string, string> = {};
       blockInstance.parameters.forEach(param => {
         if (param.type === 'number_input') {
-          initialTextValues[param.id] = String(param.currentValue);
+          newInitialTextValues[param.id] = String(param.currentValue);
         }
       });
-      setNumberInputTextValues(initialTextValues);
 
+      // Only update numberInputTextValues if instance ID changed or the actual values changed
+      if (
+        blockInstance.instanceId !== prevInstanceIdRef.current ||
+        JSON.stringify(newInitialTextValues) !== JSON.stringify(numberInputTextValues)
+      ) {
+        setNumberInputTextValues(newInitialTextValues);
+      }
+      prevInstanceIdRef.current = blockInstance.instanceId;
     } else {
-      setCurrentViewInternal(BlockView.UI);
-      setNumberInputTextValues({});
+      // Reset states if no block is selected, only if there was a previous block
+      if (prevInstanceIdRef.current !== null) {
+        setEditableName('');
+        setCurrentViewInternal(BlockView.UI);
+        setNumberInputTextValues({});
+        prevInstanceIdRef.current = null;
+      }
     }
-  }, [blockInstance, blockDefinition, currentViewInternal, availableViewsForToggle]);
+  }, [blockInstance, blockDefinition, currentViewInternal, availableViewsForToggle, editableName, numberInputTextValues]);
 
 
   if (!blockInstance || !blockDefinition) {
