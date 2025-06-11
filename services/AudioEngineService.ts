@@ -94,7 +94,7 @@ export class AudioEngineService {
         }
 
         try {
-            const initResult = await this._audioContextService.initialize(true);
+            const initResult = await this._audioContextService.initialize(false); // Changed true to false here
             this._audioContext = initResult.context;
             if (!this._audioContext) {
                 throw new Error("AudioContext could not be initialized by AudioContextService.");
@@ -211,7 +211,7 @@ export class AudioEngineService {
 
     public removeAllManagedNodes = (): void => {
         this.audioWorkletManager.removeAllManagedWorkletNodes();
-        this.nativeNodeManager.removeAllNodes();
+        this.nativeNodeManager.removeAllManagedNativeNodes();
         // Lyria services might have their own cleanup, TBD
         this._notifySubscribers(); // If UI depends on node list
     };

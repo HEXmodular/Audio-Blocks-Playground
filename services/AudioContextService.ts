@@ -92,10 +92,11 @@ export class AudioContextService {
 
 
         if (newContext.state === 'suspended' && resumeContext) {
-          console.log("[AudioContextService Init] New context is suspended. Attempting resume...");
-          await newContext.resume();
-          contextJustResumed = true;
-          console.log(`[AudioContextService Init] Resume attempt finished. New context state: ${newContext.state}.`);
+          // Do not resume here on initial creation if it's suspended.
+          // The first resume should be triggered by a user gesture.
+          // We will still set contextJustResumed to false as it wasn't resumed by this path.
+          console.log("[AudioContextService Init] New context is suspended. User gesture will be needed to resume.");
+          contextJustResumed = false;
         }
       } catch (creationError) {
         const msg = `Critical Error initializing new AudioContext: ${(creationError as Error).message}`;
