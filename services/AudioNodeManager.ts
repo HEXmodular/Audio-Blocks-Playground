@@ -61,9 +61,9 @@ export class AudioNodeManager {
             return;
         }
 
-        blockInstances.forEach(instance => {
+        for (const instance of blockInstances) { // MODIFIED
             const definition = this.getDefinition(instance);
-            if (!definition || !definition.runsAtAudioRate) return;
+            if (!definition || !definition.runsAtAudioRate) continue; // MODIFIED
 
             const isAudioContextRunning = audioContextCurrent.state === 'running';
 
@@ -140,7 +140,7 @@ export class AudioNodeManager {
                 }));
                 this.addLog(instance.instanceId, "Audio system not active. Node requires setup.", "warn");
             }
-        });
+        } // MODIFIED
     }
 
     public updateAudioNodeParameters(
