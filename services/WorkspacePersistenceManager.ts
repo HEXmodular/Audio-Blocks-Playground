@@ -3,7 +3,7 @@ import { BlockDefinition, BlockInstance, Connection } from '../types'; // Adjust
 import { BlockStateManager } from '../state/BlockStateManager'; // Adjust path
 import { AudioEngineService } from './AudioEngineService'; // Adjust path
 import { ConnectionState } from './ConnectionState'; // Adjust path
-import { CORE_BLOCK_DEFINITIONS_ARRAY } from '../constants'; // Adjust path
+import { ALL_BLOCK_DEFINITIONS } from '../constants'; // Adjust path
 
 export class WorkspacePersistenceManager {
     private getBlockDefinitions: () => BlockDefinition[];
@@ -91,7 +91,7 @@ export class WorkspacePersistenceManager {
                     selectedSinkId: importedSinkId,
                 } = workspace;
 
-                const coreDefsMap = new Map(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => [def.id, def]));
+                const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
                 importedDefinitions.forEach((def: BlockDefinition) => {
                     if (!coreDefsMap.has(def.id)) {
                         coreDefsMap.set(def.id, { ...def, isAiGenerated: true });
