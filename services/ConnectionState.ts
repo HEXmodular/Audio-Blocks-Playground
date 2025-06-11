@@ -45,7 +45,7 @@ export class ConnectionState {
     return [...this.connections]; // Return a copy
   }
 
-  public updateConnections(updater: Connection[] | ((prev: Connection[]) => Connection[])): void {
+public updateConnections = (updater: Connection[] | ((prev: Connection[]) => Connection[])): void => {
     if (typeof updater === 'function') {
       this.connections = updater(this.connections);
     } else {
