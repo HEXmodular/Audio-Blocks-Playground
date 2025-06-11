@@ -11,10 +11,16 @@ import {
 export class AudioNodeManager {
     private audioEngineService: AudioEngineService;
     private blockStateManager: BlockStateManager; // For updating instance state & logging
+    private readonly getDefinitionByIdCallback: (definitionId: string) => BlockDefinition | undefined;
 
-    constructor(audioEngineService: AudioEngineService, blockStateManager: BlockStateManager) {
+    constructor(
+        audioEngineService: AudioEngineService,
+        blockStateManager: BlockStateManager,
+        getDefinitionByIdFunc: (definitionId: string) => BlockDefinition | undefined
+    ) {
         this.audioEngineService = audioEngineService;
         this.blockStateManager = blockStateManager;
+        this.getDefinitionByIdCallback = getDefinitionByIdFunc;
     }
 
     // Helper to update instance state and add logs
@@ -25,7 +31,7 @@ export class AudioNodeManager {
         this.blockStateManager.addLogToBlockInstance(instanceId, message, type);
     }
     private getDefinition(instance: BlockInstance): BlockDefinition | undefined {
-        return this.blockStateManager.getDefinitionById(instance.definitionId);
+        return this.getDefinitionByIdCallback(instance.definitionId);
     }
 
     public processAudioNodeSetupAndTeardown(

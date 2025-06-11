@@ -197,9 +197,9 @@ const App: React.FC = () => {
 
   // Instantiate AudioNodeManager
   const audioNodeManager = useMemo(() => {
-    if (!ctxBlockStateManager) return null;
-    return new AudioNodeManager(audioEngineService, ctxBlockStateManager);
-  }, [audioEngineService, ctxBlockStateManager]);
+    if (!ctxBlockStateManager || !ctxGetDefinitionById) return null; // Add null check for ctxGetDefinitionById
+    return new AudioNodeManager(audioEngineService, ctxBlockStateManager, ctxGetDefinitionById);
+  }, [audioEngineService, ctxBlockStateManager, ctxGetDefinitionById]); // Add ctxGetDefinitionById to dependency array
 
   // Effect for audio node setup and teardown
   useEffect(() => {
