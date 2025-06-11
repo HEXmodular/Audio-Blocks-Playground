@@ -41,7 +41,7 @@ export class AudioNodeManager {
         return this.getDefinitionByIdCallback(instance.definitionId);
     }
 
-    public processAudioNodeSetupAndTeardown(
+    public async processAudioNodeSetupAndTeardown(
         blockInstances: BlockInstance[],
         globalBpm: number,
         isAudioGloballyEnabled: boolean,
@@ -122,8 +122,8 @@ export class AudioNodeManager {
                 else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
-                        const node = this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
-                        if (node) {
+                        const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
+                        if (success) {
                             this.updateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
                             this.addLog(instance.instanceId, "Native node setup successful.");
                         } else {

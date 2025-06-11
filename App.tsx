@@ -212,13 +212,22 @@ const App: React.FC = () => {
   // Effect for audio node setup and teardown
   useEffect(() => {
     if (!audioNodeManager || !ctxBlockStateManager) return;
-    audioNodeManager.processAudioNodeSetupAndTeardown(
-      appBlockInstancesFromCtx,
-      globalBpm,
-      syncedGlobalAudioState.isAudioGloballyEnabled,
-      syncedGlobalAudioState.isWorkletSystemReady,
-      audioEngineService.audioContext // Pass the current AudioContext object
-    );
+    const setupNodes = async () => {
+      try {
+        await audioNodeManager.processAudioNodeSetupAndTeardown(
+          appBlockInstancesFromCtx,
+          globalBpm,
+          syncedGlobalAudioState.isAudioGloballyEnabled,
+          syncedGlobalAudioState.isWorkletSystemReady,
+          audioEngineService.audioContext
+        );
+      } catch (error) {
+        console.error("Error during processAudioNodeSetupAndTeardown:", error);
+        // Optionally, you could set a global error state here if the app has one
+        // For example: setGlobalError("Failed to process audio nodes: " + (error as Error).message);
+      }
+    };
+    setupNodes();
   }, [
     audioNodeManager,
     appBlockInstancesFromCtx,

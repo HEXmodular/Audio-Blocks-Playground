@@ -42,6 +42,7 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
     // Bind event handlers
     this.handleGlobalMouseMove = this.handleGlobalMouseMove.bind(this);
     this.handleGlobalMouseUp = this.handleGlobalMouseUp.bind(this);
+    this.handleStartConnectionDrag = this.handleStartConnectionDrag.bind(this);
 
     // Add event listeners
     document.addEventListener('mousemove', this.handleGlobalMouseMove);

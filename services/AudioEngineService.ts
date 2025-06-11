@@ -15,7 +15,7 @@ import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
 import { NativeNodeManager, ManagedNativeNodeInfo } from './NativeNodeManager';
 import { LyriaServiceManager, ManagedLyriaServiceInfo } from './LyriaServiceManager';
-import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition } from '../types';
+import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '../types';
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;
@@ -351,8 +351,8 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this.audioWorkletManager.sendMessage(nodeId, message);
     }
 
-    public addNativeNode = (type: string, options?: AudioNodeOptions): AudioNode | undefined => {
-        return this.nativeNodeManager.addNode(type, options);
+    public addNativeNode = async (instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> => {
+        return this.nativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
     }
 
     public removeNativeNode = (nodeId: string): void => {
