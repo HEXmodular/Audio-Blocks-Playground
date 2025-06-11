@@ -117,6 +117,11 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         const initResult = await this._audioContextService.initialize(false); // false means don't force resume here
         this._audioContext = initResult.context;
 
+        // Update NativeNodeManager with the new AudioContext
+        if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
+            this.nativeNodeManager._setAudioContext(this._audioContext);
+        }
+
         if (!this._audioContext || this._audioContext.state === 'closed') {
             const errorMessage = `Failed to initialize AudioContext or it's closed. State: ${this._audioContext?.state || 'null'}`;
             console.error(`AudioEngineService: ${errorMessage}`);
@@ -234,6 +239,13 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
 
     // Always get the most current context from the service.
     this._audioContext = this._audioContextService.getAudioContext();
+
+    // Update NativeNodeManager with the potentially new AudioContext
+    // This should be done early, right after fetching the new context.
+    // If the context is null or closed, _setAudioContext should handle it gracefully.
+    if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
+        this.nativeNodeManager._setAudioContext(this._audioContext);
+    }
 
     // Check 1: Is the context fundamentally unusable?
     if (!this._audioContext || this._audioContext.state === 'closed') {
@@ -391,6 +403,10 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                 console.error('Error closing AudioContext:', error);
             });
             this._audioContext = null;
+            // Also inform NativeNodeManager that the context is now null
+            if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
+                this.nativeNodeManager._setAudioContext(null);
+            }
         }
         this.removeAllManagedNodes(); // This will also call disconnectAll again, which is safe.
         this._subscribers = [];

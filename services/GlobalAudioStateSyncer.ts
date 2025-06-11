@@ -37,15 +37,48 @@ export class GlobalAudioStateSyncer {
   }
 
   private handleAudioEngineChange = () => {
-    const newState: GlobalAudioState = {
-      isAudioGloballyEnabled: this.audioEngineService.isAudioGloballyEnabled,
-      availableOutputDevices: [...this.audioEngineService.availableOutputDevices],
-      selectedSinkId: this.audioEngineService.selectedSinkId,
-      audioContextState: this.audioEngineService.audioContext?.state || null,
+    const newEngineState = this.audioEngineService.audioEngineState; // Get the comprehensive state
+    const newGlobalState: GlobalAudioState = {
+      isAudioGloballyEnabled: newEngineState.isAudioGloballyEnabled,
+      // Ensure a new array instance for availableOutputDevices if changed, or for initial population
+      availableOutputDevices: [...newEngineState.availableOutputDevices],
+      selectedSinkId: newEngineState.selectedSinkId,
+      audioContextState: newEngineState.audioContextState,
+      // isWorkletSystemReady is not part of AudioEngineState, so get it directly
       isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+      // sampleRate is also not in GlobalAudioState, so omitting as per current interface
     };
-    this.currentState = newState;
-    this.notifyListeners();
+
+    let changed = false;
+    if (newGlobalState.isAudioGloballyEnabled !== this.currentState.isAudioGloballyEnabled) changed = true;
+    if (newGlobalState.selectedSinkId !== this.currentState.selectedSinkId) changed = true;
+    if (newGlobalState.audioContextState !== this.currentState.audioContextState) changed = true;
+    if (newGlobalState.isWorkletSystemReady !== this.currentState.isWorkletSystemReady) changed = true;
+
+    // Compare availableOutputDevices
+    if (!changed) { // Only if no other change has been detected yet
+      if (newGlobalState.availableOutputDevices.length !== this.currentState.availableOutputDevices.length) {
+        changed = true;
+      } else {
+        for (let i = 0; i < newGlobalState.availableOutputDevices.length; i++) {
+          if (newGlobalState.availableOutputDevices[i].deviceId !== this.currentState.availableOutputDevices[i].deviceId) {
+            changed = true;
+            break;
+          }
+          // Optional: compare other properties of AudioDevice if necessary for your definition of "changed"
+          // For example, if device labels changing should trigger an update:
+          // if (newGlobalState.availableOutputDevices[i].label !== this.currentState.availableOutputDevices[i].label) {
+          //   changed = true;
+          //   break;
+          // }
+        }
+      }
+    }
+
+    if (changed) {
+      this.currentState = newGlobalState;
+      this.notifyListeners();
+    }
   };
 
   public subscribe = (listener: (state: GlobalAudioState) => void): (() => void) => {
