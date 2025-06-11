@@ -1,6 +1,6 @@
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager } from '../state/BlockStateManager';
-import { AudioEngine } from '../hooks/useAudioEngine'; // Corrected path to the hook's interface
+import { AudioEngine } from './AudioEngine'; // Corrected path to the hook's interface
 import { LogicExecutionService } from '../services/LogicExecutionService'; // Corrected path
 
 export class LogicExecutionEngineManager {

@@ -1,6 +1,6 @@
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager';
-import { AudioEngine }  from '../hooks/useAudioEngine'; // Assuming AudioEngine is exported or use its path
+import { AudioEngine }  from './AudioEngine'; // Assuming AudioEngine is exported or use its path
 import {
     NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
