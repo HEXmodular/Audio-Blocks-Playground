@@ -9,11 +9,15 @@ import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '../../constants';
 jest.mock('../../state/BlockStateManager', () => {
     const originalModule = jest.requireActual('../../state/BlockStateManager');
     return {
-        ...originalModule, // Preserve other exports if any
+        ...originalModule,
         BlockStateManager: jest.fn().mockImplementation(() => ({
             updateBlockInstance: jest.fn(),
+            updateMultipleBlockInstances: jest.fn(), // Added for batching tests
             addLogToBlockInstance: jest.fn(),
-            getBlockInstanceById: jest.fn(), // Added if service internal API uses it
+            getBlockInstanceById: jest.fn(),
+            // Provide a mock for getDefinitionForBlock if it's part of BlockStateManager
+            // and LES is expected to use BSM's version directly.
+            // However, LES constructor takes a getDefinitionForBlock callback, so that's the primary one to mock.
         })),
         getDefaultOutputValue: jest.fn((type: string) => {
             // Use a simplified mock or the actual one for basic types
@@ -124,19 +128,34 @@ describe('LogicExecutionService', () => {
     });
 
     describe('Execution Order and Loop Control', () => {
-        test('runInstancesLoop executes instances in topological order', () => {
-            setupGraph();
+        test('runInstancesLoop should batch updates and call updateMultipleBlockInstances once', () => {
+            setupGraph(); // Sets up instA -> instB, instA outputs 10
+
+            // Prime instA's output for instB if not handled by setupGraph's lastRunOutputs
+             service['currentTickOutputs'] = { 'instA': { 'outA': 10 } };
+
+
             // Directly call runInstancesLoop (it's private, so use type assertion)
             (service as any).runInstancesLoop();
 
-            // Check updateBlockInstance was called for A then B
-            expect(mockBlockStateManager.updateBlockInstance.mock.calls[0][0]).toBe('instA');
-            expect(mockBlockStateManager.updateBlockInstance.mock.calls[1][0]).toBe('instB');
+            expect(mockBlockStateManager.updateMultipleBlockInstances).toHaveBeenCalledTimes(1);
+            const batchedUpdates = mockBlockStateManager.updateMultipleBlockInstances.mock.calls[0][0];
+            expect(batchedUpdates).toHaveLength(2);
 
-            // Check that instA's output (10) was used as input for instB, resulting in 20
-            const updateFnB = mockBlockStateManager.updateBlockInstance.mock.calls[1][1];
-            const finalStateB = updateFnB(mockInstances[1]); // mockInstances[1] is instB
-            expect(finalStateB.lastRunOutputs.outB).toBe(20);
+            // Check update for instA
+            const updateA = batchedUpdates.find((u: any) => u.instanceId === 'instA');
+            expect(updateA).toBeDefined();
+            expect(updateA.updates.lastRunOutputs.outA).toBe(10); // From 'setOutput("outA", 10);'
+
+            // Check update for instB
+            const updateB = batchedUpdates.find((u: any) => u.instanceId === 'instB');
+            expect(updateB).toBeDefined();
+            // instB logic: 'setOutput("outB", inputs.inB * 2);' where inputs.inB comes from instA's outA (10)
+            expect(updateB.updates.lastRunOutputs.outB).toBe(20);
+
+            // Verify order within the batch
+            expect(batchedUpdates[0].instanceId).toBe('instA');
+            expect(batchedUpdates[1].instanceId).toBe('instB');
         });
 
         test('startProcessingLoop starts interval if enabled and not running', () => {
@@ -172,85 +191,121 @@ describe('LogicExecutionService', () => {
         });
     });
 
-    describe('handleRunInstance - Logic Execution', () => {
-        test('executes simple logic, updates outputs and internal state', () => {
+    // Tests refactored to verify outcome via updateMultipleBlockInstances
+    describe('Logic Execution via runInstancesLoop (replaces handleRunInstance tests)', () => {
+        test('executes simple logic, updates outputs and internal state via batch', () => {
             const logicCode = 'setOutput("val", params.p1 + inputs.in1); return { newCount: (internalState.count || 0) + 1 };';
-            const def: BlockDefinition = { id: 'd1', name: 'D1', inputs: [{id: 'in1', name:'In1', type:'number'}], outputs: [{id:'val', name:'Val', type:'number'}], logicCode };
-            const inst: BlockInstance = { instanceId: 'i1', definitionId: 'd1', name:'I1', x:0,y:0, parameters: [{id:'p1', name:'P1', currentValue:10, type:'number'}], internalState: {count: 5}, lastRunOutputs:{}};
+            const def: BlockDefinition = { id: 'd1', name: 'D1', inputs: [{id: 'in1', name:'In1', type:'number'}], outputs: [{id:'val', name:'Val', type:'number'}], logicCode, category:'math', runsAtAudioRate: false };
+            const inst: BlockInstance = { instanceId: 'i1', definitionId: 'd1', name:'I1', position:{x:0,y:0}, parameters: [{id:'p1', name:'P1', currentValue:10, type:'number'} as BlockParameter], internalState: {count: 5}, lastRunOutputs:{}, logs:[]};
             mockDefinitions.set('d1', def);
-            (actualGetDefaultOutputValue as jest.Mock).mockReturnValueOnce(3); // For inputs.in1
+            mockInstances.push(inst);
+            (actualGetDefaultOutputValue as jest.Mock).mockReturnValue(3); // For inputs.in1
 
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
 
-            expect(mockBlockStateManager.updateBlockInstance).toHaveBeenCalledWith('i1', expect.any(Function));
-            const updateFn = mockBlockStateManager.updateBlockInstance.mock.calls[0][1];
-            const newState = updateFn(inst);
-            expect(newState.lastRunOutputs.val).toBe(13); // 10 (param) + 3 (input)
-            expect(newState.internalState.newCount).toBe(6);
+            expect(mockBlockStateManager.updateMultipleBlockInstances).toHaveBeenCalledTimes(1);
+            const batchedUpdates = mockBlockStateManager.updateMultipleBlockInstances.mock.calls[0][0];
+            expect(batchedUpdates).toHaveLength(1);
+            const updatePayload = batchedUpdates[0];
+            expect(updatePayload.instanceId).toBe('i1');
+            expect(updatePayload.updates.lastRunOutputs.val).toBe(13); // 10 (param) + 3 (input)
+            expect(updatePayload.updates.internalState.newCount).toBe(6);
         });
 
-        test('logs error and updates block if definition not found', () => {
-            const inst: BlockInstance = { instanceId: 'ghost', definitionId: 'noDef', name:'G', x:0,y:0,parameters:[], internalState:{}};
-            mockGetDefinitionForBlock.mockReturnValue(undefined);
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+        test('logs error and updates block if definition not found via batch', () => {
+            const inst: BlockInstance = { instanceId: 'ghost', definitionId: 'noDef', name:'G', position:{x:0,y:0}, parameters:[], internalState:{}, lastRunOutputs:{}, logs:[]};
+            mockInstances.push(inst);
+            getDefinitionForBlockMock.mockReturnValue(undefined); // Ensure getDefinitionForBlock (used by LES) returns undefined
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
+
             expect(mockBlockStateManager.addLogToBlockInstance).toHaveBeenCalledWith('ghost', "Error: Definition noDef not found.");
-            expect(mockBlockStateManager.updateBlockInstance).toHaveBeenCalledWith('ghost', { error: "Definition noDef not found." });
+            expect(mockBlockStateManager.updateMultipleBlockInstances).toHaveBeenCalledTimes(1);
+            const batchedUpdates = mockBlockStateManager.updateMultipleBlockInstances.mock.calls[0][0];
+            expect(batchedUpdates).toHaveLength(1);
+            const updatePayload = batchedUpdates[0];
+            expect(updatePayload.instanceId).toBe('ghost');
+            expect(updatePayload.updates.error).toBe("Definition noDef not found.");
         });
 
-        test('handles runtime error in block logic', () => {
-            const def: BlockDefinition = { id: 'dErr', name: 'DErr', inputs:[], outputs:[], logicCode: 'throw new Error("Logic boom!");' };
-            const inst: BlockInstance = { instanceId: 'iErr', definitionId: 'dErr', name:'IErr', x:0,y:0,parameters:[], internalState:{}};
+        test('handles runtime error in block logic via batch', () => {
+            const def: BlockDefinition = { id: 'dErr', name: 'DErr', inputs:[], outputs:[], logicCode: 'throw new Error("Logic boom!");', category:'test', runsAtAudioRate:false };
+            const inst: BlockInstance = { instanceId: 'iErr', definitionId: 'dErr', name:'IErr', position:{x:0,y:0},parameters:[], internalState:{}, lastRunOutputs:{}, logs:[]};
             mockDefinitions.set('dErr', def);
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+            mockInstances.push(inst);
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
+
             expect(mockBlockStateManager.addLogToBlockInstance).toHaveBeenCalledWith('iErr', "Runtime error in 'IErr': Logic boom!");
-            expect(mockBlockStateManager.updateBlockInstance).toHaveBeenCalledWith('iErr', {error: "Runtime error in 'IErr': Logic boom!", lastRunOutputs: {}});
+            expect(mockBlockStateManager.updateMultipleBlockInstances).toHaveBeenCalledTimes(1);
+            const batchedUpdates = mockBlockStateManager.updateMultipleBlockInstances.mock.calls[0][0];
+            expect(batchedUpdates).toHaveLength(1);
+            const updatePayload = batchedUpdates[0];
+            expect(updatePayload.instanceId).toBe('iErr');
+            expect(updatePayload.updates.error).toBe("Runtime error in 'IErr': Logic boom!");
+            expect(updatePayload.updates.lastRunOutputs).toEqual({});
         });
 
-        test('custom logger in logic code calls addLogToBlockInstance', () => {
+        test('custom logger in logic code calls addLogToBlockInstance (still direct)', () => {
             const logicCode = '__custom_block_logger__("Hello from logic"); return {};';
-            const def: BlockDefinition = { id: 'dLog', name: 'DLog', inputs: [], outputs: [], logicCode };
-            const inst: BlockInstance = { instanceId: 'iLog', definitionId: 'dLog', name:'ILog', x:0,y:0,parameters:[], internalState:{}};
+            const def: BlockDefinition = { id: 'dLog', name: 'DLog', inputs: [], outputs: [], logicCode, category:'test', runsAtAudioRate:false };
+            const inst: BlockInstance = { instanceId: 'iLog', definitionId: 'dLog', name:'ILog', position:{x:0,y:0},parameters:[], internalState:{}, lastRunOutputs:{}, logs:[]};
             mockDefinitions.set('dLog', def);
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+            mockInstances.push(inst);
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
+
             expect(mockBlockStateManager.addLogToBlockInstance).toHaveBeenCalledWith('iLog', "Hello from logic");
         });
 
         test('postMessageToWorklet in logic calls audioEngine method', () => {
             const logicCode = 'postMessageToWorklet({ type: "testMsg" }); return {};';
-            const def: BlockDefinition = { id: 'dWkt', name: 'DWkt', inputs: [], outputs: [], logicCode };
-            const inst: BlockInstance = { instanceId: 'iWkt', definitionId: 'dWkt', name:'IWkt', x:0,y:0,parameters:[], internalState:{}};
+            const def: BlockDefinition = { id: 'dWkt', name: 'DWkt', inputs: [], outputs: [], logicCode, category:'test', runsAtAudioRate:false };
+            const inst: BlockInstance = { instanceId: 'iWkt', definitionId: 'dWkt', name:'IWkt', position:{x:0,y:0},parameters:[], internalState:{}, lastRunOutputs:{}, logs:[]};
             mockDefinitions.set('dWkt', def);
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+            mockInstances.push(inst);
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
+
             expect(mockAudioEngine.sendManagedAudioWorkletNodeMessage).toHaveBeenCalledWith('iWkt', {type: "testMsg"});
         });
 
-        test('handles NATIVE_AD_ENVELOPE_BLOCK_DEFINITION trigger', () => {
-            const def = NATIVE_AD_ENVELOPE_BLOCK_DEFINITION;
+        test('handles NATIVE_AD_ENVELOPE_BLOCK_DEFINITION trigger via batch', () => {
+            const def = NATIVE_AD_ENVELOPE_BLOCK_DEFINITION; // Assuming this is a valid BlockDefinition
             const inst: BlockInstance = {
-                instanceId: 'envAd', definitionId: def.id, name:'EnvAD', x:0,y:0,
+                instanceId: 'envAd', definitionId: def.id, name:'EnvAD', position:{x:0,y:0},
                 parameters: [
-                    {id: 'attackTime', currentValue: 0.1, type:'number'},
-                    {id: 'decayTime', currentValue: 0.5, type:'number'},
-                    {id: 'peakLevel', currentValue: 0.8, type:'number'},
-                ],
-                internalState: { envelopeNeedsTriggering: true }, // Logic should set this
-                lastRunOutputs: {}
+                    {id: 'attackTime', name:'Attack', currentValue: 0.1, type:'number'},
+                    {id: 'decayTime', name:'Decay', currentValue: 0.5, type:'number'},
+                    {id: 'peakLevel', name:'Peak', currentValue: 0.8, type:'number'},
+                ] as BlockParameter[],
+                internalState: {}, // Logic will set envelopeNeedsTriggering
+                lastRunOutputs: {}, logs:[]
             };
             mockDefinitions.set(def.id, def);
-            // Simulate logic that sets envelopeNeedsTriggering to true
-            const originalCompileFunc = (service as any).compileLogicFunction;
-            (service as any).compileLogicFunction = jest.fn().mockReturnValue(
-                () => ({ envelopeNeedsTriggering: true }) // Mocked logic function's return
-            );
+            mockInstances.push(inst);
 
-            (service as any).handleRunInstance(inst, {sampleRate: 48000, bpm: 120});
+            // Simulate logic that sets envelopeNeedsTriggering to true
+            const originalCompileLogicFunction = (service as any).compileLogicFunction;
+            (service as any).compileLogicFunction = (instanceId: string, logicCode: string) => {
+                return jest.fn().mockReturnValue({ envelopeNeedsTriggering: true }); // Mocked logic function's return for this test
+            };
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
+            (service as any).runInstancesLoop();
 
             expect(mockAudioEngine.triggerNativeNodeEnvelope).toHaveBeenCalledWith('envAd', 0.1, 0.5, 0.8);
-            const updateFn = mockBlockStateManager.updateBlockInstance.mock.calls[0][1];
-            const newState = updateFn(inst);
-            expect(newState.internalState.envelopeNeedsTriggering).toBe(false); // Should be reset
+            expect(mockBlockStateManager.updateMultipleBlockInstances).toHaveBeenCalledTimes(1);
+            const batchedUpdates = mockBlockStateManager.updateMultipleBlockInstances.mock.calls[0][0];
+            const updatePayload = batchedUpdates.find((u:any) => u.instanceId === 'envAd');
+            expect(updatePayload.updates.internalState.envelopeNeedsTriggering).toBe(false); // Should be reset
 
-            (service as any).compileLogicFunction = originalCompileFunc; // Restore
+            (service as any).compileLogicFunction = originalCompileLogicFunction; // Restore
         });
     });
 
@@ -275,21 +330,27 @@ describe('LogicExecutionService', () => {
             expect((service as any).logicFunctionCache.has('instB')).toBe(true); // instB should still be there
         });
 
-        test('recompiles function if not in cache (after clearing)', () => {
+        test('recompiles function if not in cache (after clearing) when processing loop runs', () => {
             const logicCode = 'setOutput("val", 1); return {};';
-            const def: BlockDefinition = { id: 'cacheDef', name: 'Cache', inputs: [], outputs: [{id: 'val', name: 'Val', type: 'number'}], logicCode };
-            const inst: BlockInstance = { instanceId: 'cacheInst', definitionId: 'cacheDef', name:'CacheInst', x:0,y:0,parameters:[], internalState:{}};
+            const def: BlockDefinition = { id: 'cacheDef', name: 'Cache', inputs: [], outputs: [{id: 'val', name: 'Val', type: 'number'}], logicCode, category:'test', runsAtAudioRate: false };
+            const inst: BlockInstance = { instanceId: 'cacheInst', definitionId: 'cacheDef', name:'CacheInst', position:{x:0,y:0},parameters:[], internalState:{}, lastRunOutputs:{}, logs:[]};
             mockDefinitions.set('cacheDef', def);
+            mockInstances.push(inst);
+
+            service.updateDependencies(mockInstances, [], 120, true, mockAudioEngine);
 
             const compileSpy = jest.spyOn(service as any, 'compileLogicFunction');
 
-            (service as any).handleRunInstance(inst, {sampleRate:48000, bpm:120}); // First run, compiles
+            (service as any).runInstancesLoop(); // First run, compiles
+            expect(compileSpy).toHaveBeenCalledWith('cacheInst', logicCode);
             expect(compileSpy).toHaveBeenCalledTimes(1);
 
             service.clearBlockFromCache('cacheInst');
+            compileSpy.mockClear(); // Clear spy calls but not implementation
 
-            (service as any).handleRunInstance(inst, {sampleRate:48000, bpm:120}); // Second run, should recompile
-            expect(compileSpy).toHaveBeenCalledTimes(2);
+            (service as any).runInstancesLoop(); // Second run, should recompile
+            expect(compileSpy).toHaveBeenCalledWith('cacheInst', logicCode);
+            expect(compileSpy).toHaveBeenCalledTimes(1);
 
             compileSpy.mockRestore();
         });

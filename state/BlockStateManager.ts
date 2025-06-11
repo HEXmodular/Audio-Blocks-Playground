@@ -57,12 +57,29 @@ const CORE_DEFINITION_IDS_SET = new Set(ALL_BLOCK_DEFINITIONS.map(def => def.id)
 
 // --- BlockStateManager Class ---
 
+// Simple debounce function
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: number | undefined;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = window.setTimeout(later, wait);
+  };
+}
+
+const DEBOUNCE_WAIT_MS = 300; // Or another suitable value
+
 export class BlockStateManager {
   private _blockDefinitions: BlockDefinition[];
   private _blockInstances: BlockInstance[];
   private _onDefinitionsChangeCallback: (definitions: BlockDefinition[]) => void;
   private _onInstancesChangeCallback: (instances: BlockInstance[]) => void;
   private _initializationDone: boolean = false;
+  private _debouncedSaveInstances: () => void;
+  private _debouncedSaveDefinitions: () => void;
 
   constructor(
     onDefinitionsChangeCallback: (definitions: BlockDefinition[]) => void,
@@ -71,15 +88,20 @@ export class BlockStateManager {
     this._onDefinitionsChangeCallback = onDefinitionsChangeCallback;
     this._onInstancesChangeCallback = onInstancesChangeCallback;
 
-    this._blockDefinitions = this._loadDefinitions();
-    this._blockInstances = this._loadAndProcessInstances(this._blockDefinitions);
+    // Initialize debounced functions
+    this._debouncedSaveInstances = debounce(this._saveInstancesToLocalStorageInternal.bind(this), DEBOUNCE_WAIT_MS);
+    this._debouncedSaveDefinitions = debounce(this._saveDefinitionsToLocalStorageInternal.bind(this), DEBOUNCE_WAIT_MS);
+
+    this._blockDefinitions = this._loadDefinitions(); // Loads from LS
+    this._blockInstances = this._loadAndProcessInstances(this._blockDefinitions); // Loads from LS
     
     this._onDefinitionsChangeCallback([...this._blockDefinitions]);
     this._onInstancesChangeCallback([...this._blockInstances]);
     
     this._initializationDone = true;
-    this._saveDefinitionsToLocalStorage();
-    this._saveInstancesToLocalStorage();
+    // Initial saves should still happen directly
+    this._saveDefinitionsToLocalStorageInternal(); // Save once on init
+    this._saveInstancesToLocalStorageInternal();   // Save once on init
   }
 
   private _handleRule110ParameterAdjustment(updatedInstance: BlockInstance, previousInstance: BlockInstance): BlockInstance {
@@ -328,7 +350,8 @@ export class BlockStateManager {
     });
   }
 
-  private _saveDefinitionsToLocalStorage() {
+  // Renamed original save methods
+  private _saveDefinitionsToLocalStorageInternal() {
     if (!this._initializationDone) return;
     try {
       const definitionsToSave = this._blockDefinitions.map(def => ({
@@ -344,13 +367,24 @@ export class BlockStateManager {
     }
   }
 
-  private _saveInstancesToLocalStorage() {
+  private _saveInstancesToLocalStorageInternal() {
     if (!this._initializationDone) return;
     try {
       localStorage.setItem('audioBlocks_instances', JSON.stringify(this._blockInstances));
     } catch (error) {
       console.error(`BlockStateManager: Failed to save block instances to localStorage: ${(error as Error).message}`);
     }
+  }
+
+  // Public-facing methods now call the debounced versions
+  private _saveDefinitionsToLocalStorage() {
+    if (!this._initializationDone) return;
+    this._debouncedSaveDefinitions();
+  }
+
+  private _saveInstancesToLocalStorage() {
+    if (!this._initializationDone) return;
+    this._debouncedSaveInstances();
   }
 
   // --- Public API ---
@@ -521,4 +555,46 @@ export class BlockStateManager {
     this._saveDefinitionsToLocalStorage();
     this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
+
+  public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
+    let wasAnyInstanceUpdated = false;
+
+    this._blockInstances = this._blockInstances.map(currentBlockInst => {
+      // Find all updates pertaining to the currentBlockInst
+      const updatesForThisInstance = instanceUpdates.filter(upd => upd.instanceId === currentBlockInst.instanceId);
+
+      if (updatesForThisInstance.length > 0) {
+        wasAnyInstanceUpdated = true;
+        // Reduce all applicable updates sequentially onto the currentBlockInst
+        const updatedBlockInst = updatesForThisInstance.reduce((accInst, currentUpdatePayload) => {
+          let newBlockStatePartial: BlockInstance;
+          if (typeof currentUpdatePayload.updates === 'function') {
+            newBlockStatePartial = currentUpdatePayload.updates(accInst);
+          } else {
+            newBlockStatePartial = { ...accInst, ...currentUpdatePayload.updates };
+          }
+          // Apply Rule 110 specific logic if necessary after each partial update within the batch for this instance
+          // Note: _handleRule110ParameterAdjustment takes the fully updated new state and the state before this specific adjustment.
+          // In a reduce chain, 'accInst' is the state *before* currentUpdatePayload.updates is applied.
+          // However, _handleRule110ParameterAdjustment might be better applied *after* all updates for an instance are merged,
+          // using the state *before this entire batch* for that instance as `previousInstance`.
+          // For simplicity and to match single update behavior, we'll pass `accInst` as previous for Rule110.
+          // This means if Rule110 logic depends on a parameter changed earlier in the *same batch* for the same instance, it will see it.
+          return this._handleRule110ParameterAdjustment(newBlockStatePartial, accInst);
+        }, currentBlockInst);
+        return updatedBlockInst;
+      }
+      return currentBlockInst;
+    });
+
+    if (wasAnyInstanceUpdated) {
+      this._saveInstancesToLocalStorage(); // Call the debounced save
+      this._onInstancesChangeCallback([...this._blockInstances]); // Notify listeners once
+    }
+  }
 }
+
+export type InstanceUpdatePayload = {
+    instanceId: string;
+    updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance);
+};

@@ -47,4 +47,18 @@ export class LogicExecutionEngineManager {
     this.logicExecutionService.stopProcessingLoop();
     console.log("[LogicExecutionEngineManager] Disposed and stopped processing loop.");
   }
+
+  // Method to clear a specific block's logic function from the cache
+  public clearBlockFromCache(instanceId: string): void {
+    if (this.logicExecutionService) {
+      this.logicExecutionService.clearBlockFromCache(instanceId);
+    }
+  }
+
+  // Optional: Method to clear the entire logic function cache
+  public clearAllLogicFunctionCache(): void {
+    if (this.logicExecutionService) {
+        this.logicExecutionService.clearLogicFunctionCache();
+    }
+  }
 }

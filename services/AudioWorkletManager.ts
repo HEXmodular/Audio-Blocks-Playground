@@ -270,6 +270,12 @@ try {
       const newNode = new AudioWorkletNode(this.audioContext, definition.audioWorkletProcessorName, workletNodeOptions);
       console.log(`[WorkletManager NodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for '${instanceId}'.`);
 
+      newNode.port.onmessage = (event) => {
+        console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
+        // Existing logic for specific messages can go here, e.g. for requestSamplesFromWorklet
+        // This basic logging will capture all messages.
+      };
+
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
       if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
         inputGainNodeForOutputBlock = this.audioContext.createGain();
@@ -310,6 +316,7 @@ try {
   public sendManagedAudioWorkletNodeMessage(instanceId: string, message: any): void {
     const info = this.managedWorkletNodesRef.get(instanceId);
     if (info && info.node.port) {
+      console.log(`[AudioWorkletManager] Message TO Worklet (${instanceId}):`, message);
       info.node.port.postMessage(message);
     }
   }
@@ -346,18 +353,30 @@ try {
     }
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        workletInfo.node.port.removeEventListener('message', messageListener);
+        // workletInfo.node.port.removeEventListener('message', messageListener); // This line is problematic if messageListener is not defined in this scope due to onmessage assignment
         reject(new Error(`Timeout waiting for samples from worklet ${instanceId} after ${timeoutMs}ms`));
       }, timeoutMs);
-      const messageListener = (event: MessageEvent) => {
+
+      const specificMessageListener = (event: MessageEvent) => {
         if (event.data?.type === 'RECENT_SAMPLES_DATA' && event.data.samples instanceof Float32Array) {
           clearTimeout(timeoutId);
-          workletInfo.node.port.removeEventListener('message', messageListener);
+          workletInfo.node.port.removeEventListener('message', specificMessageListener); // Remove this specific listener
           resolve(event.data.samples);
         }
+        // Note: The generic onmessage handler added earlier will also log this.
+        // If that's too noisy for this specific request, the generic handler could filter out RECENT_SAMPLES_DATA
+        // or this specific listener could be made the *only* one temporarily for this operation,
+        // which would require removing and then re-adding the generic listener.
+        // For now, accepting that the generic log will also fire.
       };
-      workletInfo.node.port.addEventListener('message', messageListener);
-      workletInfo.node.port.postMessage({ type: 'GET_RECENT_SAMPLES' });
+      workletInfo.node.port.addEventListener('message', specificMessageListener);
+
+      // Ensure the generic onmessage handler is not overwritten if it was set using addEventListener
+      // If newNode.port.onmessage was assigned directly, this new addEventListener is fine.
+      // If multiple distinct listeners are needed, always use addEventListener/removeEventListener.
+      // The current change assigns .onmessage, so addEventListener here is for a *separate* listener.
+
+      this.sendManagedAudioWorkletNodeMessage(instanceId, { type: 'GET_RECENT_SAMPLES' }); // Use the logging sender
     });
   }
 

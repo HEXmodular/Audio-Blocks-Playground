@@ -72,6 +72,7 @@ export class LogicExecutionService {
   // Cache for compiled logic functions
   private logicFunctionCache: Map<string, Function> = new Map();
 
+
   constructor(
     blockStateManager: BlockStateManager,
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
@@ -126,19 +127,27 @@ export class LogicExecutionService {
     return compiledFunction;
   }
 
-  private handleRunInstance(instance: BlockInstance, audioContextInfo: { sampleRate: number, bpm: number }): void {
+  // New method to prepare updates for a single instance
+  private prepareInstanceUpdate(
+    instance: BlockInstance,
+    audioContextInfo: { sampleRate: number; bpm: number }
+  ): { instanceId: string; updates: Partial<BlockInstance> } | null {
     const definition = this.getDefinitionForBlock(instance);
     if (!definition) {
-      this.blockStateManager.addLogToBlockInstance(instance.instanceId, `Error: Definition ${instance.definitionId} not found.`);
-      this.blockStateManager.updateBlockInstance(instance.instanceId, { error: `Definition ${instance.definitionId} not found.` });
-      return;
+      // Error handling: prepare an update that sets the error state
+      this.blockStateManager.addLogToBlockInstance(instance.instanceId, `Error: Definition ${instance.definitionId} not found.`); // Added log
+      return {
+        instanceId: instance.instanceId,
+        updates: { error: `Definition ${instance.definitionId} not found.` }
+      };
     }
 
     if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
-        return; // Handled by App.tsx effects
+        return null;
     }
 
     const inputValuesForLogic: Record<string, any> = {};
+    // ... (logic for inputValuesForLogic as in current handleRunInstance)
     definition.inputs.forEach(inputPort => {
       const conn = this.currentConnections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
       if (conn) {
@@ -153,29 +162,27 @@ export class LogicExecutionService {
       }
     });
 
+
     const parameterValuesForLogic: Record<string, any> = {};
     instance.parameters.forEach(param => parameterValuesForLogic[param.id] = param.currentValue);
 
     try {
       const mainLogicFunction = this.compileLogicFunction(instance.instanceId, definition.logicCode);
-
       let outputsFromLogic: Record<string, any> = {};
       const setOutputInLogic = (outputId: string, value: any) => { outputsFromLogic[outputId] = value; };
-      const loggerInLogic = (message: string) => this.blockStateManager.addLogToBlockInstance(instance.instanceId, message);
-      // Ensure audioEngine is available before trying to access its methods
+      const loggerInLogic = (message: string) => {
+        // This logger call still needs to happen immediately or be batched in a different way.
+        // For now, let it call directly, as logs aren't usually performance critical in the same way as state updates.
+        this.blockStateManager.addLogToBlockInstance(instance.instanceId, message);
+      };
       const postMessageToWorkletInLogic = this.audioEngine
           ? (message: any) => this.audioEngine?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message)
           : () => console.warn(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`);
 
-
       const nextInternalStateOpaque = mainLogicFunction(
-        inputValuesForLogic,
-        parameterValuesForLogic,
+        inputValuesForLogic, parameterValuesForLogic,
         { ...(instance.internalState || {}), lastTriggerStateBeforeCurrentLogicPass: instance.internalState?.lastTriggerState },
-        setOutputInLogic,
-        loggerInLogic,
-        audioContextInfo,
-        postMessageToWorkletInLogic
+        setOutputInLogic, loggerInLogic, audioContextInfo, postMessageToWorkletInLogic
       );
 
       const finalOutputsForTick: Record<string, any> = {};
@@ -186,7 +193,8 @@ export class LogicExecutionService {
 
       let newInternalState = { ...(instance.internalState || {}), ...nextInternalStateOpaque };
 
-      if (this.audioEngine) { // Check if audioEngine is available
+      // ... (audioEngine calls like triggerNativeNodeEnvelope as in current handleRunInstance) ...
+      if (this.audioEngine) {
         if (definition.id === NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id && newInternalState.envelopeNeedsTriggering) {
           const attackParam = instance.parameters.find(p => p.id === 'attackTime');
           const decayParam = instance.parameters.find(p => p.id === 'decayTime');
@@ -233,68 +241,78 @@ export class LogicExecutionService {
       }
 
 
-      this.blockStateManager.updateBlockInstance(instance.instanceId, currentInstance => ({
-        ...currentInstance,
+          return {
+            instanceId: instance.instanceId,
+            updates: {
         internalState: newInternalState,
         lastRunOutputs: finalOutputsForTick,
         error: null,
-      }));
+            }
+          };
 
-    } catch (e: any) {
-      const errorMsg = `Runtime error in '${instance.name}': ${e.message}`;
-      this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg);
-      this.blockStateManager.updateBlockInstance(instance.instanceId, { error: errorMsg, lastRunOutputs: {} });
-      this.currentTickOutputs[instance.instanceId] = {};
-    }
+        } catch (e: any) {
+          const errorMsg = `Runtime error in '${instance.name}': ${e.message}`;
+          this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg); // Log immediately
+          return {
+            instanceId: instance.instanceId,
+            updates: { error: errorMsg, lastRunOutputs: {} }
+          };
   }
-
-  private runInstancesLoop(): void {
-    if (!this.audioEngine || !this.currentIsAudioGloballyEnabled) {
-      this.stopProcessingLoop(); // Stop if audio is disabled or engine is not available
-      return;
-    }
-
-    const orderedInstanceIds = determineExecutionOrder(this.currentBlockInstances, this.currentConnections);
-    const sampleRate = this.audioEngine.getSampleRate();
-    const audioContextInfo = {
-      sampleRate: sampleRate || 44100,
-      bpm: this.currentGlobalBpm,
-    };
-
-    // Reset/clear currentTickOutputs for instances that might have been removed or had errors previously
-    const validInstanceIds = new Set(this.currentBlockInstances.map(b => b.instanceId));
-    for (const instId in this.currentTickOutputs) {
-        if (!validInstanceIds.has(instId)) {
-            delete this.currentTickOutputs[instId];
-        }
-    }
-
-    // Initialize currentTickOutputs for all current instances with their last known outputs
-    // This ensures that if a block doesn't run in a tick (e.g., due to cycle or error),
-    // downstream blocks can still use its last valid output.
-    this.currentBlockInstances.forEach(instance => {
-        if (!this.currentTickOutputs[instance.instanceId]) {
-            this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
-        }
-    });
-
-
-    for (const instanceId of orderedInstanceIds) {
-      const instance = this.currentBlockInstances.find(b => b.instanceId === instanceId);
-      if (instance) {
-        // Ensure currentTickOutputs for the instance is initialized if it wasn't already
-        if (!this.currentTickOutputs[instance.instanceId]) {
-            this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
-        }
-        this.handleRunInstance(instance, audioContextInfo);
-      } else {
-        // This case should ideally not happen if orderedInstanceIds is derived from currentBlockInstances
-        console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
       }
+
+      // Remove or comment out the old handleRunInstance method
+      // private handleRunInstance(instance: BlockInstance, audioContextInfo: { sampleRate: number, bpm: number }): void { ... }
+
+      private runInstancesLoop(): void {
+        if (!this.audioEngine || !this.currentIsAudioGloballyEnabled) {
+          this.stopProcessingLoop();
+          return;
+        }
+
+        const orderedInstanceIds = determineExecutionOrder(this.currentBlockInstances, this.currentConnections);
+        const sampleRate = this.audioEngine.getSampleRate();
+        const audioContextInfo = {
+          sampleRate: sampleRate || 44100,
+          bpm: this.currentGlobalBpm,
+        };
+
+        const validInstanceIds = new Set(this.currentBlockInstances.map(b => b.instanceId));
+        for (const instId in this.currentTickOutputs) {
+            if (!validInstanceIds.has(instId)) {
+                delete this.currentTickOutputs[instId];
+            }
+        }
+
+        this.currentBlockInstances.forEach(instance => {
+            if (!this.currentTickOutputs[instance.instanceId]) {
+                this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
+            }
+        });
+
+        const instanceUpdates: Array<{ instanceId: string; updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance) }> = [];
+
+        for (const instanceId of orderedInstanceIds) {
+          const instance = this.currentBlockInstances.find(b => b.instanceId === instanceId);
+          if (instance) {
+            if (!this.currentTickOutputs[instance.instanceId]) {
+                this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
+            }
+
+            const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo); // New method
+            if (updatePayload) {
+                instanceUpdates.push(updatePayload);
+      }
+          } else {
+            console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
     }
   }
 
-  public startProcessingLoop(): void {
+        if (instanceUpdates.length > 0) {
+          this.blockStateManager.updateMultipleBlockInstances(instanceUpdates); // New method in BlockStateManager
+        }
+      }
+
+      public startProcessingLoop(): void {
     if (this.runIntervalId === null && this.currentIsAudioGloballyEnabled) {
       this.currentTickOutputs = {}; // Clear outputs from previous runs
       // Initialize currentTickOutputs with lastRunOutputs for all current instances

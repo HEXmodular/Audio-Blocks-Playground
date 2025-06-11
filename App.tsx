@@ -67,15 +67,26 @@ const App: React.FC = () => {
   } = useBlockState();
 
   const audioEngineService = useMemo(() => new AudioEngineService(), []);
-  const [, forceRender] = useState(0);
+  // const [, forceRender] = useState(0); // Removed forceRender
+
+  // State variables to replace direct audioEngineService access in render/effects
+  const [isAudioGloballyEnabled, setIsAudioGloballyEnabled] = useState(audioEngineService.isAudioGloballyEnabled);
+  const [availableOutputDevices, setAvailableOutputDevices] = useState(audioEngineService.availableOutputDevices);
+  const [selectedSinkId, setSelectedSinkId] = useState(audioEngineService.selectedSinkId);
+  const [audioContextState, setAudioContextState] = useState<AudioContextState | null>(audioEngineService.audioContext?.state || null);
+  const [isWorkletSystemReady, setIsWorkletSystemReady] = useState(audioEngineService.audioWorkletManager.isAudioWorkletSystemReady);
 
   useEffect(() => {
     const handleChange = () => {
-      forceRender(s => s + 1);
+      // Update state variables based on current values from audioEngineService
+      setIsAudioGloballyEnabled(audioEngineService.isAudioGloballyEnabled);
+      setAvailableOutputDevices([...audioEngineService.availableOutputDevices]); // Ensure new array for state change detection
+      setSelectedSinkId(audioEngineService.selectedSinkId);
+      setAudioContextState(audioEngineService.audioContext?.state || null);
+      setIsWorkletSystemReady(audioEngineService.audioWorkletManager.isAudioWorkletSystemReady);
     };
     const unsubscribe = audioEngineService.subscribe(handleChange);
-    // audioEngineService.initializeBasicAudioContext(); // Already called in service constructor
-    // forceRender(s => s + 1); // Initial render if needed for state derived from service
+    handleChange(); // Initial sync to ensure state is up-to-date
 
     return () => {
       unsubscribe();
