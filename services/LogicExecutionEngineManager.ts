@@ -7,7 +7,7 @@
  */
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager } from '../state/BlockStateManager';
-import { AudioEngine } from './AudioEngine'; // Corrected path to the hook's interface
+import { audioEngineService } from './AudioEngineService'; // Use the singleton
 import { LogicExecutionService } from '../services/LogicExecutionService'; // Corrected path
 
 export class LogicExecutionEngineManager {
@@ -15,13 +15,12 @@ export class LogicExecutionEngineManager {
 
   constructor(
     blockStateManager: BlockStateManager,
-    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    initialAudioEngine: AudioEngine | null // Can be initially null
+    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
   ) {
     this.logicExecutionService = new LogicExecutionService(
       blockStateManager,
       getDefinitionForBlock,
-      initialAudioEngine // Pass initialAudioEngine here
+      audioEngineService // Pass audioEngineService here
     );
   }
 
@@ -29,8 +28,7 @@ export class LogicExecutionEngineManager {
     appBlockInstances: BlockInstance[],
     connections: Connection[],
     globalBpm: number,
-    isAudioGloballyEnabled: boolean,
-    audioEngine: AudioEngine | null // Can change, e.g. become available
+    isAudioGloballyEnabled: boolean
   ): void {
     // Update dependencies for the service
     this.logicExecutionService.updateDependencies(
@@ -38,12 +36,12 @@ export class LogicExecutionEngineManager {
       connections,
       globalBpm,
       isAudioGloballyEnabled,
-      audioEngine
+      audioEngineService
     );
 
     // Manage processing loop based on current audio state
     // This logic is derived from the original useLogicExecutionEngine's useEffect
-    if (isAudioGloballyEnabled && audioEngine) {
+    if (isAudioGloballyEnabled && audioEngineService) { // Check audioEngineService
       this.logicExecutionService.startProcessingLoop();
     } else {
       this.logicExecutionService.stopProcessingLoop();

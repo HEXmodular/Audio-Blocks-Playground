@@ -7,7 +7,7 @@
  */
 import { BlockInstance, Connection, BlockDefinition } from '../types';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager';
-import { AudioEngine }  from './AudioEngine'; // Assuming AudioEngine is exported or use its path
+import { AudioEngineService } from './AudioEngineService';
 import {
     NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
@@ -66,7 +66,7 @@ function determineExecutionOrder(instances: BlockInstance[], connections: Connec
 export class LogicExecutionService {
   private blockStateManager: BlockStateManager;
   private getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
-  private audioEngine: AudioEngine | null = null;
+  private audioEngine: AudioEngineService | null = null;
 
   private currentBlockInstances: BlockInstance[] = [];
   private currentConnections: Connection[] = [];
@@ -83,7 +83,7 @@ export class LogicExecutionService {
   constructor(
     blockStateManager: BlockStateManager,
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    initialAudioEngine: AudioEngine | null
+    initialAudioEngine: AudioEngineService | null
   ) {
     this.blockStateManager = blockStateManager;
     this.getDefinitionForBlock = getDefinitionForBlock;
@@ -96,7 +96,7 @@ export class LogicExecutionService {
     connections: Connection[],
     globalBpm: number,
     isAudioGloballyEnabled: boolean,
-    audioEngine: AudioEngine | null
+    audioEngine: AudioEngineService | null
   ): void {
     this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled; // Update state first
     this.currentBlockInstances = blockInstances;

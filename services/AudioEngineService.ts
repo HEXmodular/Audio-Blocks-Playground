@@ -1,15 +1,21 @@
 /**
- * This service acts as a comprehensive manager for the application's audio capabilities, providing a centralized interface.
- * It initializes and oversees the core `AudioContext` via an internal `AudioContextService` instance, managing its lifecycle and state.
- * The service integrates and coordinates specialized managers: `AudioWorkletManager` for custom audio processing nodes, `NativeNodeManager` for standard Web Audio API nodes, and `LyriaServiceManager` for Lyria-specific audio functionalities.
- * It features a subscription model, allowing different parts of the application to listen for and react to changes in audio state, such as device changes or global audio enablement.
- * Responsibilities also include managing audio output devices, handling global audio toggling, and providing a unified API for node management and interaction, often exported as a singleton for global access.
+ * This service is the central and consolidated audio engine for the application, providing a comprehensive and unified interface for all audio capabilities.
+ * It initializes and oversees the core `AudioContext` (via an internal `AudioContextService` instance) and manages audio output devices (leveraging `AudioDeviceService` capabilities through `AudioContextService`).
+ * The service integrates and coordinates specialized managers for different types of audio nodes:
+ * - `AudioWorkletManager`: For custom audio processing using AudioWorklet nodes.
+ * - `NativeNodeManager`: For standard Web Audio API nodes (e.g., GainNode, OscillatorNode).
+ * - `LyriaServiceManager`: For Lyria-specific audio functionalities and external service integrations.
+ * It is also responsible for managing the connections within the audio graph, using an internal `AudioGraphConnectorService` to establish and update routes between audio nodes.
+ * A subscription model allows various application components to listen for and react to changes in audio state, such as device changes, global audio enablement, or AudioContext state transitions.
+ * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
+ * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
 import { AudioContextService } from './AudioContextService';
-import { AudioWorkletManager } from './AudioWorkletManager';
-import { NativeNodeManager } from './NativeNodeManager';
-import { LyriaServiceManager } from './LyriaServiceManager';
-import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams } from '../types';
+import { AudioGraphConnectorService } from './AudioGraphConnectorService';
+import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
+import { NativeNodeManager, ManagedNativeNodeInfo } from './NativeNodeManager';
+import { LyriaServiceManager, ManagedLyriaServiceInfo } from './LyriaServiceManager';
+import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition } from '../types';
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;
@@ -26,12 +32,14 @@ export class AudioEngineService {
     public audioWorkletManager: AudioWorkletManager;
     public nativeNodeManager: NativeNodeManager;
     public lyriaServiceManager: LyriaServiceManager;
+    private audioGraphConnectorService: AudioGraphConnectorService;
 
     constructor() {
         this._audioContextService = new AudioContextService(this._notifySubscribers.bind(this));
         this.audioWorkletManager = new AudioWorkletManager(() => this._audioContext, this._notifySubscribers.bind(this));
         this.nativeNodeManager = new NativeNodeManager(() => this._audioContext, this._notifySubscribers.bind(this));
         this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this));
+        this.audioGraphConnectorService = new AudioGraphConnectorService();
 
         this.initializeBasicAudioContext();
         this.listOutputDevices();
@@ -295,17 +303,29 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this.audioWorkletManager.removeAllManagedWorkletNodes();
         this.nativeNodeManager.removeAllManagedNativeNodes();
         // Lyria services might have their own cleanup, TBD
+        this.audioGraphConnectorService.disconnectAll();
         this._notifySubscribers(); // If UI depends on node list
     };
 
-    public updateAudioGraphConnections = (/* parameters based on useAudioEngine's version */): void => {
-        // This method will need to be fleshed out.
-        // It involves reconnecting nodes, potentially based on some graph representation.
-        // For now, it's a placeholder.
-        console.log("updateAudioGraphConnections called. Implementation pending.");
+    public updateAudioGraphConnections = (connections: Connection[], blockInstances: BlockInstance[], getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined): void => {
+        this.audioGraphConnectorService.updateConnections(
+            this._audioContext,
+            this._isAudioGloballyEnabled,
+            connections,
+            blockInstances,
+            getDefinitionForBlock,
+            this.audioWorkletManager.getManagedNodesMap(),
+            this.nativeNodeManager.getManagedNodesMap(),
+            this.lyriaServiceManager.getManagedInstancesMap()
+        );
         // Potentially, re-connect masterGainNode if it was disconnected
-        if (this._audioContext && this._masterGainNode && this._masterGainNode.numberOfOutputs === 0) {
-             this._masterGainNode.connect(this._audioContext.destination);
+        // This logic might be better handled within updateConnections or based on its outcome
+        if (this._audioContext && this._masterGainNode && this._masterGainNode.numberOfOutputs === 0 && this._isAudioGloballyEnabled) {
+             // Ensure masterGainNode is connected only if audio is supposed to be playing.
+             // The updateConnections might handle all necessary (re)connections, making this redundant or potentially conflicting.
+             // For now, let's assume updateConnections handles all connections including to destination if needed.
+             // If specific logic for masterGainNode is still required, it should be clarified.
+             // Example: this._masterGainNode.connect(this._audioContext.destination);
         }
         this._notifySubscribers(); // If graph changes affect UI
     };
@@ -356,6 +376,8 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
 
     public dispose = (): void => {
         console.log('Disposing AudioEngineService...');
+        this.audioGraphConnectorService.disconnectAll(); // Ensure all connections are cleared before context is closed
+
         if (this._audioContext && this._audioContext.state !== 'closed') {
             // Disconnect master gain node
             if (this._masterGainNode) {
@@ -370,7 +392,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
             });
             this._audioContext = null;
         }
-        this.removeAllManagedNodes();
+        this.removeAllManagedNodes(); // This will also call disconnectAll again, which is safe.
         this._subscribers = [];
         this._isAudioGloballyEnabled = false;
         this._audioContextState = null;

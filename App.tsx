@@ -161,12 +161,12 @@ const App: React.FC = () => {
     if (ctxBlockStateManager) {
       return new LogicExecutionEngineManager(
         ctxBlockStateManager,
-        getDefinitionForBlock,
-        audioEngineService
+        getDefinitionForBlock
+        // audioEngineService removed as per new constructor
       );
     }
     return null;
-  }, [ctxBlockStateManager, getDefinitionForBlock, audioEngineService]);
+  }, [ctxBlockStateManager, getDefinitionForBlock]); // audioEngineService removed from deps if not used in constructor
 
   useEffect(() => {
     if (logicExecutionEngineManager) {
@@ -174,8 +174,8 @@ const App: React.FC = () => {
         appBlockInstancesFromCtx,
         connections,
         globalBpm,
-        syncedGlobalAudioState.isAudioGloballyEnabled, // Updated
-        audioEngineService
+        syncedGlobalAudioState.isAudioGloballyEnabled // Updated
+        // audioEngineService removed as per new method signature
       );
     }
   }, [
@@ -183,9 +183,17 @@ const App: React.FC = () => {
     appBlockInstancesFromCtx,
     connections,
     globalBpm,
-    audioEngineService, // audioEngineService itself is a dependency
+    // audioEngineService, // No longer a direct dependency for this effect if not passed to updateCoreDependencies
     syncedGlobalAudioState.isAudioGloballyEnabled // Specific state property
   ]);
+// Note: audioEngineService might still be a dependency if logicExecutionEngineManager implicitly depends on it
+// through its own constructor or other methods not directly called here.
+// However, for the direct call to updateCoreDependencies, it's removed.
+// The useMemo for logicExecutionEngineManager *does* depend on audioEngineService if it uses it internally,
+// which it does, so audioEngineService should remain in *that* useMemo's dependency array if it's used by the manager's constructor.
+// The original change to LogicExecutionEngineManager was to use the *imported singleton* audioEngineService,
+// so it doesn't need it passed to its constructor anymore.
+// Thus, removing audioEngineService from the useMemo's dependency array for LogicExecutionEngineManager is correct.
 
   useEffect(() => {
     return () => {
