@@ -79,6 +79,50 @@ export class LogicExecutionService {
   // Cache for compiled logic functions
   private logicFunctionCache: Map<string, Function> = new Map();
 
+  // --- Comparison Helper Methods ---
+
+  private areShallowObjectsDifferent(obj1: Record<string, any> | null | undefined, obj2: Record<string, any> | null | undefined): boolean {
+    if (obj1 === obj2) return false; // Same reference or both null/undefined
+    if (!obj1 || !obj2) return true; // One is null/undefined, the other isn't
+
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return true;
+
+    for (const key of keys1) {
+      if (!obj2.hasOwnProperty(key)) return true; // Key in obj1 but not in obj2
+
+      const val1 = obj1[key];
+      const val2 = obj2[key];
+
+      if (Array.isArray(val1) && Array.isArray(val2)) {
+        if (val1.length !== val2.length) return true;
+        for (let i = 0; i < val1.length; i++) {
+          if (val1[i] !== val2[i]) return true;
+        }
+      } else if (typeof val1 === 'object' && val1 !== null && typeof val2 === 'object' && val2 !== null) {
+        // For nested objects, this shallow compare will check reference.
+        // If actual deep value comparison is needed for some sub-objects, this needs enhancement.
+        if (val1 !== val2) return true;
+      } else {
+        if (val1 !== val2) return true;
+      }
+    }
+    return false;
+  }
+
+  private areOutputsDifferent(prevOutputs: Record<string, any> | null | undefined, newOutputs: Record<string, any> | null | undefined): boolean {
+    // Outputs are generally simple value types or arrays of simple types.
+    return this.areShallowObjectsDifferent(prevOutputs, newOutputs);
+  }
+
+  private areInternalStatesDifferent(prevState: Record<string, any> | null | undefined, newState: Record<string, any> | null | undefined): boolean {
+    // Internal state can be more complex, but we'll start with shallow.
+    // Specific complex properties might need custom handling or deeper comparison if this proves insufficient.
+    return this.areShallowObjectsDifferent(prevState, newState);
+  }
+
 
   constructor(
     blockStateManager: BlockStateManager,
@@ -307,7 +351,33 @@ export class LogicExecutionService {
 
             const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo); // New method
             if (updatePayload) {
-                instanceUpdates.push(updatePayload);
+                let significantChange = false;
+
+                // 1. Check for error state change
+                if ((instance.error || null) !== (updatePayload.updates.error || null)) {
+                    significantChange = true;
+                }
+
+                // 2. Check for output changes (if no error change detected yet)
+                // Ensure `lastRunOutputs` exists on `updatePayload.updates` before comparing.
+                // `prepareInstanceUpdate` should always provide it if no error, or empty if error.
+                if (!significantChange) {
+                    if (this.areOutputsDifferent(instance.lastRunOutputs, updatePayload.updates.lastRunOutputs)) {
+                        significantChange = true;
+                    }
+                }
+
+                // 3. Check for internal state changes (if no other change detected yet)
+                // Ensure `internalState` exists on `updatePayload.updates` before comparing.
+                if (!significantChange) {
+                    if (this.areInternalStatesDifferent(instance.internalState, updatePayload.updates.internalState)) {
+                        significantChange = true;
+                    }
+                }
+
+                if (significantChange) {
+                    instanceUpdates.push(updatePayload);
+                }
       }
           } else {
             console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);

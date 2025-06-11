@@ -310,28 +310,41 @@ export class BlockStateManager {
         console.warn(`BlockStateManager: Definition for instance ${loadedInst.name} (ID: ${loadedInst.definitionId}) not found during instance processing. Parameters might be incorrect.`);
       }
 
-      let initialInternalState = { ...(loadedInst.internalState || {}) };
+      let initialInternalState: BlockInstance['internalState'] = {
+        ...(loadedInst.internalState || {}), // Spread existing internal state first
+        // Initialize new flags, defaulting to false if not present in loadedInst.internalState
+        loggedWorkletSystemNotReady: loadedInst.internalState?.loggedWorkletSystemNotReady || false,
+        loggedAudioSystemNotActive: loadedInst.internalState?.loggedAudioSystemNotActive || false,
+      };
       if (definition) {
         initialInternalState.needsAudioNodeSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id);
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
             initialInternalState.needsAudioNodeSetup = false;
         }
         if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+            // For Lyria, ensure specific fields are there, respecting loaded values for new flags
             initialInternalState = {
-                ...initialInternalState,
                 lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
                 reconnectRequest: false, configUpdateNeeded: false, promptsUpdateNeeded: false, trackMuteUpdateNeeded: false,
                 autoPlayInitiated: false,
-                lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue,
-                lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
-                lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
-                lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
-                lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
-                lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
-                lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
-                lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-                lastEffectivePrompts: [], wasPausedDueToGateLow: false, prevStopTrigger: false, prevReconnectTrigger: false,
-                lastMuteBass: false, lastMuteDrums: false, lastOnlyBassDrums: false,
+                // Preserve already spread initialInternalState which includes new flags and any other loaded state
+                ...initialInternalState,
+                // Explicitly set Lyria specific defaults if not loaded, but new flags are already handled
+                lastScale: initialInternalState.lastScale ?? definition.parameters.find(p=>p.id === 'scale')?.defaultValue,
+                lastBrightness: initialInternalState.lastBrightness ?? definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
+                lastDensity: initialInternalState.lastDensity ?? definition.parameters.find(p=>p.id === 'density')?.defaultValue,
+                lastSeed: initialInternalState.lastSeed ?? definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
+                lastTemperature: initialInternalState.lastTemperature ?? definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
+                lastGuidanceScale: initialInternalState.lastGuidanceScale ?? definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
+                lastTopK: initialInternalState.lastTopK ?? definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
+                lastBpm: initialInternalState.lastBpm ?? definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
+                lastEffectivePrompts: initialInternalState.lastEffectivePrompts || [],
+                wasPausedDueToGateLow: initialInternalState.wasPausedDueToGateLow || false,
+                prevStopTrigger: initialInternalState.prevStopTrigger || false,
+                prevReconnectTrigger: initialInternalState.prevReconnectTrigger || false,
+                lastMuteBass: initialInternalState.lastMuteBass || false,
+                lastMuteDrums: initialInternalState.lastMuteDrums || false,
+                lastOnlyBassDrums: initialInternalState.lastOnlyBassDrums || false,
             };
         }
       }
@@ -340,7 +353,7 @@ export class BlockStateManager {
       return {
         ...restOfLoadedInst,
         parameters: instanceParams,
-        internalState: initialInternalState,
+        internalState: initialInternalState, // This now includes the initialized logging flags
         lastRunOutputs: loadedInst.lastRunOutputs || initialOutputs,
         logs: loadedInst.logs || [],
         modificationPrompts: loadedInst.modificationPrompts || [],
@@ -471,15 +484,20 @@ export class BlockStateManager {
         needsAudioSetup = false;
     }
     
-    let initialInternalState: Record<string, any> = { needsAudioNodeSetup: needsAudioSetup };
+    let initialInternalState: BlockInstance['internalState'] = {
+        needsAudioNodeSetup: needsAudioSetup,
+        loggedWorkletSystemNotReady: false, // Initialize new flag
+        loggedAudioSystemNotActive: false,   // Initialize new flag
+    };
     if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+        // Spread initialInternalState to keep the new logging flags
         initialInternalState = {
             ...initialInternalState,
             lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
             reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
             promptsUpdateNeeded: true, // Start with true to send initial prompt
             trackMuteUpdateNeeded: true, autoPlayInitiated: false,
-            lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue,
+                lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
             lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
             lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
             lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
@@ -487,8 +505,13 @@ export class BlockStateManager {
             lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
             lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
             lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-            lastEffectivePrompts: [], wasPausedDueToGateLow: false, prevStopTrigger: false, prevReconnectTrigger: false,
-            lastMuteBass: false, lastMuteDrums: false, lastOnlyBassDrums: false,
+                lastEffectivePrompts: [],
+                wasPausedDueToGateLow: false,
+                prevStopTrigger: false,
+                prevReconnectTrigger: false,
+                lastMuteBass: false,
+                lastMuteDrums: false,
+                lastOnlyBassDrums: false,
         };
     }
 
@@ -499,7 +522,7 @@ export class BlockStateManager {
       position: position || { x: 50 + Math.random() * 200, y: 50 + Math.random() * 100 },
       logs: [`Instance '${instanceName}' created.`],
       parameters: deepCopyParametersAndEnsureTypes(definition.parameters),
-      internalState: initialInternalState,
+      internalState: initialInternalState, // This now includes the initialized logging flags
       lastRunOutputs: initialOutputs,
       modificationPrompts: [],
     };

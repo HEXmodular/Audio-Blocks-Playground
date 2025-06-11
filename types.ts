@@ -72,7 +72,37 @@ export interface BlockInstance {
   position: { x: number; y: number }; 
   logs: string[];
   parameters: BlockParameter[]; 
-  internalState: Record<string, any>; 
+  internalState: {
+    needsAudioNodeSetup?: boolean;
+    lyriaServiceReady?: boolean;
+    autoPlayInitiated?: boolean;
+    playRequest?: boolean;
+    pauseRequest?: boolean;
+    stopRequest?: boolean;
+    reconnectRequest?: boolean;
+    configUpdateNeeded?: boolean;
+    promptsUpdateNeeded?: boolean;
+    trackMuteUpdateNeeded?: boolean;
+    lastScale?: any; // Consider more specific types if known
+    lastBrightness?: any;
+    lastDensity?: any;
+    lastSeed?: any;
+    lastTemperature?: any;
+    lastGuidanceScale?: any;
+    lastTopK?: any;
+    lastBpm?: any;
+    lastEffectivePrompts?: any[];
+    wasPausedDueToGateLow?: boolean;
+    prevStopTrigger?: boolean;
+    prevReconnectTrigger?: boolean;
+    lastMuteBass?: boolean;
+    lastMuteDrums?: boolean;
+    lastOnlyBassDrums?: boolean;
+    // New flags for logging
+    loggedWorkletSystemNotReady?: boolean;
+    loggedAudioSystemNotActive?: boolean;
+    [key: string]: any; // Allow other dynamic properties not explicitly typed
+  };
   lastRunOutputs: Record<string, any>; 
   modificationPrompts: string[]; 
   isRunning?: boolean; 

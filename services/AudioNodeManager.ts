@@ -53,10 +53,21 @@ export class AudioNodeManager {
             blockInstances.forEach(instance => {
                 const definition = this.getDefinition(instance);
                 if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
+                    // Node was set up, but audio context is now gone. Mark for setup and log if not already.
+                    const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
                     this.updateInstance(instance.instanceId, currentInst => ({
                         ...currentInst,
-                        internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false }
+                        internalState: {
+                            ...currentInst.internalState,
+                            needsAudioNodeSetup: true,
+                            lyriaServiceReady: false, // Reset related flags
+                            autoPlayInitiated: false,
+                            loggedAudioSystemNotActive: true // Set the flag
+                        }
                     }));
+                    if (needsToLog) {
+                        this.addLog(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
+                    }
                 }
             });
             return;
@@ -77,7 +88,13 @@ export class AudioNodeManager {
                             .then(success => {
                                 this.updateInstance(instance.instanceId, currentInst => ({
                                     ...currentInst,
-                                    internalState: { ...currentInst.internalState, lyriaServiceReady: !!success, needsAudioNodeSetup: !success },
+                                    internalState: {
+                                        ...currentInst.internalState,
+                                        lyriaServiceReady: !!success,
+                                        needsAudioNodeSetup: !success,
+                                        // Reset loggedAudioSystemNotActive on successful setup
+                                        loggedAudioSystemNotActive: success ? false : currentInst.internalState.loggedAudioSystemNotActive,
+                                    },
                                     error: success ? null : "Lyria Service setup failed."
                                 }));
                                 if (success) this.addLog(instance.instanceId, "Lyria service ready.");
@@ -91,10 +108,24 @@ export class AudioNodeManager {
                 // Setup AudioWorklet Node
                 else if (definition.audioWorkletProcessorName) {
                     if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
+                        // Reset loggedWorkletSystemNotReady if it was previously set, as we are now ready
+                        if (instance.internalState.loggedWorkletSystemNotReady) {
+                            this.updateInstance(instance.instanceId, currentInst => ({
+                                ...currentInst,
+                                internalState: { ...currentInst.internalState, loggedWorkletSystemNotReady: false }
+                            }));
+                        }
                         this.addLog(instance.instanceId, "Worklet node setup initiated by AudioNodeManager.");
                         const node = this.audioEngineService.addManagedAudioWorkletNode(instance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: instance.parameters });
                         if (node) {
-                            this.updateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                            this.updateInstance(instance.instanceId, currentInst => ({ // Modified
+                                ...currentInst,
+                                internalState: {
+                                    ...currentInst.internalState,
+                                    needsAudioNodeSetup: false,
+                                    loggedAudioSystemNotActive: false // Reset flag on successful setup
+                                }
+                            }));
                             this.addLog(instance.instanceId, "Worklet node setup successful.");
                             // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION
                             if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
@@ -116,7 +147,14 @@ export class AudioNodeManager {
                             this.updateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                         }
                     } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
-                        this.addLog(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
+                        // Condition: Needs setup but worklet system is NOT ready
+                        if (!instance.internalState.loggedWorkletSystemNotReady) {
+                            this.addLog(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
+                            this.updateInstance(instance.instanceId, currentInst => ({
+                                ...currentInst,
+                                internalState: { ...currentInst.internalState, loggedWorkletSystemNotReady: true }
+                            }));
+                        }
                     }
                 }
                 // Setup Native Audio Node
@@ -125,7 +163,14 @@ export class AudioNodeManager {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
                         const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
                         if (success) {
-                            this.updateInstance(instance.instanceId, { internalState: { ...instance.internalState, needsAudioNodeSetup: false } });
+                            this.updateInstance(instance.instanceId, currentInst => ({ // Modified
+                                ...currentInst,
+                                internalState: {
+                                    ...currentInst.internalState,
+                                    needsAudioNodeSetup: false,
+                                    loggedAudioSystemNotActive: false // Reset flag on successful setup
+                                }
+                            }));
                             this.addLog(instance.instanceId, "Native node setup successful.");
                         } else {
                             this.addLog(instance.instanceId, "Native node setup failed.", "error");
@@ -134,12 +179,21 @@ export class AudioNodeManager {
                     }
                 }
             } else if (definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
-                // Audio system not active, mark nodes as needing setup
+                // Audio system not active, node was previously set up, so mark for setup again.
+                const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
                 this.updateInstance(instance.instanceId, currentInst => ({
                     ...currentInst,
-                    internalState: { ...currentInst.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false, autoPlayInitiated: false }
+                    internalState: {
+                        ...currentInst.internalState,
+                        needsAudioNodeSetup: true,
+                        lyriaServiceReady: false, // Reset related flags
+                        autoPlayInitiated: false,
+                        loggedAudioSystemNotActive: true // Set the flag
+                    }
                 }));
-                this.addLog(instance.instanceId, "Audio system not active. Node requires setup.", "warn");
+                if (needsToLog) {
+                    this.addLog(instance.instanceId, "Audio system not active. Node now requires setup.", "warn");
+                }
             }
         }
     }
