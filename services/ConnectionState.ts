@@ -34,7 +34,13 @@ export class ConnectionState {
   }
 
   private persistToLocalStorage(): void {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.connections));
+  try {
+    const connectionsJson = JSON.stringify(this.connections);
+    localStorage.setItem(LOCAL_STORAGE_KEY, connectionsJson);
+  } catch (error) {
+    console.error("ConnectionState: Failed to stringify connections or save to localStorage:", error);
+    // Optional: Add a mechanism to inform the user if saving consistently fails.
+  }
   }
 
   private notifyListeners(): void {
