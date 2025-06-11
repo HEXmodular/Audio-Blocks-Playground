@@ -32,6 +32,8 @@ describe('LogicExecutionService', () => {
     let mockGetDefinitionForBlock: jest.Mock;
     let mockAudioEngine: jest.Mocked<AudioEngine>;
     let service: LogicExecutionService;
+    let setIntervalSpy: jest.SpyInstance;
+    let clearIntervalSpy: jest.SpyInstance;
 
     let mockInstances: BlockInstance[];
     let mockConnections: Connection[];
@@ -40,6 +42,8 @@ describe('LogicExecutionService', () => {
     beforeEach(() => {
         jest.useFakeTimers();
         jest.clearAllMocks();
+        setIntervalSpy = jest.spyOn(global, 'setInterval');
+        clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
         mockBlockStateManager = new BlockStateManager() as jest.Mocked<BlockStateManager>;
         mockGetDefinitionForBlock = jest.fn();
@@ -79,6 +83,8 @@ describe('LogicExecutionService', () => {
 
     afterEach(() => {
         jest.useRealTimers();
+        setIntervalSpy.mockRestore();
+        clearIntervalSpy.mockRestore();
     });
 
     const setupGraph = (logicA: string = 'setOutput("outA", 10); return {};', logicB: string = 'setOutput("outB", inputs.inB * 2); return {};') => {
@@ -103,10 +109,14 @@ describe('LogicExecutionService', () => {
         });
         test('updateDependencies updates internal state and starts/stops loop', () => {
             const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+            // Ensure isAudioGloballyEnabled is true for the first call
+            mockAudioEngine.isAudioGloballyEnabled = true;
             service.updateDependencies(mockInstances, mockConnections, 120, true, mockAudioEngine);
             // Loop should start if not running
             expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Logic processing loop STARTED"));
 
+            // Ensure isAudioGloballyEnabled is false for the second call
+            mockAudioEngine.isAudioGloballyEnabled = false;
             service.updateDependencies(mockInstances, mockConnections, 120, false, mockAudioEngine);
              // Loop should stop
             expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Logic processing loop STOPPED"));
@@ -133,33 +143,33 @@ describe('LogicExecutionService', () => {
         test('startProcessingLoop starts interval if enabled and not running', () => {
             service.updateDependencies([], [], 120, true, mockAudioEngine); // Enabled
             service.startProcessingLoop();
-            expect(setInterval).toHaveBeenCalledTimes(1);
-            expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 10);
+            expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+            expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10);
         });
 
         test('startProcessingLoop does not start if already running', () => {
             service.updateDependencies([], [], 120, true, mockAudioEngine);
             service.startProcessingLoop(); // First start
             service.startProcessingLoop(); // Second start
-            expect(setInterval).toHaveBeenCalledTimes(1); // Should only be called once
+            expect(setIntervalSpy).toHaveBeenCalledTimes(1); // Should only be called once
         });
 
         test('startProcessingLoop does not start if audio is not globally enabled', () => {
             service.updateDependencies([], [], 120, false, mockAudioEngine); // Disabled
             service.startProcessingLoop();
-            expect(setInterval).not.toHaveBeenCalled();
+            expect(setIntervalSpy).not.toHaveBeenCalled();
         });
 
         test('stopProcessingLoop clears interval if running', () => {
             service.updateDependencies([], [], 120, true, mockAudioEngine);
             service.startProcessingLoop();
             service.stopProcessingLoop();
-            expect(clearInterval).toHaveBeenCalledTimes(1);
+            expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
         });
 
         test('stopProcessingLoop does nothing if not running', () => {
             service.stopProcessingLoop();
-            expect(clearInterval).not.toHaveBeenCalled();
+            expect(clearIntervalSpy).not.toHaveBeenCalled();
         });
     });
 

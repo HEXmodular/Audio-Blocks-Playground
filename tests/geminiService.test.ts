@@ -1,6 +1,15 @@
 
 // Adjust the import path according to your project structure
-import { parseJsonFromGeminiResponse } from '../services/geminiService'; 
+import { parseJsonFromGeminiResponse } from '../services/geminiService';
+
+// Mock @google/genai module
+jest.mock('@google/genai', () => ({
+  GoogleGenAI: jest.fn().mockImplementation(() => ({
+    getGenerativeModel: jest.fn().mockReturnValue({
+      generateContent: jest.fn(),
+    }),
+  })),
+}));
 
 describe('geminiService - parseJsonFromGeminiResponse', () => {
   let originalConsoleError: typeof console.error;
