@@ -86,50 +86,105 @@ export class AudioEngineService {
         };
     }
 
-    // Core methods
-    public initializeBasicAudioContext = async (): Promise<void> => {
-        if (this._audioContext && this._audioContext.state !== 'closed') {
-            console.warn('AudioContext already initialized.');
-            return;
+public initializeBasicAudioContext = async (): Promise<void> => {
+    if (this._audioContext && this._audioContext.state !== 'closed') {
+        console.warn('AudioContext already initialized and not closed. Current state:', this._audioContext.state);
+        // Optionally, re-check consistency or notify if state is unexpected (e.g., suspended but should be running)
+        // For now, just return as it's not 'closed'.
+        return;
+    }
+
+    // Reset any previous error states specific to initialization
+    this._audioInitializationError = null;
+
+    try {
+        console.log("AudioEngineService: Attempting to initialize AudioContext via AudioContextService...");
+        const initResult = await this._audioContextService.initialize(false); // false means don't force resume here
+        this._audioContext = initResult.context;
+
+        if (!this._audioContext || this._audioContext.state === 'closed') {
+            const errorMessage = `Failed to initialize AudioContext or it's closed. State: ${this._audioContext?.state || 'null'}`;
+            console.error(`AudioEngineService: ${errorMessage}`);
+            this._audioInitializationError = errorMessage;
+            this._isAudioGloballyEnabled = false;
+            this._audioContext = null; // Ensure it's null if in this state
+            throw new Error(errorMessage);
         }
 
-        try {
-            const initResult = await this._audioContextService.initialize(false); // Changed true to false here
-            this._audioContext = initResult.context;
-            if (!this._audioContext) {
-                throw new Error("AudioContext could not be initialized by AudioContextService.");
-            }
-            this._masterGainNode = this._audioContext.createGain();
-            this._masterGainNode.connect(this._audioContext.destination);
-            this._isAudioGloballyEnabled = true;
-            this._audioInitializationError = null;
-            this._audioContextState = this._audioContext.state;
+        console.log(`AudioEngineService: AudioContext obtained from service. Initial state: ${this._audioContext.state}`);
+        this._audioContextState = this._audioContext.state; // Set initial state
 
-            this._audioContext.onstatechange = () => {
-                this._audioContextState = this._audioContext?.state ?? null;
-                if (this._audioContext?.state === 'closed') {
+        // Setup master gain node
+        if (this._masterGainNode) { // If for some reason it existed, disconnect
+            try { this._masterGainNode.disconnect(); } catch(e) { /* ignore */ }
+        }
+        this._masterGainNode = this._audioContext.createGain();
+        this._masterGainNode.connect(this._audioContext.destination);
+        console.log("AudioEngineService: Master gain node created and connected.");
+
+        // Set global enabled flag based on context state (usually 'suspended' or 'running' at this point)
+        this._isAudioGloballyEnabled = this._audioContext.state === 'running';
+
+        // Setup state change listener
+        this._audioContext.onstatechange = () => {
+            if (this._audioContext) {
+                this._audioContextState = this._audioContext.state;
+                console.log(`AudioEngineService: AudioContext state changed to ${this._audioContextState}.`);
+                if (this._audioContext.state === 'closed') {
                     this._isAudioGloballyEnabled = false;
-                    // Potentially reset or alert user
+                    // Consider more robust cleanup: nullify masterGain, notify, etc.
+                    console.warn("AudioEngineService: AudioContext closed. Audio is now globally disabled.");
+                } else if (this._audioContext.state === 'running') {
+                    // this._isAudioGloballyEnabled = true; // This is handled by toggleGlobalAudio
+                } else if (this._audioContext.state === 'suspended') {
+                    // this._isAudioGloballyEnabled = false; // This is handled by toggleGlobalAudio
                 }
-                this._notifySubscribers();
-            };
+            } else {
+                // This case should ideally not happen if _audioContext is managed correctly
+                console.warn("AudioEngineService: onstatechange triggered but _audioContext is null.");
+                this._audioContextState = null;
+                this._isAudioGloballyEnabled = false;
+            }
+            this._notifySubscribers();
+        };
 
-            await this.listOutputDevices();
-            // Default to system output if available, or first available
+        await this.listOutputDevices(); // List devices before attempting to set one
+
+        if (this._audioContext && this._audioContext.state !== 'closed') {
             const defaultOutput = this._availableOutputDevices.find(d => d.deviceId === 'default') || this._availableOutputDevices[0];
             if (defaultOutput) {
+                console.log(`AudioEngineService: Attempting to set default output device to: ${defaultOutput.label} (${defaultOutput.deviceId})`);
                 await this.setOutputDevice(defaultOutput.deviceId);
+            } else {
+                console.log("AudioEngineService: No default output device found or available to set.");
             }
-
-            console.log('AudioContext initialized successfully.');
-        } catch (error) {
-            console.error('Error initializing AudioContext:', error);
-            this._audioInitializationError = (error as Error).message;
-            this._isAudioGloballyEnabled = false;
-        } finally {
-            this._notifySubscribers();
+        } else {
+            const message = `AudioEngineService: AudioContext became invalid (state: ${this._audioContext?.state}) before default output device could be set.`;
+            console.warn(message);
+            this._audioInitializationError = this._audioInitializationError || message; // Preserve earlier error if any
         }
-    };
+
+        console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
+
+    } catch (error) {
+        const specificErrorMessage = `Error during AudioContext initialization in AudioEngineService: ${(error as Error).message}`;
+        console.error(specificErrorMessage);
+        this._audioInitializationError = specificErrorMessage;
+        this._isAudioGloballyEnabled = false;
+
+        if (this._masterGainNode) {
+            try { this._masterGainNode.disconnect(); } catch (e) { /* ignore */ }
+            this._masterGainNode = null;
+        }
+        // Ensure _audioContext is null if it's in a bad state or never properly initialized
+        if (!this._audioContext || this._audioContext.state === 'closed') {
+            this._audioContext = null;
+        }
+        this._audioContextState = this._audioContext?.state ?? null; // Reflect the potentially null context
+    } finally {
+        this._notifySubscribers(); // Notify subscribers of any state changes
+    }
+};
 
     public toggleGlobalAudio = async (): Promise<void> => {
         if (!this._audioContext) {
@@ -159,35 +214,55 @@ export class AudioEngineService {
         return this._audioContextService;
     }
 
-    public setOutputDevice = async (sinkId: string): Promise<void> => {
-        if (!this._audioContext || !this._audioContextService.canChangeOutputDevice()) {
-            console.warn('AudioContext not available or does not support setSinkId.');
-            const oldSinkId = this._selectedSinkId;
-            this._selectedSinkId = sinkId; // Optimistically update
-            try {
-                await this._audioContextService.setSinkId(sinkId);
-            } catch(e) {
-                this._selectedSinkId = oldSinkId; //revert on error
-                console.error("Failed to set output device:", e);
-                this._notifySubscribers();
-                throw e;
-            }
-            this._notifySubscribers();
-            return;
-        }
+public setOutputDevice = async (sinkId: string): Promise<void> => {
+    const oldSinkId = this._selectedSinkId; // Store old sinkId for potential revert
 
-        try {
-            await this._audioContextService.setSinkId(sinkId);
-            this._selectedSinkId = sinkId;
-            console.log(`Output device set to: ${sinkId}`);
-        } catch (error) {
-            console.error('Error setting output device:', error);
-            // Optionally, revert to previous sinkId or handle error state
-            this._audioInitializationError = `Failed to set output device: ${(error as Error).message}`;
-        } finally {
-            this._notifySubscribers();
-        }
-    };
+    // Always get the most current context from the service.
+    this._audioContext = this._audioContextService.getAudioContext();
+
+    // Check 1: Is the context fundamentally unusable?
+    if (!this._audioContext || this._audioContext.state === 'closed') {
+        const message = `AudioEngineService.setOutputDevice: AudioContext is not available or is closed (state: ${this._audioContext?.state}). Cannot set SinkId to '${sinkId}'.`;
+        console.warn(message);
+        this._audioInitializationError = this._audioInitializationError || message; // Preserve existing error or set this one
+        // Do not change _selectedSinkId if the context is fundamentally broken.
+        this._notifySubscribers();
+        // We should throw an error here because the operation cannot be completed as requested.
+        throw new Error(`Cannot set output device: AudioContext is ${this._audioContext?.state || 'null'}.`);
+    }
+
+    // Check 2: Does the current (valid, open) context support setSinkId?
+    if (!this._audioContextService.canChangeOutputDevice()) {
+        // This means this._audioContext.setSinkId function is likely not available.
+        const message = `AudioEngineService.setOutputDevice: AudioContext (state: ${this._audioContext.state}) does not support setSinkId functionality. Cannot set SinkId to '${sinkId}'.`;
+        console.warn(message);
+        this._audioInitializationError = this._audioInitializationError || message;
+        // Do not change _selectedSinkId if the feature is unsupported.
+        this._notifySubscribers();
+        // Throw an error as the feature is not supported.
+        throw new Error('setSinkId is not supported by the current AudioContext.');
+    }
+
+    // Normal path: Context is valid, open, and supports setSinkId.
+    try {
+        console.log(`AudioEngineService.setOutputDevice: Attempting to set output device to ${sinkId}. Context state: ${this._audioContext.state}`);
+        await this._audioContextService.setSinkId(sinkId); // This call is now made on a known-good context
+        this._selectedSinkId = sinkId; // Update only on success
+        console.log(`AudioEngineService: Output device successfully set to: ${this._selectedSinkId}`);
+        this._audioInitializationError = null; // Clear error on success
+    } catch (error) {
+        const errorMessage = `AudioEngineService: Error setting output device to '${sinkId}': ${(error as Error).message}`;
+        console.error(errorMessage, error);
+        this._selectedSinkId = oldSinkId; // Revert to old sinkId on failure
+        this._audioInitializationError = this._audioInitializationError || errorMessage;
+        this._notifySubscribers(); // Notify before throwing so UI can update with reverted sinkId and error
+        throw error; // Re-throw
+    } finally {
+        // _notifySubscribers() is called here in original code, but specific error/success paths above handle it.
+        // If we want a guaranteed notification after any attempt:
+        this._notifySubscribers();
+    }
+};
 
     public listOutputDevices = async (): Promise<void> => {
         try {
