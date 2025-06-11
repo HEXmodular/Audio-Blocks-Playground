@@ -23,18 +23,15 @@ export class LyriaServiceManager implements ILyriaServiceManager {
     private audioContext: AudioContext | null;
     private masterGainNode: GainNode | null;
     private readonly onStateChangeForReRender: () => void;
-    private readonly appLog: (message: string, isSystem?: boolean) => void;
 
     constructor(
         audioContext: AudioContext | null,
         masterGainNode: GainNode | null,
         onStateChangeForReRender: () => void,
-        appLog: (message: string, isSystem?: boolean) => void
     ) {
         this.audioContext = audioContext;
         this.masterGainNode = masterGainNode;
         this.onStateChangeForReRender = onStateChangeForReRender;
-        this.appLog = appLog;
         this.managedLyriaServiceInstancesRef = new Map<string, ManagedLyriaServiceInfo>();
     }
 
@@ -48,7 +45,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         if (this.audioContext !== newContext) {
             contextChanged = true;
             if (this.managedLyriaServiceInstancesRef.size > 0) {
-                this.appLog("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services.", true);
+                console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services.", true);
                 this.removeAllManagedLyriaServices(); // Clears services and the map
             }
             this.audioContext = newContext;
@@ -91,7 +88,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             if (existingServiceInfo && this.masterGainNode && existingServiceInfo.outputNode !== this.masterGainNode) {
                  try { existingServiceInfo.outputNode.disconnect(); } catch (e) { /*ignore*/ } // Disconnect from wherever it was
                 try { existingServiceInfo.outputNode.connect(this.masterGainNode); }
-                catch (e) { this.appLog(`[LyriaManager Error] Re-connecting existing Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+                catch (e) { console.log(`[LyriaManager Error] Re-connecting existing Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
             }
             return true;
         }
@@ -104,7 +101,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             onError: (error) => { addBlockLog(`Lyria Service Error: ${error}`); this.onStateChangeForReRender(); },
             onClose: (message) => { addBlockLog(`Lyria Service closed: ${message}`); this.onStateChangeForReRender(); },
             onOutputNodeChanged: (newNode) => {
-                this.appLog(`[LyriaManager] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
+                console.log(`[LyriaManager] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
                 const lyriaServiceInfo = this.managedLyriaServiceInstancesRef.get(instanceId);
                 if (lyriaServiceInfo && this.masterGainNode) {
                     const oldNode = lyriaServiceInfo.outputNode;
@@ -113,10 +110,10 @@ export class LyriaServiceManager implements ILyriaServiceManager {
                         try { oldNode.disconnect(this.masterGainNode); } catch (e) { /* ignore */ }
                     }
                     try { newNode.connect(this.masterGainNode); }
-                    catch (e) { this.appLog(`[LyriaManager Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+                    catch (e) { console.log(`[LyriaManager Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
                 } else if (this.masterGainNode) { // if lyriaServiceInfo is somehow not found but we have a masterGainNode
                     try { newNode.connect(this.masterGainNode); }
-                    catch (e) { this.appLog(`[LyriaManager Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+                    catch (e) { console.log(`[LyriaManager Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
                 }
                 this.onStateChangeForReRender();
             },
@@ -155,11 +152,11 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             } catch (e) {
                 // Only log if the general disconnect fails, as disconnecting from masterGainNode might have already handled it or it wasn't connected.
                 if (!(e instanceof DOMException && e.name === 'InvalidAccessError')) { // Avoid logging if already disconnected
-                    this.appLog(`[LyriaManager Remove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
+                    console.log(`[LyriaManager Remove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
                 }
             }
             this.managedLyriaServiceInstancesRef.delete(instanceId);
-            this.appLog(`[LyriaManager Remove] Lyria Service for instance '${instanceId}' disposed and removed.`, true);
+            console.log(`[LyriaManager Remove] Lyria Service for instance '${instanceId}' disposed and removed.`, true);
             this.onStateChangeForReRender();
         }
     }
@@ -232,7 +229,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         this.managedLyriaServiceInstancesRef.forEach((_, instanceId) => {
             this.removeLyriaServiceForInstance(instanceId); // Call the class method
         });
-        this.appLog("[LyriaManager] All managed Lyria services removed.", true);
+        console.log("[LyriaManager] All managed Lyria services removed.", true);
     }
 
     public getManagedInstancesMap(): Map<string, ManagedLyriaServiceInfo> {

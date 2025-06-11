@@ -92,10 +92,8 @@ export class AudioEngine implements IAudioEngine {
 
     // --- Callback for parent component re-render ---
     private readonly onStateChangeForReRender: () => void;
-    // TODO: Decide if appLog is needed at this level, or if managers handle their own.
-    // The original hook didn't take appLog, but managers do.
 
-    constructor(onStateChangeForReRender: () => void /* appLog?: (message: string, isSystem?: boolean) => void */) {
+    constructor(onStateChangeForReRender: () => void) {
         this.onStateChangeForReRender = onStateChangeForReRender;
 
         // Initialize services
@@ -113,10 +111,6 @@ export class AudioEngine implements IAudioEngine {
         // Let's make the managers take a reference to the AudioEngine or getters for now.
         // This is simpler than trying to re-initialize managers.
 
-        // A simple appLog for managers if they don't have a more specific one from their instantiation point (e.g. a block)
-        const managerAppLog = (message: string, isSystem: boolean = true) => console.log(`[Manager] ${message} (System: ${isSystem})`);
-
-
         this.audioWorkletManager = new AudioWorkletManager(
             this.audioContext, // This will be null initially
             this.onStateChangeForReRender // Manager uses this to trigger engine's host re-render
@@ -124,13 +118,11 @@ export class AudioEngine implements IAudioEngine {
         this.nativeNodeManager = new NativeNodeManager(
             this.audioContext, // This will be null initially
             this.onStateChangeForReRender,
-            managerAppLog // Provide a generic appLog
         );
         this.lyriaServiceManager = new LyriaServiceManager(
             this.audioContext, // null initially
             this.masterGainNode, // null initially
             this.onStateChangeForReRender,
-            managerAppLog // Provide a generic appLog
         );
 
         // Initial setup corresponding to useEffects in the hook

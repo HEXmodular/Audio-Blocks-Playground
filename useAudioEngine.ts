@@ -128,7 +128,7 @@ export interface AudioEngineHookReturn {
 }
 
 
-export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => void): AudioEngineHookReturn => {
+export const useAudioEngine = (): AudioEngineHookReturn => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const [isAudioGloballyEnabled, setIsAudioGloballyEnabled] = useState(false);
@@ -156,11 +156,11 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       return true;
     }
     if (!context || !workletCode || !processorName) {
-      appLog(`[AudioEngine Critical] Cannot register worklet ${processorName}: missing context, code, or name.`, true);
+      console.log(`[AudioEngine Critical] Cannot register worklet ${processorName}: missing context, code, or name.`, true);
       return false;
     }
      if (context.state === 'closed') {
-      appLog(`[AudioEngine Warn] Cannot register worklet ${processorName}: context is closed.`, true);
+      console.log(`[AudioEngine Warn] Cannot register worklet ${processorName}: context is closed.`, true);
       return false;
     }
 
@@ -174,11 +174,11 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       } else {
         actualClassName = processorName.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
         actualClassName = actualClassName.charAt(0).toUpperCase() + actualClassName.slice(1);
-        appLog(`[AudioEngine Warn] Could not extract class name for worklet '${processorName}' via regex. Falling back to heuristic: '${actualClassName}'. This might fail if the worklet code doesn't match.`, true);
+        console.log(`[AudioEngine Warn] Could not extract class name for worklet '${processorName}' via regex. Falling back to heuristic: '${actualClassName}'. This might fail if the worklet code doesn't match.`, true);
       }
 
       if (!actualClassName) {
-        appLog(`[AudioEngine Critical] FATAL: Could not determine class name for worklet '${processorName}'. Registration cannot proceed.`, true);
+        console.log(`[AudioEngine Critical] FATAL: Could not determine class name for worklet '${processorName}'. Registration cannot proceed.`, true);
         setAudioInitializationError(prev => prev || `Class name determination failed for ${processorName}`);
         return false;
       }
@@ -196,7 +196,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       const errMsgBase = `Error in registerWorkletProcessor for '${processorName}' (class '${cnForErrorLog}') during addModule or worklet-side registration`;
 
       if (error.message.includes('is already registered') || (error.name === 'NotSupportedError' && error.message.includes(processorName) && error.message.toLowerCase().includes('already registered'))) {
-        appLog(`[AudioEngine Info] Worklet '${processorName}' reported by browser as 'already registered' (Error: ${error.message}). Adding to cache and assuming available.`, true);
+        console.log(`[AudioEngine Info] Worklet '${processorName}' reported by browser as 'already registered' (Error: ${error.message}). Adding to cache and assuming available.`, true);
         registeredWorkletNamesRef.current.add(processorName);
         return true;
       }
@@ -213,7 +213,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     } finally {
       if (objectURL) URL.revokeObjectURL(objectURL);
     }
-  }, [appLog]);
+  }, []);
 
   const checkAndRegisterPredefinedWorklets = useCallback(async (contextToCheck: AudioContext, logActivity: boolean = true): Promise<boolean> => {
     const currentState: AudioContextState = contextToCheck.state;
@@ -222,37 +222,37 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     );
 
     if (currentState === 'suspended') {
-      if (logActivity) appLog(`[AudioEngine Worklets] Context is 'suspended'. All worklets cached: ${allCached}. Predefined worklets cannot be actively registered now.`, true);
+      if (logActivity) console.log(`[AudioEngine Worklets] Context is 'suspended'. All worklets cached: ${allCached}. Predefined worklets cannot be actively registered now.`, true);
       return allCached;
     }
 
     if (currentState === 'closed') {
-      if (logActivity) appLog(`[AudioEngine Worklets] Context is 'closed'. Reporting worklets as not ready. All worklets cached: ${allCached}. Predefined worklets cannot be actively registered now.`, true);
+      if (logActivity) console.log(`[AudioEngine Worklets] Context is 'closed'. Reporting worklets as not ready. All worklets cached: ${allCached}. Predefined worklets cannot be actively registered now.`, true);
       return false;
     }
     
-    if (logActivity) appLog(`[AudioEngine Worklets] Context is 'running'. Proceeding with active registration check for predefined worklets.`, true);
+    if (logActivity) console.log(`[AudioEngine Worklets] Context is 'running'. Proceeding with active registration check for predefined worklets.`, true);
 
     let allEffectivelyRegistered = true;
     for (const def of PREDEFINED_WORKLET_DEFS) {
       if (def.audioWorkletCode && def.audioWorkletProcessorName) {
         if (!registeredWorkletNamesRef.current.has(def.audioWorkletProcessorName)) {
-          if (logActivity) appLog(`[AudioEngine Worklets] Attempting registration for '${def.audioWorkletProcessorName}'...`, true);
+          if (logActivity) console.log(`[AudioEngine Worklets] Attempting registration for '${def.audioWorkletProcessorName}'...`, true);
           const regSuccess = await registerWorkletProcessor(contextToCheck, def.audioWorkletProcessorName, def.audioWorkletCode);
           if (!regSuccess) {
             allEffectivelyRegistered = false;
-            if (logActivity) appLog(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`, true);
+            if (logActivity) console.log(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`, true);
             break;
           } else {
-            if (logActivity) appLog(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`, true);
+            if (logActivity) console.log(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`, true);
           }
         } else {
-           if (logActivity) appLog(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' already in registration cache.`, true);
+           if (logActivity) console.log(`[AudioEngine Worklets] Predefined worklet '${def.audioWorkletProcessorName}' already in registration cache.`, true);
         }
       }
     }
     return allEffectivelyRegistered;
-  }, [registerWorkletProcessor, appLog]);
+  }, [registerWorkletProcessor]);
 
 
   const initializeBasicAudioContext = useCallback(async (logActivity: boolean = true, forceNoResume: boolean = false): Promise<InitAudioResult> => {
@@ -261,20 +261,20 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     let contextErrorMessage: string | null = null;
 
     if (localContextRef && localContextRef.state === 'closed') {
-      if (logActivity) appLog("[AudioEngine Init] Existing AudioContext was found to be 'closed'. Will proceed to create a new one.", true);
+      if (logActivity) console.log("[AudioEngine Init] Existing AudioContext was found to be 'closed'. Will proceed to create a new one.", true);
       localContextRef = null;
     }
 
     if (localContextRef) {
-      if (logActivity) appLog(`[AudioEngine Init] Existing AudioContext found (state: ${localContextRef.state}).`, true);
+      if (logActivity) console.log(`[AudioEngine Init] Existing AudioContext found (state: ${localContextRef.state}).`, true);
       const currentStateOfExistingContext: AudioContextState = localContextRef.state;
       if (currentStateOfExistingContext === 'suspended' && !forceNoResume) {
-        if (logActivity) appLog("[AudioEngine Init] Attempting to resume existing suspended context...", true);
+        if (logActivity) console.log("[AudioEngine Init] Attempting to resume existing suspended context...", true);
         try {
           await localContextRef.resume();
-          if (logActivity) appLog(`[AudioEngine Init] Resume attempt finished. Context state: ${localContextRef.state}.`, true);
+          if (logActivity) console.log(`[AudioEngine Init] Resume attempt finished. Context state: ${localContextRef.state}.`, true);
         } catch (resumeError) {
-            if (logActivity) appLog(`[AudioEngine Init Error] Error resuming existing context: ${(resumeError as Error).message}`, true);
+            if (logActivity) console.log(`[AudioEngine Init Error] Error resuming existing context: ${(resumeError as Error).message}`, true);
             contextErrorMessage = `Error resuming context: ${(resumeError as Error).message}`;
         }
       }
@@ -283,11 +283,11 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       setIsAudioWorkletSystemReady(workletsWereReady && localContextRef.state === 'running');
 
     } else {
-      if (logActivity) appLog(audioContext ? "[AudioEngine Init] Existing context was closed. Creating new." : "[AudioEngine Init] No existing context. Creating new.", true);
+      if (logActivity) console.log(audioContext ? "[AudioEngine Init] Existing context was closed. Creating new." : "[AudioEngine Init] No existing context. Creating new.", true);
 
       try {
         const newContext = new AudioContext();
-        if (logActivity) appLog(`[AudioEngine Init] New AudioContext created (initial state: ${newContext.state}).`, true);
+        if (logActivity) console.log(`[AudioEngine Init] New AudioContext created (initial state: ${newContext.state}).`, true);
 
         if(masterGainNodeRef.current) {
             try { masterGainNodeRef.current.disconnect(); } catch(e) { /* ignore */ }
@@ -300,9 +300,9 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
 
         const currentStateOfNewContext: AudioContextState = localContextRef.state;
         if (currentStateOfNewContext === 'suspended' && !forceNoResume) {
-          if (logActivity) appLog("[AudioEngine Init] New context is suspended. Attempting resume...", true);
+          if (logActivity) console.log("[AudioEngine Init] New context is suspended. Attempting resume...", true);
           await localContextRef.resume();
-          if (logActivity) appLog(`[AudioEngine Init] Resume attempt finished. New context state: ${localContextRef.state}.`, true);
+          if (logActivity) console.log(`[AudioEngine Init] Resume attempt finished. New context state: ${localContextRef.state}.`, true);
         }
 
         workletsWereReady = await checkAndRegisterPredefinedWorklets(localContextRef, logActivity);
@@ -310,7 +310,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
 
       } catch (creationError) {
         const errorMsg = `Critical Error initializing new AudioContext: ${(creationError as Error).message}`;
-        if (logActivity) appLog(`[AudioEngine Init Critical Error] ${errorMsg}`, true);
+        if (logActivity) console.log(`[AudioEngine Init Critical Error] ${errorMsg}`, true);
         contextErrorMessage = errorMsg;
         setAudioContext(null);
         setIsAudioWorkletSystemReady(false);
@@ -324,7 +324,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     }
 
     return { context: localContextRef, workletsReady: workletsWereReady };
-  }, [audioContext, checkAndRegisterPredefinedWorklets, audioInitializationError, appLog]);
+  }, [audioContext, checkAndRegisterPredefinedWorklets, audioInitializationError]);
 
 
   const toggleGlobalAudio = useCallback(async (): Promise<boolean> => {
@@ -336,48 +336,48 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       setIsAudioGloballyEnabled(false);
       setIsAudioWorkletSystemReady(false);
       setAudioInitializationError(prev => prev || "AudioContext creation/retrieval failed in toggleGlobalAudio.");
-      appLog("[AudioEngine Toggle] Failed to get/create AudioContext.", true);
+      console.log("[AudioEngine Toggle] Failed to get/create AudioContext.", true);
       return false;
     }
     
     let currentContextState = localAudioContextRef.state;
 
     if (currentContextState === 'suspended') {
-      appLog(`[AudioEngine Toggle] Context is suspended. Attempting resume before state change.`, true);
+      console.log(`[AudioEngine Toggle] Context is suspended. Attempting resume before state change.`, true);
       try {
         await localAudioContextRef.resume();
         currentContextState = localAudioContextRef.state; // Re-read state
-        appLog(`[AudioEngine Toggle] Resume attempt finished. Context state: ${currentContextState}.`, true);
+        console.log(`[AudioEngine Toggle] Resume attempt finished. Context state: ${currentContextState}.`, true);
         if (currentContextState === 'suspended' || currentContextState === 'closed') {
             setIsAudioGloballyEnabled(false);
             setAudioInitializationError(prev => prev || "Context remained suspended or closed after resume attempt.");
-            appLog(`[AudioEngine Toggle] Context state is '${currentContextState}' after resume. Audio NOT enabled.`, true);
+            console.log(`[AudioEngine Toggle] Context state is '${currentContextState}' after resume. Audio NOT enabled.`, true);
             return false;
         }
         const workletsStillReady = await checkAndRegisterPredefinedWorklets(localAudioContextRef, true);
         setIsAudioWorkletSystemReady(workletsStillReady);
 
       } catch (resumeError) {
-        appLog(`[AudioEngine Toggle] Error resuming AudioContext: ${(resumeError as Error).message}`, true);
+        console.log(`[AudioEngine Toggle] Error resuming AudioContext: ${(resumeError as Error).message}`, true);
         setIsAudioGloballyEnabled(false);
         setAudioInitializationError(prev => prev || `Resume error: ${(resumeError as Error).message}`);
         return false;
       }
     } else if (currentContextState === 'closed') {
-        appLog(`[AudioEngine Toggle] Context was found closed. Re-initializing.`, true);
+        console.log(`[AudioEngine Toggle] Context was found closed. Re-initializing.`, true);
         initResult = await initializeBasicAudioContext(true, false);
         localAudioContextRef = initResult.context; 
         if (!localAudioContextRef) { 
              setIsAudioGloballyEnabled(false);
              setAudioInitializationError(prev => prev || "Re-initialization failed to produce a context.");
-             appLog(`[AudioEngine Toggle] Re-initialization failed (no context). Audio NOT enabled.`, true);
+             console.log(`[AudioEngine Toggle] Re-initialization failed (no context). Audio NOT enabled.`, true);
              return false;
         }
         currentContextState = localAudioContextRef.state; 
         if (currentContextState !== 'running') {
             setIsAudioGloballyEnabled(false);
             setAudioInitializationError(prev => prev || "Re-initialization failed to produce running context.");
-            appLog(`[AudioEngine Toggle] Re-initialization failed (context not running). Audio NOT enabled.`, true);
+            console.log(`[AudioEngine Toggle] Re-initialization failed (context not running). Audio NOT enabled.`, true);
             return false;
         }
         const workletsReadyPostReinit = await checkAndRegisterPredefinedWorklets(localAudioContextRef, true);
@@ -387,11 +387,11 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
 
     if (isAudioGloballyEnabled) {
       if (localAudioContextRef && localAudioContextRef.state === 'running') { 
-        appLog(`[AudioEngine Toggle] Suspending AudioContext (was running).`, true);
+        console.log(`[AudioEngine Toggle] Suspending AudioContext (was running).`, true);
         await localAudioContextRef.suspend();
       }
       setIsAudioGloballyEnabled(false);
-      appLog(`[AudioEngine Toggle] Audio globally DISABLED. Context state: ${localAudioContextRef ? localAudioContextRef.state : 'N/A'}.`, true);
+      console.log(`[AudioEngine Toggle] Audio globally DISABLED. Context state: ${localAudioContextRef ? localAudioContextRef.state : 'N/A'}.`, true);
       return true;
     } else {
       const workletsAreReady = await checkAndRegisterPredefinedWorklets(localAudioContextRef, true); 
@@ -399,16 +399,16 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       
       if (workletsAreReady && localAudioContextRef && localAudioContextRef.state === 'running') { 
           setIsAudioGloballyEnabled(true);
-          appLog(`[AudioEngine Toggle] Audio globally ENABLED. Worklets ready. Context state: ${localAudioContextRef.state}.`, true);
+          console.log(`[AudioEngine Toggle] Audio globally ENABLED. Worklets ready. Context state: ${localAudioContextRef.state}.`, true);
           return true;
       } else {
           setIsAudioGloballyEnabled(false);
           setAudioInitializationError(prev => prev || "Worklets not ready or context not running, cannot enable audio system fully.");
-          appLog(`[AudioEngine Toggle] Worklets not ready or context not running (State: ${localAudioContextRef ? localAudioContextRef.state : 'N/A'}). Audio globally remains DISABLED.`, true);
+          console.log(`[AudioEngine Toggle] Worklets not ready or context not running (State: ${localAudioContextRef ? localAudioContextRef.state : 'N/A'}). Audio globally remains DISABLED.`, true);
           return false;
       }
     }
-  }, [isAudioGloballyEnabled, initializeBasicAudioContext, checkAndRegisterPredefinedWorklets, appLog]);
+  }, [isAudioGloballyEnabled, initializeBasicAudioContext, checkAndRegisterPredefinedWorklets]);
 
 
   const getSampleRate = useCallback((): number | null => {
@@ -422,28 +422,28 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     initialParams: BlockParameter[]
   ): Promise<boolean> => {
     if (!audioContext || audioContext.state !== 'running' || !isAudioWorkletSystemReady) {
-      appLog(`[AudioEngine WorkletNodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready (context state: ${audioContext?.state}, worklets ready: ${isAudioWorkletSystemReady}).`, true);
+      console.log(`[AudioEngine WorkletNodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready (context state: ${audioContext?.state}, worklets ready: ${isAudioWorkletSystemReady}).`, true);
       return false;
     }
     if (!definition.audioWorkletProcessorName || !definition.audioWorkletCode) {
-        appLog(`[AudioEngine WorkletNodeSetup] Skipping setup for '${definition.name}' (ID: ${instanceId}): Missing audioWorkletProcessorName or audioWorkletCode.`, true);
+        console.log(`[AudioEngine WorkletNodeSetup] Skipping setup for '${definition.name}' (ID: ${instanceId}): Missing audioWorkletProcessorName or audioWorkletCode.`, true);
         return true;
     }
 
     if (managedWorkletNodesRef.current.has(instanceId)) {
-      appLog(`[AudioEngine WorkletNodeSetup] Node for instance ID '${instanceId}' already exists. Skipping recreation.`, true);
+      console.log(`[AudioEngine WorkletNodeSetup] Node for instance ID '${instanceId}' already exists. Skipping recreation.`, true);
       return true;
     }
 
     if (!registeredWorkletNamesRef.current.has(definition.audioWorkletProcessorName)) {
-        appLog(`[AudioEngine WorkletNodeSetup] Worklet processor '${definition.audioWorkletProcessorName}' for '${definition.name}' (ID: ${instanceId}) not registered. Attempting registration...`, true);
+        console.log(`[AudioEngine WorkletNodeSetup] Worklet processor '${definition.audioWorkletProcessorName}' for '${definition.name}' (ID: ${instanceId}) not registered. Attempting registration...`, true);
         const regSuccess = await registerWorkletProcessor(audioContext, definition.audioWorkletProcessorName, definition.audioWorkletCode);
         if (!regSuccess) {
-            appLog(`[AudioEngine WorkletNodeSetup Critical] Failed to register worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' (ID: ${instanceId}). Cannot create node.`, true);
+            console.log(`[AudioEngine WorkletNodeSetup Critical] Failed to register worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' (ID: ${instanceId}). Cannot create node.`, true);
             setAudioInitializationError(prev => prev || `WorkletNode RegFail: ${definition.audioWorkletProcessorName}`);
             return false;
         }
-         appLog(`[AudioEngine WorkletNodeSetup] Worklet '${definition.audioWorkletProcessorName}' registered successfully during node setup for '${definition.name}'.`, true);
+         console.log(`[AudioEngine WorkletNodeSetup] Worklet '${definition.audioWorkletProcessorName}' registered successfully during node setup for '${definition.name}'.`, true);
     }
 
     try {
@@ -472,7 +472,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       };
 
       const newNode = new AudioWorkletNode(audioContext, definition.audioWorkletProcessorName, workletNodeOptions);
-      appLog(`[AudioEngine WorkletNodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for instance '${instanceId}'.`, true);
+      console.log(`[AudioEngine WorkletNodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for instance '${instanceId}'.`, true);
 
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
       if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && masterGainNodeRef.current) {
@@ -482,7 +482,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
 
         inputGainNodeForOutputBlock.connect(newNode);
         newNode.connect(masterGainNodeRef.current);
-        appLog(`[AudioEngine WorkletNodeSetup] AudioOutput block '${instanceId}' connected to master gain via internal volume gain.`, true);
+        console.log(`[AudioEngine WorkletNodeSetup] AudioOutput block '${instanceId}' connected to master gain via internal volume gain.`, true);
       }
 
       managedWorkletNodesRef.current.set(instanceId, { node: newNode, definition, instanceId, inputGainNode: inputGainNodeForOutputBlock });
@@ -494,7 +494,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       setAudioInitializationError(prev => prev || `WorkletNode Error: ${definition.audioWorkletProcessorName} - ${e.message.substring(0,100)}`);
       return false;
     }
-  }, [audioContext, isAudioWorkletSystemReady, registerWorkletProcessor, appLog]);
+  }, [audioContext, isAudioWorkletSystemReady, registerWorkletProcessor]);
 
 
   const updateManagedAudioWorkletNodeParams = useCallback((instanceId: string, parameters: BlockParameter[]) => {
@@ -531,12 +531,12 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
         info.node.disconnect();
         info.node.port?.close(); 
       } catch (e) {
-        appLog(`[AudioEngine WorkletNodeRemove] Error disconnecting worklet node for '${instanceId}': ${(e as Error).message}`, true);
+        console.log(`[AudioEngine WorkletNodeRemove] Error disconnecting worklet node for '${instanceId}': ${(e as Error).message}`, true);
       }
       managedWorkletNodesRef.current.delete(instanceId);
-      appLog(`[AudioEngine WorkletNodeRemove] Removed worklet node for instance '${instanceId}'.`, true);
+      console.log(`[AudioEngine WorkletNodeRemove] Removed worklet node for instance '${instanceId}'.`, true);
     }
-  }, [appLog]);
+  }, []);
 
   const setupManagedNativeNode = useCallback(async (
     instanceId: string,
@@ -545,11 +545,11 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
     currentBpm: number = 120
   ): Promise<boolean> => {
     if (!audioContext || audioContext.state !== 'running') {
-        appLog(`[AudioEngine NativeNodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, true);
+        console.log(`[AudioEngine NativeNodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, true);
         return false;
     }
     if (managedNativeNodesRef.current.has(instanceId)) {
-        appLog(`[AudioEngine NativeNodeSetup] Native node for instance ID '${instanceId}' already exists. Skipping recreation.`, true);
+        console.log(`[AudioEngine NativeNodeSetup] Native node for instance ID '${instanceId}' already exists. Skipping recreation.`, true);
         return true;
     }
 
@@ -659,7 +659,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
             break;
 
         default:
-          appLog(`[AudioEngine NativeNodeSetup] Definition ID '${definition.id}' not recognized for native node setup.`, true);
+          console.log(`[AudioEngine NativeNodeSetup] Definition ID '${definition.id}' not recognized for native node setup.`, true);
           return false;
       }
 
@@ -676,16 +676,16 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       };
       managedNativeNodesRef.current.set(instanceId, nodeInfo);
       updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); 
-      appLog(`[AudioEngine NativeNodeSetup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
+      console.log(`[AudioEngine NativeNodeSetup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
       return true;
 
     } catch (e) {
       const errorMsg = `Failed to construct native audio node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
       console.error(errorMsg, e);
-      appLog(errorMsg, true);
+      console.log(errorMsg, true);
       return false;
     }
-  }, [audioContext, appLog]);
+  }, [audioContext]);
 
   const updateManagedNativeNodeParams = useCallback((
     instanceId: string,
@@ -818,12 +818,12 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
             try { info.constantSourceValueNode.stop(); } catch(e) {/* already stopped */}
         }
       } catch (e) {
-        appLog(`[AudioEngine NativeNodeRemove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
+        console.log(`[AudioEngine NativeNodeRemove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
       }
       managedNativeNodesRef.current.delete(instanceId);
-      appLog(`[AudioEngine NativeNodeRemove] Removed native node for instance '${instanceId}'.`, true);
+      console.log(`[AudioEngine NativeNodeRemove] Removed native node for instance '${instanceId}'.`, true);
     }
-  }, [appLog]);
+  }, []);
 
   const removeLyriaServiceForInstance = useCallback((instanceId: string) => {
     const info = managedLyriaServiceInstancesRef.current.get(instanceId);
@@ -838,18 +838,18 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
         // Full disconnect for the node
         info.outputNode.disconnect();
       } catch (e) {
-        appLog(`[AudioEngine LyriaRemove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
+        console.log(`[AudioEngine LyriaRemove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
       }
       managedLyriaServiceInstancesRef.current.delete(instanceId);
-      appLog(`[AudioEngine] Lyria Service for instance '${instanceId}' disposed and removed.`, true);
+      console.log(`[AudioEngine] Lyria Service for instance '${instanceId}' disposed and removed.`, true);
     }
-  }, [appLog]);
+  }, []);
 
   const removeAllManagedNodes = useCallback(() => {
     managedWorkletNodesRef.current.forEach((_, instanceId) => removeManagedAudioWorkletNode(instanceId));
     managedNativeNodesRef.current.forEach((_, instanceId) => removeManagedNativeNode(instanceId));
     managedLyriaServiceInstancesRef.current.forEach((_, instanceId) => removeLyriaServiceForInstance(instanceId));
-    appLog("[AudioEngine] All managed nodes removed.", true);
+    console.log("[AudioEngine] All managed nodes removed.", true);
   }, [removeManagedAudioWorkletNode, removeManagedNativeNode, removeLyriaServiceForInstance]);
 
   const getAnalyserNodeForInstance = useCallback((instanceId: string): AnalyserNode | null => {
@@ -962,7 +962,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       }
     });
     activeWebAudioConnectionsRef.current = newActiveConnections;
-  }, [audioContext, isAudioGloballyEnabled, appLog]);
+  }, [audioContext, isAudioGloballyEnabled]);
 
   const requestSamplesFromWorklet = useCallback(async (instanceId: string, timeoutMs: number = 1000): Promise<Float32Array> => {
     const workletInfo = managedWorkletNodesRef.current.get(instanceId);
@@ -990,7 +990,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
 
   const listOutputDevices = useCallback(async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-      appLog("[AudioEngine] enumerateDevices not supported.", true);
+      console.log("[AudioEngine] enumerateDevices not supported.", true);
       return;
     }
     try {
@@ -998,13 +998,13 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
       setAvailableOutputDevices(audioOutputDevices);
     } catch (err) {
-      appLog(`[AudioEngine] Error listing output devices: ${(err as Error).message}`, true);
+      console.log(`[AudioEngine] Error listing output devices: ${(err as Error).message}`, true);
     }
-  }, [appLog]);
+  }, []);
 
   const setOutputDevice = useCallback(async (sinkId: string): Promise<boolean> => {
     if (!audioContext || !(audioContext as any).setSinkId) {
-      appLog("[AudioEngine] setSinkId is not supported by this browser or AudioContext not initialized.", true);
+      console.log("[AudioEngine] setSinkId is not supported by this browser or AudioContext not initialized.", true);
       return false;
     }
     try {
@@ -1013,20 +1013,20 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       }
       await (audioContext as any).setSinkId(sinkId);
       setSelectedSinkId(sinkId);
-      appLog(`[AudioEngine] Audio output device set to: ${sinkId}`, true);
+      console.log(`[AudioEngine] Audio output device set to: ${sinkId}`, true);
       if (masterGainNodeRef.current) {
         masterGainNodeRef.current.connect(audioContext.destination);
       }
       return true;
     } catch (err) {
-      appLog(`[AudioEngine] Error setting output device: ${(err as Error).message}`, true);
+      console.log(`[AudioEngine] Error setting output device: ${(err as Error).message}`, true);
       if (masterGainNodeRef.current) {
         try { masterGainNodeRef.current.connect(audioContext.destination); }
-        catch(e) { appLog(`[AudioEngine] Failed to fallback connect masterGain: ${(e as Error).message}`, true); }
+        catch(e) { console.log(`[AudioEngine] Failed to fallback connect masterGain: ${(e as Error).message}`, true); }
       }
       return false;
     }
-  }, [audioContext, appLog]);
+  }, [audioContext]);
 
   useEffect(() => {
     listOutputDevices(); 
@@ -1071,7 +1071,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       onError: (error) => addBlockLog(`Lyria Service Error: ${error}`),
       onClose: (message) => addBlockLog(`Lyria Service closed: ${message}`),
       onOutputNodeChanged: (newNode) => {
-        appLog(`[AudioEngine] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
+        console.log(`[AudioEngine] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
         const lyriaServiceInfo = managedLyriaServiceInstancesRef.current.get(instanceId);
 
         if (lyriaServiceInfo && masterGainNodeRef.current) {
@@ -1082,10 +1082,10 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
                 try { oldNode.disconnect(masterGainNodeRef.current); } catch (e) { /* ignore */ }
             }
             try { newNode.connect(masterGainNodeRef.current); } 
-            catch (e) { appLog(`[AudioEngine Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+            catch (e) { console.log(`[AudioEngine Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
         } else if (masterGainNodeRef.current) {
             try { newNode.connect(masterGainNodeRef.current); } 
-            catch (e) { appLog(`[AudioEngine Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
+            catch (e) { console.log(`[AudioEngine Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
         }
       },
     };
@@ -1104,7 +1104,7 @@ export const useAudioEngine = (appLog: (message: string, isSystem?: boolean) => 
       addBlockLog(`Failed to initialize Lyria Service: ${error.message}`);
       return false;
     }
-  }, [audioContext, appLog]);
+  }, [audioContext]);
   
   const getLyriaServiceInstance = useCallback((instanceId: string): LiveMusicService | null => {
     return managedLyriaServiceInstancesRef.current.get(instanceId)?.service || null;

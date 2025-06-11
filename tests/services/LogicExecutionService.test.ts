@@ -62,7 +62,6 @@ describe('LogicExecutionService', () => {
         service = new LogicExecutionService(
             mockBlockStateManager,
             mockGetDefinitionForBlock,
-            // appLog is removed from constructor
             mockAudioEngine
         );
 

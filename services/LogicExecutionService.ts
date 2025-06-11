@@ -49,7 +49,6 @@ function determineExecutionOrder(instances: BlockInstance[], connections: Connec
 
   if (sortedOrder.length !== instances.length) {
     const missingNodes = instanceIds.filter(id => !sortedOrder.includes(id));
-    // This logging should be handled by the appLog passed to the service
     // console.warn("Cycle detected in block graph or disconnected nodes. Execution order may be incomplete. Missing:", missingNodes);
     return [...sortedOrder, ...missingNodes];
   }

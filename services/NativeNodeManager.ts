@@ -52,16 +52,13 @@ export class NativeNodeManager implements INativeNodeManager {
     // Make audioContext mutable
     private audioContext: AudioContext | null;
     private readonly onStateChangeForReRender: () => void;
-    private readonly appLog: (message: string, isSystem?: boolean) => void;
 
     constructor(
         audioContext: AudioContext | null,
         onStateChangeForReRender: () => void,
-        appLog: (message: string, isSystem?: boolean) => void
     ) {
         this.audioContext = audioContext;
         this.onStateChangeForReRender = onStateChangeForReRender;
-        this.appLog = appLog;
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
     }
 
@@ -72,7 +69,7 @@ export class NativeNodeManager implements INativeNodeManager {
     public _setAudioContext(newContext: AudioContext | null): void {
         if (this.audioContext !== newContext) {
             if (this.managedNativeNodesRef.size > 0) {
-                this.appLog("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes.", true);
+                console.log("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes.", true);
                 this.removeAllManagedNativeNodes(); // Clears the map and disconnects nodes
             }
             this.audioContext = newContext;
@@ -89,11 +86,11 @@ export class NativeNodeManager implements INativeNodeManager {
         currentBpm: number = 120
     ): Promise<boolean> {
         if (!this.audioContext || this.audioContext.state !== 'running') {
-            this.appLog(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, true);
+            console.log(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, true);
             return false;
         }
         if (this.managedNativeNodesRef.has(instanceId)) {
-            this.appLog(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
+            console.log(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
             return true;
         }
 
@@ -189,20 +186,20 @@ export class NativeNodeManager implements INativeNodeManager {
                     paramTargets.set('gain', internalGain.gain);
                     break;
                 default:
-                    this.appLog(`[NativeManager Setup] Definition ID '${definition.id}' not recognized.`, true);
+                    console.log(`[NativeManager Setup] Definition ID '${definition.id}' not recognized.`, true);
                     return false;
             }
 
             const nodeInfo: ManagedNativeNodeInfo = { nodeForInputConnections: inputConnectNode, nodeForOutputConnections: outputNode, mainProcessingNode: mainNode, internalGainNode: internalGain, allpassInternalNodes: allpassNodes, paramTargetsForCv: paramTargets, definition: definition, instanceId: instanceId, constantSourceValueNode: constSrcNodeForNumToAudio };
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
             this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); // Call to the (currently empty) class method
-            this.appLog(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
+            console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
             this.onStateChangeForReRender();
             return true;
         } catch (e) {
             const errorMsg = `Failed to construct native node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
             console.error(errorMsg, e);
-            this.appLog(errorMsg, true);
+            console.log(errorMsg, true);
             return false;
         }
     }
@@ -326,10 +323,10 @@ export class NativeNodeManager implements INativeNodeManager {
                     try { info.constantSourceValueNode.stop(); } catch (e) { /* already stopped */ }
                 }
             } catch (e) {
-                this.appLog(`[NativeManager Remove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
+                console.log(`[NativeManager Remove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
             }
             this.managedNativeNodesRef.delete(instanceId);
-            this.appLog(`[NativeManager Remove] Removed native node for instance '${instanceId}'.`, true);
+            console.log(`[NativeManager Remove] Removed native node for instance '${instanceId}'.`, true);
             this.onStateChangeForReRender();
         }
     }
@@ -338,7 +335,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.managedNativeNodesRef.forEach((_, instanceId) => {
             this.removeManagedNativeNode(instanceId); // Call the class method
         });
-        this.appLog("[NativeManager] All managed native nodes removed.", true);
+        console.log("[NativeManager] All managed native nodes removed.", true);
     }
 
     public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {

@@ -11,7 +11,6 @@ export class LogicExecutionEngineManager {
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
     initialAudioEngine: AudioEngine | null // Can be initially null
   ) {
-    // Note: LogicExecutionService constructor no longer takes appLog
     this.logicExecutionService = new LogicExecutionService(
       blockStateManager,
       getDefinitionForBlock,

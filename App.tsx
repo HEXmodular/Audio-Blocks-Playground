@@ -66,9 +66,6 @@ const App: React.FC = () => {
     addLogToBlockInstance: ctxAddLogToBlockInstance,
   } = useBlockState();
 
-  // appLogCallback removed as LogicExecutionService now uses console directly
-  // and other services also use console.
-
   const audioEngineService = useMemo(() => new AudioEngineService(), []);
   const [, forceRender] = useState(0);
 
