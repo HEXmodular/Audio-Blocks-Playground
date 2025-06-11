@@ -355,10 +355,24 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
           if (workletInfo && workletInfo.node) {
             const workletNode = workletInfo.node;
-            const isConnected = this._outputWorkletConnections.has(instance.instanceId);
+            const isTrackedAsConnected = this._outputWorkletConnections.has(instance.instanceId);
 
-            if (this._isAudioGloballyEnabled && this._audioContext.state === 'running') {
-              if (!isConnected) {
+            // --- BEGIN DETAILED LOGGING ---
+            console.log(`[AudioOutputDebug] Instance: ${instance.instanceId}`);
+            console.log(`[AudioOutputDebug] _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
+            console.log(`[AudioOutputDebug] _audioContext.state: ${this._audioContext?.state}`);
+            console.log(`[AudioOutputDebug] _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
+            if (workletInfo.inputGainNode) {
+              console.log(`[AudioOutputDebug] AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
+            } else {
+              console.log(`[AudioOutputDebug] AudioOutput block's internal inputGainNode: NOT FOUND`);
+            }
+            console.log(`[AudioOutputDebug] Is worklet already tracked as connected: ${isTrackedAsConnected}`);
+            // --- END DETAILED LOGGING ---
+
+            if (this._isAudioGloballyEnabled && this._audioContext && this._audioContext.state === 'running') {
+              if (!isTrackedAsConnected) {
+                console.log(`[AudioOutputDebug] Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.connect(this._masterGainNode!);
                   this._outputWorkletConnections.set(instance.instanceId, workletNode);
@@ -366,9 +380,14 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                 } catch (e) {
                   console.error(`AudioEngineService: Error connecting AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode:`, e);
                 }
+              } else {
+                console.log(`[AudioOutputDebug] Worklet node ${instance.instanceId} already tracked as connected. Ensuring connection (no action if already connected).`);
+                // Optional: Could add a check here to ensure it's *actually* connected if paranoia is high,
+                // but Web Audio API handles duplicate connections gracefully (no-op).
               }
             } else {
-              if (isConnected) {
+              if (isTrackedAsConnected) {
+                console.log(`[AudioOutputDebug] Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.disconnect(this._masterGainNode!);
                   this._outputWorkletConnections.delete(instance.instanceId);
@@ -376,6 +395,8 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                 } catch (e) {
                   console.error(`AudioEngineService: Error disconnecting AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode:`, e);
                 }
+              } else {
+                console.log(`[AudioOutputDebug] Audio not enabled OR worklet ${instance.instanceId} not tracked as connected. No disconnection action needed.`);
               }
             }
           }
