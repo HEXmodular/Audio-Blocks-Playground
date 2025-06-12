@@ -93,9 +93,9 @@ export class LFONativeBlock extends NativeBlock {
 }
 
 export const LFO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'lfo-refactored-v1',
+  id: 'native-lfo-v1',
   name: 'LFO (Native)',
-  description: 'Generates a low-frequency audio signal for modulation. Its parameters control a native OscillatorNode and an optional internal GainNode for amplitude.',
+  description: 'Refactored LFO (Native) managed by LFONativeBlock class. Generates a low-frequency audio signal for modulation.',
   runsAtAudioRate: true,
   inputs: [
     // Optional: Inputs for frequency CV or reset could be added here later if needed.

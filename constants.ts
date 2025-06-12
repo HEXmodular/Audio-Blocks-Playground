@@ -382,9 +382,9 @@ export const OSCILLOSCOPE_BLOCK_DEFINITION: BlockDefinition = {
 };
 
 export const NATIVE_LFO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'lfo-refactored-v1',
+  id: 'native-lfo-v1',
   name: 'LFO (Native)',
-  description: 'Low-Frequency Oscillator using a native OscillatorNode, managed by LFONativeBlock class. Outputs an audio-rate signal, typically used for modulation.',
+  description: 'Low-Frequency Oscillator using a native OscillatorNode. Outputs an audio-rate signal, typically used for modulation.',
   runsAtAudioRate: true,
   inputs: [
     { id: 'freq_cv_in', name: 'Frequency CV', type: 'audio', description: 'Modulates LFO frequency.', audioParamTarget: 'frequency' },

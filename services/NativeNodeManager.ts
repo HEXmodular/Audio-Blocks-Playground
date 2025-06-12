@@ -7,10 +7,10 @@
  */
 import { BlockDefinition, BlockParameter } from '../types';
 import { GAIN_BLOCK_DEFINITION, GainControlNativeBlock } from './native-blocks/GainControlNativeBlock'; // Added GainControlNativeBlock
-import { LFONativeBlock, LFO_BLOCK_DEFINITION } from '../services/native-blocks/LFONativeBlock'; // Added LFO Native Block
+import { LFONativeBlock, LFO_BLOCK_DEFINITION as ClassManagedLFODefinition } from '../services/native-blocks/LFONativeBlock'; // Updated LFO Import
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-    // NATIVE_LFO_BLOCK_DEFINITION, // Replaced by LFONativeBlock
+    // NATIVE_LFO_BLOCK_DEFINITION, // This constant (from constants.ts) should not be handled by the switch if ClassManagedLFODefinition.id is 'native-lfo-v1'
     NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
     // GAIN_BLOCK_DEFINITION, // Removed
     NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
@@ -122,65 +122,68 @@ export class NativeNodeManager implements INativeNodeManager {
         let auxiliaryNodes: { [key: string]: AudioNode } | undefined = {}; // Initialize auxiliaryNodes
 
         try {
-            switch (definition.id) {
-                case NATIVE_OSCILLATOR_BLOCK_DEFINITION.id:
-                // case NATIVE_LFO_BLOCK_DEFINITION.id: // This case will be handled by the new LFO_BLOCK_DEFINITION.id
-                case NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id: // Assuming this is a different LFO type for now
-                    const osc = this.audioContext.createOscillator();
-                    internalGain = this.audioContext.createGain();
-                    osc.connect(internalGain);
+            // Class-based handlers first
+            if (definition.id === GAIN_BLOCK_DEFINITION.id) {
+                if (!this.audioContext) {
+                    console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for Gain block setup.");
+                    return false;
+                }
+                if (!this.gainControlNativeBlock || !this.gainControlNativeBlock.isContextInitialized()) {
+                    this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+                }
+                const gainNodeInfo = this.gainControlNativeBlock.createNode(instanceId, initialParams);
+                mainNode = gainNodeInfo.mainProcessingNode;
+                inputConnectNode = gainNodeInfo.nodeForInputConnections;
+                outputNode = gainNodeInfo.nodeForOutputConnections;
+                gainNodeInfo.paramTargetsForCv?.forEach((value, key) => {
+                    paramTargets.set(key, value);
+                });
+                if (gainNodeInfo.auxiliaryNodes) {
+                    auxiliaryNodes = { ...auxiliaryNodes, ...gainNodeInfo.auxiliaryNodes };
+                }
+            } else if (definition.id === ClassManagedLFODefinition.id) { // Updated LFO handling
+                if (!this.audioContext) {
+                    console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for LFO block setup.");
+                    return false;
+                }
+                if (!this.lfoNativeBlock || !this.lfoNativeBlock.isContextInitialized()) {
+                    this.lfoNativeBlock = new LFONativeBlock(this.audioContext);
+                }
+                const lfoNodeInfo = this.lfoNativeBlock.createNode(instanceId, initialParams);
+                mainNode = lfoNodeInfo.mainProcessingNode;
+                inputConnectNode = lfoNodeInfo.nodeForInputConnections;
+                outputNode = lfoNodeInfo.nodeForOutputConnections;
+                if (lfoNodeInfo.auxiliaryNodes && lfoNodeInfo.auxiliaryNodes.amplitudeGain) {
+                    internalGain = lfoNodeInfo.auxiliaryNodes.amplitudeGain as GainNode;
+                }
+                lfoNodeInfo.paramTargetsForCv?.forEach((value, key) => {
+                    paramTargets.set(key, value);
+                });
+                if (lfoNodeInfo.auxiliaryNodes) {
+                    auxiliaryNodes = { ...auxiliaryNodes, ...lfoNodeInfo.auxiliaryNodes };
+                }
+            } else {
+                // Main switch for other native blocks
+                switch (definition.id) {
+                    case NATIVE_OSCILLATOR_BLOCK_DEFINITION.id:
+                    // Note: If NATIVE_LFO_BLOCK_DEFINITION from constants.ts has id 'native-lfo-v1',
+                    // it should NOT be handled here if ClassManagedLFODefinition.id is also 'native-lfo-v1'.
+                    // The ClassManagedLFODefinition block above will catch it.
+                    case NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id:
+                        const osc = this.audioContext.createOscillator();
+                        internalGain = this.audioContext.createGain();
+                        osc.connect(internalGain);
                     osc.start();
                     mainNode = osc;
                     inputConnectNode = internalGain;
                     outputNode = internalGain;
-                    paramTargets.set('frequency', osc.frequency);
-                    paramTargets.set('gain', internalGain.gain);
-                    break;
-                case 'lfo-refactored-v1': // Changed from LFO_BLOCK_DEFINITION.id
-                    if (!this.audioContext) {
-                        console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for LFO block setup.");
-                        return false;
-                    }
-                    if (!this.lfoNativeBlock || !this.lfoNativeBlock.isContextInitialized()) {
-                        this.lfoNativeBlock = new LFONativeBlock(this.audioContext);
-                    }
-                    const lfoNodeInfo = this.lfoNativeBlock.createNode(instanceId, initialParams);
-                    mainNode = lfoNodeInfo.mainProcessingNode;
-                    inputConnectNode = lfoNodeInfo.nodeForInputConnections;
-                    outputNode = lfoNodeInfo.nodeForOutputConnections;
-                    if (lfoNodeInfo.auxiliaryNodes && lfoNodeInfo.auxiliaryNodes.amplitudeGain) {
-                        internalGain = lfoNodeInfo.auxiliaryNodes.amplitudeGain as GainNode;
-                    }
-                    lfoNodeInfo.paramTargetsForCv?.forEach((value, key) => {
-                        paramTargets.set(key, value);
-                    });
-                    if (lfoNodeInfo.auxiliaryNodes) {
-                        auxiliaryNodes = { ...auxiliaryNodes, ...lfoNodeInfo.auxiliaryNodes };
-                    }
-                    break;
-                case GAIN_BLOCK_DEFINITION.id:
-                    if (!this.audioContext) {
-                        console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for Gain block setup.");
-                        return false;
-                    }
-                    // Ensure gainControlNativeBlock is initialized with the current, valid audioContext.
-                    // This handles cases where it might not have been initialized in constructor (if context was null)
-                    // or in _setAudioContext (if it was called with null).
-                    if (!this.gainControlNativeBlock || !this.gainControlNativeBlock.isContextInitialized()) {
-                        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-                    }
-
-                    // createNode in GainControlNativeBlock will throw if its own context is null.
-                    const gainNodeInfo = this.gainControlNativeBlock.createNode(instanceId, initialParams);
-                    mainNode = gainNodeInfo.mainProcessingNode;
-                    inputConnectNode = gainNodeInfo.nodeForInputConnections;
-                    outputNode = gainNodeInfo.nodeForOutputConnections;
-                    gainNodeInfo.paramTargetsForCv?.forEach((value, key) => {
-                        paramTargets.set(key, value);
-                    });
-                    break;
-                case NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id:
-                    const biquad = this.audioContext.createBiquadFilter();
+                        paramTargets.set('frequency', osc.frequency);
+                        paramTargets.set('gain', internalGain.gain);
+                        break;
+                    // Removed case for 'lfo-refactored-v1' as it's handled by the if/else if structure above
+                    // Removed case for GAIN_BLOCK_DEFINITION.id as it's handled by the if/else if structure above
+                    case NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id:
+                        const biquad = this.audioContext.createBiquadFilter();
                     mainNode = biquad;
                     inputConnectNode = biquad;
                     outputNode = biquad;
@@ -290,7 +293,7 @@ export class NativeNodeManager implements INativeNodeManager {
                 }
             }
             return; // Parameters for this block are fully handled by its own class
-        } else if (definition.id === 'lfo-refactored-v1') { // Changed from LFO_BLOCK_DEFINITION.id
+        } else if (definition.id === ClassManagedLFODefinition.id) { // Updated LFO handling
             if (this.lfoNativeBlock && this.lfoNativeBlock.isContextInitialized()) {
                 this.lfoNativeBlock.updateNodeParams(info, parameters);
             } else {
