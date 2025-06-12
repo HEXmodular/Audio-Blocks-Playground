@@ -5,7 +5,7 @@
  * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
  * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
  */
-import { BlockDefinition, BlockParameter, OscillatorType, BiquadFilterType } from '../types';
+import { BlockDefinition, BlockParameter, OscillatorType, BiquadFilterType } from '@types/types';
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
     NATIVE_LFO_BLOCK_DEFINITION,
@@ -17,7 +17,7 @@ import {
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '../constants'; // From root constants.ts
+} from '@constants/constants'; // From root constants.ts
 
 import { GAIN_BLOCK_DEFINITION } from './native-blocks/GainControlNativeBlock'; // Specifically from its own file
 

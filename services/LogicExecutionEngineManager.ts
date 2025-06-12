@@ -5,10 +5,10 @@
  * It also provides an interface to clear cached logic functions from the underlying `LogicExecutionService`, which is essential when block functionalities are updated dynamically.
  * Essentially, this manager orchestrates the operational state of the non-audio-rate logic execution within the application.
  */
-import { BlockInstance, Connection, BlockDefinition } from '../types';
+import { BlockInstance, Connection, BlockDefinition } from '@types/types';
 import { BlockStateManager } from '../state/BlockStateManager';
 import { audioEngineService } from './AudioEngineService'; // Use the singleton
-import { LogicExecutionService } from '../services/LogicExecutionService'; // Corrected path
+import { LogicExecutionService } from '@services/LogicExecutionService'; // Corrected path
 
 export class LogicExecutionEngineManager {
   private logicExecutionService: LogicExecutionService;

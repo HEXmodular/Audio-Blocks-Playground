@@ -1,6 +1,6 @@
 import { BlockStateManager, InstanceUpdatePayload } from '../../state/BlockStateManager';
-import { BlockDefinition, BlockInstance } from '../../types';
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '../../constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking
+import { BlockDefinition, BlockInstance } from '../@types/types';
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking
 
 // Minimal mock for CORE_BLOCK_DEFINITIONS_ARRAY to avoid import issues in test
 const MOCK_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [

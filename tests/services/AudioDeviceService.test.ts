@@ -1,4 +1,4 @@
-import { AudioDeviceService } from '../../services/AudioDeviceService';
+import { AudioDeviceService } from '../@services/AudioDeviceService';
 
 // Mock MediaDevices
 const mockMediaDevices = {

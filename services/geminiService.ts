@@ -7,13 +7,13 @@
  */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { BlockDefinition, GeminiRequest, BlockParameter } from '../types';
+import { BlockDefinition, GeminiRequest, BlockParameter } from '@types/types';
 import { 
     GEMINI_SYSTEM_PROMPT_FOR_BLOCK_DEFINITION, 
     GEMINI_SYSTEM_PROMPT_FOR_CODE_MODIFICATION,
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_LOGIC_CODE,
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_TEST_CODE
-} from '../constants';
+} from '@constants/constants';
 // import { testRegistry } from '../test-runner'; // Assuming test-runner is one level up
 
 const API_KEY = process.env.API_KEY;

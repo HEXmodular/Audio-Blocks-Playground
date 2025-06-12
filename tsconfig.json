@@ -25,7 +25,15 @@
     "esModuleInterop": true,
 
     "paths": {
-      "@/*" :  ["./*"]
+      "@/*" :  ["./*"],
+      "@services" :  ["./services"],
+      "@types" :  ["./types"],
+      "@components" :  ["./components"],
+      "@context" :  ["./context"],
+      "@utils" :  ["./utils"],
+      "@controllers" :  ["./controllers"],
+      "@icons" :  ["./icons"],
+      "@constants" :  ["./constants"],
     }
   }
 }

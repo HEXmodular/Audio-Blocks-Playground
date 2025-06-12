@@ -5,7 +5,7 @@
  * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
-import { BlockInstance, Connection, BlockDefinition } from '../types';
+import { BlockInstance, Connection, BlockDefinition } from '@types/types';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager';
 import { AudioEngineService } from './AudioEngineService';
 import {
@@ -13,7 +13,7 @@ import {
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
     LYRIA_MASTER_BLOCK_DEFINITION,
-} from '../constants';
+} from '@constants/constants';
 
 // Helper function, can be static or outside the class
 function determineExecutionOrder(instances: BlockInstance[], connections: Connection[]): string[] {

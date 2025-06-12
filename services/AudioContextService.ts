@@ -5,7 +5,7 @@
  * Additionally, it offers utilities for querying available audio output devices and setting the preferred output device (sinkId) if supported by the browser.
  * This service acts as a foundational layer for any audio processing or playback within the application.
  */
-import { AudioContextState, OutputDevice } from '../types'; // Assuming AudioContextState is here or define locally
+import { AudioContextState, OutputDevice } from '@types/types'; // Assuming AudioContextState is here or define locally
 
 // Define AudioContextState if not available from types.ts
 // export type AudioContextState = 'suspended' | 'running' | 'closed' | 'interrupted';

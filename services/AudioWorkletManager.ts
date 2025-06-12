@@ -5,12 +5,12 @@
  * Key functionalities include setting up new worklet nodes with specific parameters and processor options, updating their parameters in real-time, sending and receiving messages via their communication port, and managing their removal.
  * It also provides utilities like requesting recent audio samples from a worklet, crucial for visualization or analysis, and signals its readiness state to the rest of the audio system.
  */
-import { BlockDefinition, BlockParameter, AudioContextState } from '../types';
+import { BlockDefinition, BlockParameter, AudioContextState } from '@types/types';
 import {
     OSCILLATOR_BLOCK_DEFINITION,
     AUDIO_OUTPUT_BLOCK_DEFINITION,
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
-} from '../constants';
+} from '@constants/constants';
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
     OSCILLATOR_BLOCK_DEFINITION,

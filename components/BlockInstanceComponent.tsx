@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '../types';
-import { TrashIcon, ExclamationTriangleIcon } from './icons';
+import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@types/types';
+import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120; 

@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { BlockInstance, BlockDefinition, GeminiRequest } from '../types';
-import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '../services/geminiService';
-import { LightBulbIcon } from './icons';
-import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
+import { BlockInstance, BlockDefinition, GeminiRequest } from '@types/types';
+import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '@services/geminiService';
+import { LightBulbIcon } from '@icons/icons';
+import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 
 interface GeminiChatPanelProps {
   isOpen: boolean;

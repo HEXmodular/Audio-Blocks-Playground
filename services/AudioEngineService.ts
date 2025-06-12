@@ -10,13 +10,13 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '../constants';
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
 import { NativeNodeManager, ManagedNativeNodeInfo } from './NativeNodeManager';
 import { LyriaServiceManager, ManagedLyriaServiceInfo } from './LyriaServiceManager';
-import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '../types';
+import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '@types/types';
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;

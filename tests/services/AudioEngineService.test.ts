@@ -1,18 +1,18 @@
 // @ts-nocheck
-import { AudioEngineService } from '../../services/AudioEngineService';
-import { AudioContextService } from '../../services/AudioContextService';
-import { NativeNodeManager } from '../../services/NativeNodeManager';
-import { AudioWorkletManager } from '../../services/AudioWorkletManager';
-import { LyriaServiceManager } from '../../services/LyriaServiceManager';
-import { AudioGraphConnectorService } from '../../services/AudioGraphConnectorService';
-import { OutputDevice } from '../../types';
+import { AudioEngineService } from '../@services/AudioEngineService';
+import { AudioContextService } from '../@services/AudioContextService';
+import { NativeNodeManager } from '../@services/NativeNodeManager';
+import { AudioWorkletManager } from '../@services/AudioWorkletManager';
+import { LyriaServiceManager } from '../@services/LyriaServiceManager';
+import { AudioGraphConnectorService } from '../@services/AudioGraphConnectorService';
+import { OutputDevice } from '../@types/types';
 
 // Mock external services
-jest.mock('../../services/AudioContextService');
-jest.mock('../../services/NativeNodeManager');
-jest.mock('../../services/AudioWorkletManager');
-jest.mock('../../services/LyriaServiceManager');
-jest.mock('../../services/AudioGraphConnectorService');
+jest.mock('../@services/AudioContextService');
+jest.mock('../@services/NativeNodeManager');
+jest.mock('../@services/AudioWorkletManager');
+jest.mock('../@services/LyriaServiceManager');
+jest.mock('../@services/AudioGraphConnectorService');
 
 // Mock global AudioContext and GainNode
 const mockGainNode = {

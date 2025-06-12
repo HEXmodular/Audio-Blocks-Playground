@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BlockInstance, Connection, PendingConnection } from './types';
-import Toolbar from './components/Toolbar';
-import BlockInstanceComponent from './components/BlockInstanceComponent';
-import GeminiChatPanel, { GeminiChatPanelRef } from './components/GeminiChatPanel';
-import BlockDetailPanel from './components/BlockDetailPanel';
+import { BlockInstance, Connection, PendingConnection } from '@types/types';
+import Toolbar from '@components/Toolbar';
+import BlockInstanceComponent from '@components/BlockInstanceComponent';
+import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';
+import BlockDetailPanel from '@components/BlockDetailPanel';
 import {
     ALL_BLOCK_DEFINITIONS as CORE_BLOCK_DEFINITIONS_ARRAY,
-} from './constants';
+} from '@constants/constants';
 
 // import { getDefaultOutputValue } from './state/BlockStateManager'; // No longer used directly in App.tsx
-import { useBlockState } from './context/BlockStateContext';
-import { audioEngineService } from './services/AudioEngineService'; // Replaced useAudioEngine
-import { ConnectionDragHandler } from './utils/ConnectionDragHandler'; // Changed import
+import { useBlockState } from '@context/BlockStateContext';
+import { audioEngineService } from '@services/AudioEngineService'; // Replaced useAudioEngine
+import { ConnectionDragHandler } from '@utils/ConnectionDragHandler'; // Changed import
 // import { useLogicExecutionEngine } from './hooks/useLogicExecutionEngine'; // Removed
-// import { LogicExecutionService } from './services/LogicExecutionService'; // Removed as manager encapsulates it
-import { ConnectionState } from './services/ConnectionState';
-import ConnectionsRenderer from './components/ConnectionsRenderer';
-import { LogicExecutionEngineManager } from './services/LogicExecutionEngineManager';
-import { GlobalAudioState, GlobalAudioStateSyncer } from './services/GlobalAudioStateSyncer';
-import { AudioNodeManager } from './services/AudioNodeManager';
-import { BlockInstanceController } from './controllers/BlockInstanceController';
+// import { LogicExecutionService } from '@services/LogicExecutionService'; // Removed as manager encapsulates it
+import { ConnectionState } from '@services/ConnectionState';
+import ConnectionsRenderer from '@components/ConnectionsRenderer';
+import { LogicExecutionEngineManager } from '@services/LogicExecutionEngineManager';
+import { GlobalAudioState, GlobalAudioStateSyncer } from '@services/GlobalAudioStateSyncer';
+import { AudioNodeManager } from '@services/AudioNodeManager';
+import { BlockInstanceController } from '@controllers/BlockInstanceController';
 // WorkspacePersistenceManager import removed
 
 const GRID_STEP = 20;

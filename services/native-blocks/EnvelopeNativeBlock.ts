@@ -1,7 +1,7 @@
-import { BlockDefinition, BlockParameter } from '../../types';
+import { BlockDefinition, BlockParameter } from '../@types/types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
-import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION, NATIVE_AR_ENVELOPE_BLOCK_DEFINITION } from '../../constants';
+import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION, NATIVE_AR_ENVELOPE_BLOCK_DEFINITION } from '@constants/constants';
 // NATIVE_AD_ENVELOPE_BLOCK_DEFINITION and NATIVE_AR_ENVELOPE_BLOCK_DEFINITION
 // are used for registration in NativeNodeManager, not directly in this file usually.
 

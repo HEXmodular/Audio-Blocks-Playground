@@ -1,13 +1,13 @@
 
 
 import React, { useMemo, useCallback } from 'react';
-import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from './icons'; 
-import { BlockDefinition, BlockInstance, Connection } from '../types';
-import { WorkspacePersistenceManager } from '../services/WorkspacePersistenceManager';
-import { AudioEngineService } from '../services/AudioEngineService';
+import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from '@icons/icons'; 
+import { BlockDefinition, BlockInstance, Connection } from '@types/types';
+import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
+import { AudioEngineService } from '@services/AudioEngineService';
 import { BlockStateManager } from '../state/BlockStateManager';
-import { ConnectionState } from '../services/ConnectionState';
-import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
+import { ConnectionState } from '@services/ConnectionState';
+import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 
 interface ToolbarProps {
   appBlockDefinitionsFromCtx: BlockDefinition[];

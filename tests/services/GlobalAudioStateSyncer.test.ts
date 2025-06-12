@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { GlobalAudioStateSyncer, GlobalAudioState } from '../../services/GlobalAudioStateSyncer';
-import { AudioEngineService } from '../../services/AudioEngineService';
-import { AudioDevice, AudioContextState } from '../../types';
+import { GlobalAudioStateSyncer, GlobalAudioState } from '../@services/GlobalAudioStateSyncer';
+import { AudioEngineService } from '../@services/AudioEngineService';
+import { AudioDevice, AudioContextState } from '../@types/types';
 
 // Mock AudioEngineService
-jest.mock('../../services/AudioEngineService');
+jest.mock('../@services/AudioEngineService');
 
 const mockAudioDevice = (id: string, label: string = `Device ${id}`): AudioDevice => ({
   deviceId: id,

@@ -5,7 +5,7 @@
  * This notification system allows other parts of the application, such as the UI or the audio engine's graph connector, to react dynamically to modifications in the connection topology.
  * It acts as a centralized store and source of truth for the user-defined connections in the audio block interface.
  */
-import { Connection } from '../types';
+import { Connection } from '@types/types';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 

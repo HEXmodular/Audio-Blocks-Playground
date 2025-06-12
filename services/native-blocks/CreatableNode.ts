@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter } from '../../types';
+import { BlockDefinition, BlockParameter } from '../@types/types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { NativeBlock } from './NativeBlock';
 

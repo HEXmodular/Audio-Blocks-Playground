@@ -1,7 +1,7 @@
-import { BlockDefinition, BlockParameter } from '../../types';
+import { BlockDefinition, BlockParameter } from '../@types/types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
-import { NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION } from '../../constants';
+import { NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export class BiquadFilterNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {

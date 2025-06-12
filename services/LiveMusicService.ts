@@ -10,8 +10,8 @@
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value
 import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig, Scale as GenAIScale } from '@google/genai';
-import { decode, decodeAudioData } from './utils';
-import { getCurrentDateAsSeed } from './dateUtils'; // Import the new utility
+import { decode, decodeAudioData } from '@utils/utils';
+import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utility
 
 const MODEL_NAME = 'lyria-realtime-exp';
 

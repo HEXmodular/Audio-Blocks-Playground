@@ -1,7 +1,7 @@
-import { BlockDefinition, BlockParameter } from '../../types';
+import { BlockDefinition, BlockParameter } from '../@types/types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
-import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '../../constants';
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 
 export class NumberToConstantAudioNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {

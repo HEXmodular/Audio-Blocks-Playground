@@ -5,11 +5,11 @@
  * It maintains a record of active connections and intelligently updates them, only making necessary changes to reflect the current graph structure provided by the application.
  * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
  */
-import { Connection, BlockInstance, BlockDefinition } from '../types';
+import { Connection, BlockInstance, BlockDefinition } from '@types/types';
 import { ManagedWorkletNodeInfo } from '../hooks/useAudioWorkletManager';
 import { ManagedNativeNodeInfo } from '../hooks/useNativeNodeManager';
 import { ManagedLyriaServiceInfo } from '../hooks/useLyriaServiceManager';
-import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '../constants';
+import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export interface ActiveWebAudioConnection {
   connectionId: string;

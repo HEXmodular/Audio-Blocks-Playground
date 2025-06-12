@@ -1,8 +1,8 @@
-import { LogicExecutionService } from '../../services/LogicExecutionService';
-import { BlockInstance, BlockDefinition, Connection } from '../../types';
+import { LogicExecutionService } from '../@services/LogicExecutionService';
+import { BlockInstance, BlockDefinition, Connection } from '../@types/types';
 import { BlockStateManager, getDefaultOutputValue as actualGetDefaultOutputValue } from '../../state/BlockStateManager';
 import { AudioEngine } from '../../hooks/useAudioEngine';
-import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '../../constants';
+import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '@constants/constants';
 
 
 // Mock BlockStateManager and its helper getDefaultOutputValue

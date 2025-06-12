@@ -7,7 +7,7 @@
  */
 // services/GlobalAudioStateSyncer.ts
 import { AudioEngineService } from './AudioEngineService'; // Assuming path
-import { AudioDevice } from '../types'; // Assuming path
+import { AudioDevice } from '@types/types'; // Assuming path
 
 // Define the state structure this class will manage
 export interface GlobalAudioState {

@@ -1,6 +1,6 @@
 
 // Adjust the import path according to your project structure
-import { parseJsonFromGeminiResponse } from '../services/geminiService';
+import { parseJsonFromGeminiResponse } from '@services/geminiService';
 
 // Mock @google/genai module
 jest.mock('@google/genai', () => ({

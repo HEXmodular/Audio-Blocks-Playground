@@ -1,5 +1,5 @@
 
-import { BlockInstance, Connection, BlockParameter } from '../types';
+import { BlockInstance, Connection, BlockParameter } from '@types/types';
 import { AudioEngine } from '../hooks/useAudioEngine';
 
 export interface VerifyAudioPathHealthOptions {

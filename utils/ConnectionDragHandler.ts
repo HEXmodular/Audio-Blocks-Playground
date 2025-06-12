@@ -1,5 +1,5 @@
 import { RefObject } from 'react'; // Assuming React.RefObject for svgRef
-import { PendingConnection, BlockPort, Connection, BlockInstance, BlockDefinition } from '../types';
+import { PendingConnection, BlockPort, Connection, BlockInstance, BlockDefinition } from '@types/types';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ConnectionDragHandlerProps {
