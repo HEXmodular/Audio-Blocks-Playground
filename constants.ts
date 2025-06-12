@@ -4,7 +4,7 @@ import { BlockDefinition, BlockParameterDefinition, BlockPort, BlockParameter, S
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 // Input pDefProto is effectively Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any }
 // because the objects passed to it will have these fields.
-const createParameterDefinitions = (
+export const createParameterDefinitions = (
   params: Array<Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any, steps?: number, isFrequency?: boolean }>
 ): BlockParameterDefinition[] => {
   return params.map(pDefProto => {
@@ -240,33 +240,6 @@ class SampleBufferProcessor extends AudioWorkletProcessor {
 // IMPORTANT: The registerProcessor call will be done by the host environment (useAudioEngine)
 `;
 
-export const GAIN_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'gain-v1',
-  name: 'Gain Control (Native)',
-  description: 'Wraps a native Web Audio API GainNode. Amplifies or attenuates an audio signal. Its "gain" parameter controls the GainNode.gain AudioParam. Audio path is managed by Web Audio graph connections.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to process (connects to native GainNode input in Web Audio graph)' },
-    { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain AudioParam directly in Web Audio graph.', audioParamTarget: 'gain' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Processed audio signal (from native GainNode output in Web Audio graph)' }
-  ],
-  parameters: createParameterDefinitions([ // Use new helper
-    { id: 'gain', name: 'Gain Factor', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Gain multiplier (AudioParam for native GainNode)' }
-  ]),
-  logicCode: `
-// This block wraps a native GainNode. Its 'gain' parameter is an AudioParam, updated by the host.
-// 'audio_in', 'audio_out', 'gain_cv_in' represent connections in the Web Audio graph.
-// This logicCode does not process audio or directly manage AudioParams.
-// Any main-thread logic specific to this block (e.g., reacting to non-audio inputs/params) would go here.
-// Currently, it's a simple pass-through for control logic, as the host handles native node parameter updates.
-// __custom_block_logger__('Native Gain Block: Main-thread tick. Parameters are for the native GainNode managed by the host.');
-return {};
-  `.trim(),
-  initialPrompt: 'Create a gain control block that wraps a native Web Audio API GainNode. It should take an audio input and a gain CV input (for direct AudioParam modulation). It should have a "gain" parameter (slider from 0 to 2) that controls the native GainNode\'s gain AudioParam. It should output the processed audio signal.',
-};
-
 export const AUDIO_OUTPUT_BLOCK_DEFINITION: BlockDefinition = {
   id: 'system-audio-output-v1',
   name: 'Audio Output',
@@ -279,28 +252,12 @@ export const AUDIO_OUTPUT_BLOCK_DEFINITION: BlockDefinition = {
   parameters: createParameterDefinitions([ // Use new helper
     { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal GainNode AudioParam)' }
   ]),
-  logicCode: `
-// The 'audio_in' port is connected to this block's internal GainNode by the host audio engine.
-// The 'volume' parameter is used by useAudioEngine to control this internal GainNode's gain AudioParam.
-// This logicCode itself does not directly interact with the worklet or process audio.
-// __custom_block_logger__('Audio Output main-thread: Host manages audio routing and volume for this block.');
-return {};
-  `.trim(),
-  initialPrompt: 'System block: Audio Output. Plays audio from its input. Has a volume parameter that controls an internal GainNode. The GainNode then feeds a SampleBufferProcessor AudioWorklet.',
-  audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME,
+  // logicCode and initialPrompt removed
+  audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME, // This still uses a worklet for sampling
   audioWorkletCode: SAMPLE_BUFFER_WORKLET_CODE,
 };
 
-
-export const NATIVE_LOGIC_CODE_PLACEHOLDER = `
-// This block is implemented natively by the browser (e.g., OscillatorNode, BiquadFilterNode, DelayNode, AnalyserNode, ConstantSourceNode).
-// Its AudioParams and properties are controlled by the audio engine (useAudioEngine.ts) based on UI changes ('params') and connected inputs (passed to engine).
-// This main-thread 'logicCode' does not process or output audio. 'inputs.audio_in' will be null.
-// Audio connections ('audio_in', 'audio_out', CV inputs) are part of the Web Audio API graph, managed by the host.
-// The 'audioContextInfo' object in scope may contain { sampleRate: number, bpm: number }.
-// __custom_block_logger__('Native Block: Main-thread tick. Parameters for the native AudioNode are managed by the host audio engine.');
-return {}; // No internal state change by default.
-`.trim();
+// NATIVE_LOGIC_CODE_PLACEHOLDER has been removed as it's no longer used by the refactored native block definitions.
 
 export const NATIVE_OSCILLATOR_BLOCK_DEFINITION: BlockDefinition = {
   id: 'native-oscillator-v1',
@@ -318,8 +275,7 @@ export const NATIVE_OSCILLATOR_BLOCK_DEFINITION: BlockDefinition = {
     { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'Shape of the waveform (OscillatorNode.type).' },
     { id: 'gain', name: 'Gain/CV Depth', type: 'slider', min: 0, max: 200, step: 0.1, defaultValue: 0.5, description: 'Output amplitude or CV modulation depth. Controls an internal GainNode.' }
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Create an audio oscillator block using a native Web Audio API OscillatorNode. It should have frequency, waveform type (sine, square, sawtooth, triangle), and gain parameters. The gain should control an internal GainNode. It needs an audio input for frequency CV. No trigger input for phase reset.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 
@@ -354,22 +310,7 @@ export const NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION: BlockDefinition = {
       description: 'The type of filtering algorithm (native node property).'
     },
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Standard Web Audio API BiquadFilterNode. Its parameters (frequency, Q, gain, type) should control the corresponding AudioParams/properties on the native node. It should have audio inputs for the main signal and for frequency/Q CV modulation.',
-  logicCodeTests: `
-describe('NativeBiquadFilter LogicCode Placeholder Tests', () => {
-  it('should run without error and produce no output by default', async (context) => {
-    context.resetTestContext();
-    // Inputs to logicCode are for main-thread control, not direct audio samples for native node.
-    const inputs = { audio_in: null, freq_cv_in: null, q_cv_in: null };
-    const params = { frequency: 1000, q: 1, gain: 0, type: 'lowpass' };
-    const resultState = context.TestedLogic(inputs, params, {});
-    const outputs = context.getOutputs();
-    expect(Object.keys(outputs).length).toBe(0); // NATIVE_LOGIC_CODE_PLACEHOLDER does not call setOutput.
-    expect(resultState).toEqual({});
-  });
-});
-  `.trim(),
+  // logicCode, initialPrompt, and logicCodeTests removed as this will be handled by a dedicated class
 };
 
 export const NATIVE_DELAY_BLOCK_DEFINITION: BlockDefinition = {
@@ -387,8 +328,7 @@ export const NATIVE_DELAY_BLOCK_DEFINITION: BlockDefinition = {
   parameters: createParameterDefinitions([ // Use new helper
     { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0, max: 5, step: 0.001, defaultValue: 0.5, description: 'Delay in seconds (AudioParam). Max effective delay fixed at node creation (e.g. 5s by default in engine).' },
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Standard Web Audio API DelayNode with a delayTime parameter. It should accept audio input for the main signal and CV for delayTime modulation.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 export const NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION: BlockDefinition = {
@@ -408,8 +348,7 @@ export const NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION: BlockDefinition = {
     { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0.0001, max: 1.0, step: 0.0001, defaultValue: 0.05, description: 'Delay length M in seconds. Affects both input and feedback delay paths.' },
     { id: 'coefficient', name: 'Coefficient (g)', type: 'slider', min: -0.99, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback/feedforward coefficient g.' }
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Create a native allpass filter using DelayNodes and GainNodes to implement the structure y[n] = -g*x[n] + x[n-M] + g*y[n-M]. Parameters: delayTime (M), coefficient (g). Add CV inputs for delayTime (targeting the input delay path) and coefficient (targeting the feedback gain).',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 
@@ -437,8 +376,7 @@ export const OSCILLOSCOPE_BLOCK_DEFINITION: BlockDefinition = {
       description: 'Size of the FFT window. This influences the detail in the time domain data for the oscilloscope.'
     }
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Create an oscilloscope block using a native Web Audio AnalyserNode. It should take one audio input. It will have one parameter "fftSize" (select type, with power-of-2 options from 32 to 32768, default 2048) to control the AnalyserNode.fftSize property. The UI display for this block will be handled by a custom component in the detail panel.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 export const NATIVE_LFO_BLOCK_DEFINITION: BlockDefinition = {
@@ -457,8 +395,7 @@ export const NATIVE_LFO_BLOCK_DEFINITION: BlockDefinition = {
     { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
     { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER,
-  initialPrompt: 'Create a native LFO block using an OscillatorNode. Max frequency 200Hz. Parameters: frequency (0.01-200Hz), waveform, amplitude. Input: frequency CV. Output: LFO audio signal.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 const BPM_FRACTIONS = [
@@ -485,8 +422,8 @@ export const NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION: BlockDefinition = {
     { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
     { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
   ]),
-  logicCode: NATIVE_LOGIC_CODE_PLACEHOLDER, // Host will calculate frequency from BPM & fraction and set on OscillatorNode
-  initialPrompt: 'Create a native LFO block synchronized to global BPM. It should use an OscillatorNode. Parameters: bpm_fraction (select from common musical divisions like 1/4, 1/8, 1/16, triplets, dotted), waveform, amplitude. Output: LFO audio signal. The host audio engine will calculate the actual frequency based on global BPM and the selected fraction.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
+  // Host (NativeNodeManager or a dedicated LFO BPM Sync class) will calculate frequency from BPM & fraction and set on OscillatorNode
 };
 
 export const NATIVE_AD_ENVELOPE_BLOCK_DEFINITION: BlockDefinition = {
@@ -1263,24 +1200,7 @@ export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
     { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
     { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
   ]),
-  logicCode: `
-// Main thread logic for Number to Constant Audio.
-// The 'number_in' value will be read by useAudioEngine and used to set the ConstantSourceNode's offset.
-// The 'gain' parameter is also handled by useAudioEngine for an internal GainNode.
-// The 'max_input_value' param helps useAudioEngine normalize the number_in to an audio range like -1 to 1.
-
-// This logic code is a placeholder as primary functionality is in the audio engine.
-// It can be used for logging or reacting to non-audio related changes if any.
-// For example, if number_in was intended to set a state variable that then gets read by worklet.
-// But for ConstantSourceNode, the engine directly uses inputs.number_in.
-
-const numIn = inputs.number_in;
-// __custom_block_logger__(\`Number input received: \${numIn}. Audio engine handles ConstantSourceNode.\`);
-
-// No outputs from logic code itself, audio is from native node.
-return {};
-  `.trim(),
-  initialPrompt: 'Create a block that converts a number input to a constant audio signal. Use a native ConstantSourceNode. Parameters: "Gain" (slider 0-1) for an internal GainNode, "Max Expected Input" (number_input, e.g., 255 for 8-bit numbers) to normalize the input number to audio range (-1 to 1) before applying gain. Input: "Number In". Output: "Audio Output". The audio engine will manage the ConstantSourceNode and GainNode.',
+  // logicCode and initialPrompt removed as this will be handled by a dedicated class
 };
 
 const LYRIA_SCALE_OPTIONS = Object.entries(AppScale).map(([label, value]) => ({
@@ -1606,7 +1526,6 @@ Ensure 'fixedLogicCodeTests' is a string containing the test code. Only provide 
 export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   OSCILLATOR_BLOCK_DEFINITION,
   NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-  GAIN_BLOCK_DEFINITION,
   NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
   NATIVE_DELAY_BLOCK_DEFINITION,
   NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,

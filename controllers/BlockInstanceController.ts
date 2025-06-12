@@ -5,10 +5,11 @@ import { AudioEngineService } from '../services/AudioEngineService'; // Adjust p
 import { ConnectionState } from '../services/ConnectionState'; // Adjust path
 import {
     AUDIO_OUTPUT_BLOCK_DEFINITION,
-    GAIN_BLOCK_DEFINITION,
+    // GAIN_BLOCK_DEFINITION, // Removed from here
     LYRIA_MASTER_BLOCK_DEFINITION,
     OSCILLOSCOPE_BLOCK_DEFINITION
 } from '../constants'; // Adjust path
+import { GAIN_BLOCK_DEFINITION } from '../services/native-blocks/GainControlNativeBlock'; // Added here
 
 export class BlockInstanceController {
     private blockStateManager: BlockStateManager;
