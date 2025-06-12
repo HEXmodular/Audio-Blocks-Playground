@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, OscillatorType } from '../../../types';
+import { BlockDefinition, BlockParameter } from '../../../types';
 import { ManagedNativeNodeInfo } from '../../NativeNodeManager'; // Assuming AllpassInternalNodes might not be needed here, but ManagedNativeNodeInfo is.
 import { NATIVE_OSCILLATOR_BLOCK_DEFINITION, NATIVE_LFO_BLOCK_DEFINITION, NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION } from '../../../constants';
 import { CreatableNode } from './CreatableNode';
@@ -62,7 +62,7 @@ export class OscillatorNativeBlock extends CreatableNode {
                     targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
                 }
             } else if (param.id === 'waveform' && typeof param.currentValue === 'string') {
-                oscNode.type = param.currentValue as OscillatorType;
+                oscNode.type = param.currentValue as globalThis.OscillatorType;
             }
 
             // Specific handling for LFO BPM Sync frequency

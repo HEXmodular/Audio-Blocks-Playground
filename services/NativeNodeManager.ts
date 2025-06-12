@@ -66,7 +66,7 @@ export interface INativeNodeManager {
 
 export class NativeNodeManager implements INativeNodeManager {
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
-    private gainControlNativeBlock: GainControlNativeBlock;
+    // private gainControlNativeBlock: GainControlNativeBlock; // Removed as it's now part of blockHandlers
     private blockHandlers: Map<string, CreatableNode>;
 
     // Make audioContext mutable

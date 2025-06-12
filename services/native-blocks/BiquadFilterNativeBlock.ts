@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, BiquadFilterType } from '../../../types';
+import { BlockDefinition, BlockParameter } from '../../../types';
 import { ManagedNativeNodeInfo } from '../../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
 
@@ -55,7 +55,7 @@ export class BiquadFilterNativeBlock extends CreatableNode {
                     targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
                 }
             } else if (param.id === 'type' && typeof param.currentValue === 'string') {
-                biquadNode.type = param.currentValue as BiquadFilterType;
+                biquadNode.type = param.currentValue as globalThis.BiquadFilterType;
             }
         });
     }
