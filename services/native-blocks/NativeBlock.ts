@@ -13,6 +13,14 @@ export abstract class NativeBlock {
   }
 
   /**
+   * Sets a new AudioContext for the block.
+   * @param newContext The new audio context.
+   */
+  public setAudioContext(newContext: AudioContext | null): void {
+    this.audioContext = newContext;
+  }
+
+  /**
    * Checks if the AudioContext has been initialized for this block.
    * @returns True if the audioContext is not null, false otherwise.
    */

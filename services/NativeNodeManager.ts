@@ -5,13 +5,12 @@
  * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
  * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
  */
-import { BlockDefinition, BlockParameter } from '../types';
-import { GAIN_BLOCK_DEFINITION, GainControlNativeBlock } from './native-blocks/GainControlNativeBlock'; // Added GainControlNativeBlock
+import { BlockDefinition, BlockParameter, OscillatorType, BiquadFilterType } from '../types';
 import {
+    GAIN_BLOCK_DEFINITION,
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
     NATIVE_LFO_BLOCK_DEFINITION,
     NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
-    // GAIN_BLOCK_DEFINITION, // Removed
     NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
     NATIVE_DELAY_BLOCK_DEFINITION,
     OSCILLOSCOPE_BLOCK_DEFINITION,
@@ -19,7 +18,18 @@ import {
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '../constants'; // GAIN_BLOCK_DEFINITION removed from this import
+} from '../constants';
+
+import { CreatableNode } from './native-blocks/CreatableNode';
+import { GainControlNativeBlock } from './native-blocks/GainControlNativeBlock';
+import { OscillatorNativeBlock } from './native-blocks/OscillatorNativeBlock';
+import { BiquadFilterNativeBlock } from './native-blocks/BiquadFilterNativeBlock';
+import { DelayNativeBlock } from './native-blocks/DelayNativeBlock';
+import { OscilloscopeNativeBlock } from './native-blocks/OscilloscopeNativeBlock';
+import { EnvelopeNativeBlock } from './native-blocks/EnvelopeNativeBlock';
+import { AllpassFilterNativeBlock } from './native-blocks/AllpassFilterNativeBlock';
+import { NumberToConstantAudioNativeBlock } from './native-blocks/NumberToConstantAudioNativeBlock';
+
 
 export interface AllpassInternalNodes {
     inputPassthroughNode: GainNode;
@@ -56,7 +66,8 @@ export interface INativeNodeManager {
 
 export class NativeNodeManager implements INativeNodeManager {
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
-    private gainControlNativeBlock: GainControlNativeBlock; // Added
+    private gainControlNativeBlock: GainControlNativeBlock;
+    private blockHandlers: Map<string, CreatableNode>;
 
     // Make audioContext mutable
     private audioContext: AudioContext | null;
@@ -69,8 +80,28 @@ export class NativeNodeManager implements INativeNodeManager {
         this.audioContext = audioContext;
         this.onStateChangeForReRender = onStateChangeForReRender;
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
-        // Initialize gainControlNativeBlock with the manager's audioContext
-        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+
+        this.blockHandlers = new Map<string, CreatableNode>();
+        // No longer need separate gainControlNativeBlock field initialization here
+        // this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+
+        if (this.audioContext) { // Ensure context is available for handlers
+            this.initializeBlockHandlers(this.audioContext);
+        }
+    }
+
+    private initializeBlockHandlers(context: AudioContext): void {
+        this.blockHandlers.set(GAIN_BLOCK_DEFINITION.id, new GainControlNativeBlock(context)); // Add GainControlNativeBlock
+        this.blockHandlers.set(NATIVE_OSCILLATOR_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(NATIVE_LFO_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id, new BiquadFilterNativeBlock(context));
+        this.blockHandlers.set(NATIVE_DELAY_BLOCK_DEFINITION.id, new DelayNativeBlock(context));
+        this.blockHandlers.set(OSCILLOSCOPE_BLOCK_DEFINITION.id, new OscilloscopeNativeBlock(context));
+        this.blockHandlers.set(NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id, new EnvelopeNativeBlock(context));
+        this.blockHandlers.set(NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id, new EnvelopeNativeBlock(context));
+        this.blockHandlers.set(NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id, new AllpassFilterNativeBlock(context));
+        this.blockHandlers.set(NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id, new NumberToConstantAudioNativeBlock(context));
     }
 
     /**
@@ -84,11 +115,29 @@ export class NativeNodeManager implements INativeNodeManager {
                 this.removeAllManagedNativeNodes(); // Clears the map and disconnects nodes
             }
             this.audioContext = newContext;
-            // Re-initialize gainControlNativeBlock with the new context (which might be null)
-            this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-            // No specific re-registration needed here like worklets, native nodes are created on demand.
-            // However, if there was any context-dependent state, it should be reset.
-            this.onStateChangeForReRender(); // If any manager state depended on context presence
+
+            // Update context for all handlers
+            if (this.audioContext) {
+                // Initialize handlers if context was previously null
+                if (this.blockHandlers.size === 0) {
+                    this.initializeBlockHandlers(this.audioContext);
+                } else {
+                    for (const handler of this.blockHandlers.values()) {
+                        handler.setAudioContext(this.audioContext);
+                    }
+                }
+                // No longer need separate gainControlNativeBlock.setAudioContext call
+                // this.gainControlNativeBlock.setAudioContext(this.audioContext);
+
+            } else {
+                // Context is null, clear handlers or set their context to null
+                for (const handler of this.blockHandlers.values()) {
+                    handler.setAudioContext(null);
+                }
+                // No longer need separate gainControlNativeBlock.setAudioContext call
+                // this.gainControlNativeBlock.setAudioContext(null);
+            }
+            this.onStateChangeForReRender();
         }
     }
 
@@ -107,122 +156,23 @@ export class NativeNodeManager implements INativeNodeManager {
             return true;
         }
 
-        let mainNode: AudioNode | undefined;
-        let outputNode: AudioNode;
-        let inputConnectNode: AudioNode;
-        let internalGain: GainNode | undefined;
-        let allpassNodes: AllpassInternalNodes | undefined;
-        let constSrcNodeForNumToAudio: ConstantSourceNode | undefined;
-        const paramTargets = new Map<string, AudioParam>();
-
         try {
-            switch (definition.id) {
-                case NATIVE_OSCILLATOR_BLOCK_DEFINITION.id:
-                case NATIVE_LFO_BLOCK_DEFINITION.id:
-                case NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id:
-                    const osc = this.audioContext.createOscillator();
-                    internalGain = this.audioContext.createGain();
-                    osc.connect(internalGain);
-                    osc.start();
-                    mainNode = osc;
-                    inputConnectNode = internalGain;
-                    outputNode = internalGain;
-                    paramTargets.set('frequency', osc.frequency);
-                    paramTargets.set('gain', internalGain.gain);
-                    break;
-                case GAIN_BLOCK_DEFINITION.id:
-                    if (!this.audioContext) {
-                        console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for Gain block setup.");
-                        return false;
-                    }
-                    // Ensure gainControlNativeBlock is initialized with the current, valid audioContext.
-                    // This handles cases where it might not have been initialized in constructor (if context was null)
-                    // or in _setAudioContext (if it was called with null).
-                    if (!this.gainControlNativeBlock || !this.gainControlNativeBlock.isContextInitialized()) {
-                        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-                    }
+            const handler = this.blockHandlers.get(definition.id);
 
-                    // createNode in GainControlNativeBlock will throw if its own context is null.
-                    const gainNodeInfo = this.gainControlNativeBlock.createNode(instanceId, initialParams);
-                    mainNode = gainNodeInfo.mainProcessingNode;
-                    inputConnectNode = gainNodeInfo.nodeForInputConnections;
-                    outputNode = gainNodeInfo.nodeForOutputConnections;
-                    gainNodeInfo.paramTargetsForCv?.forEach((value, key) => {
-                        paramTargets.set(key, value);
-                    });
-                    break;
-                case NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id:
-                    const biquad = this.audioContext.createBiquadFilter();
-                    mainNode = biquad;
-                    inputConnectNode = biquad;
-                    outputNode = biquad;
-                    paramTargets.set('frequency', biquad.frequency);
-                    paramTargets.set('Q', biquad.Q);
-                    paramTargets.set('gain', biquad.gain);
-                    break;
-                case NATIVE_DELAY_BLOCK_DEFINITION.id:
-                    const delay = this.audioContext.createDelay(5.0);
-                    mainNode = delay;
-                    inputConnectNode = delay;
-                    outputNode = delay;
-                    paramTargets.set('delayTime', delay.delayTime);
-                    break;
-                case OSCILLOSCOPE_BLOCK_DEFINITION.id:
-                    const analyser = this.audioContext.createAnalyser();
-                    mainNode = analyser;
-                    inputConnectNode = analyser;
-                    outputNode = analyser;
-                    break;
-                case NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id:
-                case NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id:
-                    const constSource = this.audioContext.createConstantSource();
-                    constSource.offset.value = 0;
-                    constSource.start();
-                    mainNode = constSource;
-                    inputConnectNode = constSource;
-                    outputNode = constSource;
-                    break;
-                case NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id:
-                    const apInputPassthrough = this.audioContext.createGain();
-                    const apInputGain1 = this.audioContext.createGain();
-                    const apInputDelay = this.audioContext.createDelay(1.0);
-                    const apFeedbackGain = this.audioContext.createGain();
-                    const apFeedbackDelay = this.audioContext.createDelay(1.0);
-                    const apSummingNode = this.audioContext.createGain();
-                    apInputGain1.connect(apInputDelay);
-                    apInputDelay.connect(apSummingNode);
-                    apInputPassthrough.connect(apSummingNode);
-                    apSummingNode.connect(apFeedbackDelay);
-                    apFeedbackDelay.connect(apFeedbackGain);
-                    apFeedbackGain.connect(apSummingNode);
-                    allpassNodes = { inputPassthroughNode: apInputPassthrough, inputGain1: apInputGain1, inputDelay: apInputDelay, feedbackGain: apFeedbackGain, feedbackDelay: apFeedbackDelay, summingNode: apSummingNode };
-                    mainNode = undefined;
-                    inputConnectNode = apInputGain1;
-                    outputNode = apSummingNode;
-                    paramTargets.set('delayTime', apInputDelay.delayTime);
-                    break;
-                case NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id:
-                    constSrcNodeForNumToAudio = this.audioContext.createConstantSource();
-                    constSrcNodeForNumToAudio.offset.value = 0;
-                    constSrcNodeForNumToAudio.start();
-                    internalGain = this.audioContext.createGain();
-                    constSrcNodeForNumToAudio.connect(internalGain);
-                    mainNode = constSrcNodeForNumToAudio;
-                    inputConnectNode = internalGain;
-                    outputNode = internalGain;
-                    paramTargets.set('gain', internalGain.gain);
-                    break;
-                default:
-                    console.log(`[NativeManager Setup] Definition ID '${definition.id}' not recognized.`, true);
-                    return false;
+            if (handler) {
+                const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
+                this.managedNativeNodesRef.set(instanceId, nodeInfo);
+                // Initial parameters are typically applied by the handler's createNode or an initial call to updateNodeParams within it.
+                // However, we call updateManagedNativeNodeParams here to ensure consistency, especially if createNode doesn't apply all initial params.
+                this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
+                console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created via handler.`, true);
+                this.onStateChangeForReRender();
+                return true;
+            // Removed the specific 'else if (definition.id === GAIN_BLOCK_DEFINITION.id)' block
+            } else {
+                console.log(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, true);
+                return false;
             }
-
-            const nodeInfo: ManagedNativeNodeInfo = { nodeForInputConnections: inputConnectNode, nodeForOutputConnections: outputNode, mainProcessingNode: mainNode, internalGainNode: internalGain, allpassInternalNodes: allpassNodes, paramTargetsForCv: paramTargets, definition: definition, instanceId: instanceId, constantSourceValueNode: constSrcNodeForNumToAudio };
-            this.managedNativeNodesRef.set(instanceId, nodeInfo);
-            this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); // Call to the (currently empty) class method
-            console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
-            this.onStateChangeForReRender();
-            return true;
         } catch (e) {
             const errorMsg = `Failed to construct native node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
             console.error(errorMsg, e);
@@ -241,80 +191,16 @@ export class NativeNodeManager implements INativeNodeManager {
         const info = this.managedNativeNodesRef.get(instanceId);
         if (!info) return;
 
-        const { mainProcessingNode, paramTargetsForCv, definition, allpassInternalNodes, constantSourceValueNode } = info;
+        const handler = this.blockHandlers.get(info.definition.id);
 
-        // Handle GainControlNativeBlock separately
-        if (definition.id === GAIN_BLOCK_DEFINITION.id) {
-            if (this.gainControlNativeBlock && this.gainControlNativeBlock.isContextInitialized()) {
-                this.gainControlNativeBlock.updateNodeParams(info, parameters);
-            } else {
-                // Attempt to re-initialize if manager's context is valid, then update
-                if (this.audioContext) {
-                    console.warn("[NativeManager Update] GainControlNativeBlock was not ready. Re-initializing and attempting update.");
-                    this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-                    if (this.gainControlNativeBlock.isContextInitialized()) {
-                        this.gainControlNativeBlock.updateNodeParams(info, parameters);
-                    } else {
-                        console.error("[NativeManager Update] Failed to update GainControlNativeBlock: Context still invalid after re-initialization.");
-                    }
-                } else {
-                    console.error("[NativeManager Update] Failed to update GainControlNativeBlock: Manager's AudioContext is null.");
-                }
-            }
-            return; // Parameters for this block are fully handled by its own class
+        if (handler) {
+            handler.updateNodeParams(info, parameters, currentInputs, currentBpm);
+            return;
         }
+        // Removed the specific fallback for GAIN_BLOCK_DEFINITION.id
 
-        parameters.forEach(param => {
-            const targetAudioParam = paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) {
-                if (typeof param.currentValue === 'number') {
-                    targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
-                }
-            } else if (mainProcessingNode) {
-                // Ensure this part does not conflict with GAIN_BLOCK_DEFINITION logic handled above
-                if (definition.id === NATIVE_OSCILLATOR_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) {
-                    const oscNode = mainProcessingNode as OscillatorNode;
-                    if (param.id === 'waveform' && typeof param.currentValue === 'string') {
-                        oscNode.type = param.currentValue as OscillatorType;
-                    }
-                    if (param.id === 'frequency' && definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) {
-                        const bpmFractionParam = parameters.find(p => p.id === 'bpm_fraction');
-                        const bpmFraction = bpmFractionParam ? parseFloat(bpmFractionParam.currentValue as string) : 1;
-                        const lfoFreq = 1.0 / ((60.0 / currentBpm) * bpmFraction);
-                        if (isFinite(lfoFreq) && lfoFreq > 0) {
-                            oscNode.frequency.setTargetAtTime(lfoFreq, this.audioContext.currentTime, 0.01);
-                        }
-                    }
-                } else if (definition.id === NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id) {
-                    const biquadNode = mainProcessingNode as BiquadFilterNode;
-                    if (param.id === 'type' && typeof param.currentValue === 'string') {
-                        biquadNode.type = param.currentValue as BiquadFilterType;
-                    }
-                } else if (definition.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
-                    const analyserNode = mainProcessingNode as AnalyserNode;
-                    if (param.id === 'fftSize' && typeof param.currentValue === 'number') {
-                        analyserNode.fftSize = param.currentValue;
-                    }
-                } else if (allpassInternalNodes && definition.id === NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id) {
-                    if (param.id === 'delayTime' && typeof param.currentValue === 'number') {
-                        allpassInternalNodes.inputDelay.delayTime.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
-                        allpassInternalNodes.feedbackDelay.delayTime.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
-                    }
-                    if (param.id === 'coefficient' && typeof param.currentValue === 'number') {
-                        allpassInternalNodes.inputPassthroughNode.gain.setTargetAtTime(-param.currentValue, this.audioContext.currentTime, 0.01);
-                        allpassInternalNodes.feedbackGain.gain.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
-                    }
-                }
-            }
-            if (constantSourceValueNode && definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id && currentInputs && currentInputs.number_in !== undefined) {
-                const numberIn = Number(currentInputs.number_in);
-                const maxExpectedParam = parameters.find(p => p.id === 'max_input_value');
-                const maxExpected = maxExpectedParam ? Number(maxExpectedParam.currentValue) : 255;
-                let normalizedValue = maxExpected !== 0 ? (numberIn / maxExpected) * 2 - 1 : 0;
-                normalizedValue = Math.max(-1, Math.min(1, normalizedValue));
-                constantSourceValueNode.offset.setTargetAtTime(normalizedValue, this.audioContext.currentTime, 0.01);
-            }
-        });
+        // If no handler was found, log an error or handle as appropriate.
+        console.warn(`[NativeManager Update] No handler found for definition ID '${info.definition.id}'. Update failed.`);
     }
 
     public triggerNativeNodeEnvelope(instanceId: string, attackTime: number, decayTime: number, peakLevel: number): void {

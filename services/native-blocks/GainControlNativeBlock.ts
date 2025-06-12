@@ -1,84 +1,119 @@
-import { NativeBlock } from './NativeBlock';
-import type { BlockDefinition, BlockParameter } from '../../types'; // Added BlockParameter
+import { CreatableNode } from './CreatableNode';
+import type { BlockDefinition, BlockParameter } from '../../types';
 import { createParameterDefinitions } from '../../constants';
-import type { ManagedNativeNodeInfo } from '../NativeNodeManager'; // Added ManagedNativeNodeInfo
+import type { ManagedNativeNodeInfo } from '../NativeNodeManager';
 
 /**
  * GainControlNativeBlock is a native block that controls the gain of the audio.
  */
-export class GainControlNativeBlock extends NativeBlock {
-  // audioContext is inherited from NativeBlock constructor
+export class GainControlNativeBlock extends CreatableNode {
 
   /**
    * Creates a new GainControlNativeBlock.
    * @param audioContext The audio context, can be null.
    */
-  constructor(audioContext: AudioContext | null) { // Allow null for context
-    super(audioContext); // Calls NativeBlock constructor
+  constructor(audioContext: AudioContext | null) {
+    super(audioContext);
   }
 
   /**
    * Creates and configures a new GainNode based on the provided parameters.
    * @param instanceId The unique identifier for this node instance.
-   * @param initialParams The initial parameters for the node (may not be strictly needed here).
+   * @param definition The block definition for this gain node.
+   * @param initialParams The initial parameters for the node.
+   * @param currentBpm Optional current BPM, not used by GainControl.
    * @returns ManagedNativeNodeInfo an object containing the configured node and related information.
    */
-  createNode(instanceId: string, initialParams: BlockParameter[]): ManagedNativeNodeInfo {
+  createNode(
+    instanceId: string,
+    definition: BlockDefinition,
+    initialParams: BlockParameter[],
+    currentBpm?: number // Not used by Gain, but part of interface
+  ): ManagedNativeNodeInfo {
     if (!this.audioContext) {
       throw new Error("AudioContext not initialized in GainControlNativeBlock.");
     }
     const gainNode = this.audioContext.createGain();
 
-    // Apply initial 'gain' parameter if provided in initialParams
-    // This step is good practice, though updateNodeParams will also be called.
-    const initialGainParam = initialParams.find(p => p.id === 'gain');
-    if (initialGainParam && typeof initialGainParam.currentValue === 'number') {
-      gainNode.gain.setValueAtTime(initialGainParam.currentValue, this.audioContext.currentTime);
-    } else {
-      // Set to default from definition if not in initialParams
-      const defaultGainParam = GAIN_BLOCK_DEFINITION.parameters.find(p => p.id === 'gain');
-      if (defaultGainParam && typeof defaultGainParam.defaultValue === 'number') {
-        gainNode.gain.setValueAtTime(defaultGainParam.defaultValue, this.audioContext.currentTime);
-      } else {
-        gainNode.gain.setValueAtTime(1, this.audioContext.currentTime); // Fallback default
-      }
-    }
-
     const paramTargetsForCv = new Map<string, AudioParam>();
     paramTargetsForCv.set('gain', gainNode.gain);
+
+    // Initial parameters are applied by NativeNodeManager calling updateNodeParams after this.
+    // However, setting a default here ensures the node is in a valid state immediately.
+    const gainParamDef = definition.parameters.find(p => p.id === 'gain');
+    let initialGainValue = 1; // Default fallback
+    if (gainParamDef && typeof gainParamDef.defaultValue === 'number') {
+      initialGainValue = gainParamDef.defaultValue;
+    }
+    const initialGainParam = initialParams.find(p => p.id === 'gain');
+    if (initialGainParam && typeof initialGainParam.currentValue === 'number') {
+      initialGainValue = initialGainParam.currentValue;
+    }
+    gainNode.gain.setValueAtTime(initialGainValue, this.audioContext.currentTime);
+
 
     return {
       nodeForInputConnections: gainNode,
       nodeForOutputConnections: gainNode,
       mainProcessingNode: gainNode,
       paramTargetsForCv: paramTargetsForCv,
-      definition: GAIN_BLOCK_DEFINITION,
+      definition: definition, // Use the passed definition
       instanceId: instanceId,
     };
   }
 
   /**
    * Updates the parameters of an existing GainNode.
-   * @param managedNodeInfo Information about the managed native node.
+   * @param info Information about the managed native node.
    * @param parameters The new parameters to apply.
+   * @param currentInputs Optional current inputs, not used by GainControl.
+   * @param currentBpm Optional current BPM, not used by GainControl.
    */
-  updateNodeParams(managedNodeInfo: ManagedNativeNodeInfo, parameters: BlockParameter[]): void {
+  updateNodeParams(
+    info: ManagedNativeNodeInfo,
+    parameters: BlockParameter[],
+    currentInputs?: Record<string, any>, // Not used
+    currentBpm?: number // Not used
+  ): void {
     if (!this.audioContext) {
-      // It's possible audioContext might become null if disconnected later
       console.warn("AudioContext not available in GainControlNativeBlock during updateNodeParams.");
       return;
     }
-    const gainNode = managedNodeInfo.mainProcessingNode as GainNode;
-    if (!gainNode) {
-      console.error("GainNode not found in managedNodeInfo for instanceId:", managedNodeInfo.instanceId);
+    // Ensure mainProcessingNode is a GainNode, which it should be based on createNode
+    if (!info.mainProcessingNode || !(info.mainProcessingNode instanceof GainNode)) {
+      console.error("Main processing node is not a GainNode for instanceId:", info.instanceId);
       return;
     }
+    const gainNode = info.mainProcessingNode as GainNode;
 
     const gainParam = parameters.find(p => p.id === 'gain');
     if (gainParam && typeof gainParam.currentValue === 'number') {
       gainNode.gain.setTargetAtTime(gainParam.currentValue, this.audioContext.currentTime, 0.01);
     }
   }
+
+  // connect and disconnect methods are inherited from NativeBlock (via CreatableNode).
+  // CreatableNode is abstract, and NativeBlock's connect/disconnect are abstract.
+  // If GainControlNativeBlock doesn't need specific connection logic beyond what NativeNodeManager handles
+  // via nodeForInputConnections/nodeForOutputConnections, these can be minimal implementations
+  // or the class itself could be abstract if CreatableNode doesn't provide concrete ones.
+  // For now, let's assume NativeNodeManager handles connections.
+  // If these methods were strictly abstract in a non-abstract CreatableNode, they'd need to be implemented.
+  // Let's add stubs to satisfy potential abstract requirements if NativeBlock made them so.
+  // However, the other CreatableNode children had them commented out, implying they are not strictly needed
+  // if the class remains abstract or if the base provides non-abstract stubs.
+  // Given CreatableNode is abstract, this class doesn't *have* to implement them if it too were abstract.
+  // But we intend to instantiate it.
+  // The other concrete NativeBlock children (Oscillator, etc.) had commented out connect/disconnect.
+  // Let's follow that pattern for now, assuming they are not strictly needed for NativeNodeManager's operation.
+
+  // connect(destination: AudioNode): void {
+  //   console.warn("GainControlNativeBlock.connect() called - connection typically managed by AudioGraphConnectorService.");
+  // }
+
+  // disconnect(destination: AudioNode): void {
+  //   console.warn("GainControlNativeBlock.disconnect() called - connection typically managed by AudioGraphConnectorService.");
+  // }
 }
 
 export const GAIN_BLOCK_DEFINITION: BlockDefinition = {
