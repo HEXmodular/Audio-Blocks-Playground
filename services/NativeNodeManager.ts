@@ -136,7 +136,7 @@ export class NativeNodeManager implements INativeNodeManager {
                     paramTargets.set('frequency', osc.frequency);
                     paramTargets.set('gain', internalGain.gain);
                     break;
-                case LFO_BLOCK_DEFINITION.id:
+                case 'lfo-refactored-v1': // Changed from LFO_BLOCK_DEFINITION.id
                     if (!this.audioContext) {
                         console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for LFO block setup.");
                         return false;
@@ -290,7 +290,7 @@ export class NativeNodeManager implements INativeNodeManager {
                 }
             }
             return; // Parameters for this block are fully handled by its own class
-        } else if (definition.id === LFO_BLOCK_DEFINITION.id) {
+        } else if (definition.id === 'lfo-refactored-v1') { // Changed from LFO_BLOCK_DEFINITION.id
             if (this.lfoNativeBlock && this.lfoNativeBlock.isContextInitialized()) {
                 this.lfoNativeBlock.updateNodeParams(info, parameters);
             } else {

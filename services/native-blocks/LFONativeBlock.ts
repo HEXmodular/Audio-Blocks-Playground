@@ -22,26 +22,26 @@ export class LFONativeBlock extends NativeBlock {
     // Get default values from definition
     const freqParamDef = LFO_BLOCK_DEFINITION.parameters.find(p => p.id === 'frequency');
     const waveParamDef = LFO_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform');
-    const ampParamDef = LFO_BLOCK_DEFINITION.parameters.find(p => p.id === 'amplitude');
+    const gainParamDef = LFO_BLOCK_DEFINITION.parameters.find(p => p.id === 'gain');
 
     // Apply initial parameters
     const initialFrequency = initialParams.find(p => p.id === 'frequency')?.currentValue as number ?? freqParamDef?.defaultValue as number ?? 1;
     const initialWaveform = initialParams.find(p => p.id === 'waveform')?.currentValue as OscillatorType ?? waveParamDef?.defaultValue as OscillatorType ?? 'sine';
-    const initialAmplitude = initialParams.find(p => p.id === 'amplitude')?.currentValue as number ?? ampParamDef?.defaultValue as number ?? 1;
+    const initialGain = initialParams.find(p => p.id === 'gain')?.currentValue as number ?? gainParamDef?.defaultValue as number ?? 1;
 
     oscillatorNode.frequency.setValueAtTime(initialFrequency, this.audioContext.currentTime);
     oscillatorNode.type = initialWaveform;
-    amplitudeGainNode.gain.setValueAtTime(initialAmplitude, this.audioContext.currentTime);
+    amplitudeGainNode.gain.setValueAtTime(initialGain, this.audioContext.currentTime);
 
     oscillatorNode.start();
 
     const paramTargetsForCv = new Map<string, AudioParam>();
     paramTargetsForCv.set('frequency', oscillatorNode.frequency);
-    paramTargetsForCv.set('amplitude', amplitudeGainNode.gain);
+    paramTargetsForCv.set('gain', amplitudeGainNode.gain);
     // Waveform 'type' is not an AudioParam, so it cannot be directly modulated by an audio signal here.
 
     return {
-      nodeForInputConnections: oscillatorNode, // Changed from amplitudeGainNode
+      nodeForInputConnections: amplitudeGainNode, // Reverted to amplitudeGainNode
       nodeForOutputConnections: amplitudeGainNode, // Output is the gain-controlled oscillator
       mainProcessingNode: oscillatorNode, // The core LFO functionality
       auxiliaryNodes: { amplitudeGain: amplitudeGainNode }, // Store gain node if needed later
@@ -83,17 +83,17 @@ export class LFONativeBlock extends NativeBlock {
       oscillatorNode.type = waveformParam.currentValue as OscillatorType;
     }
 
-    const amplitudeParam = parameters.find(p => p.id === 'amplitude');
-    if (amplitudeParam && typeof amplitudeParam.currentValue === 'number') {
-       if (Math.abs(amplitudeGainNode.gain.value - amplitudeParam.currentValue) > 0.001) {
-        amplitudeGainNode.gain.setTargetAtTime(amplitudeParam.currentValue, this.audioContext.currentTime, 0.01);
+    const gainParam = parameters.find(p => p.id === 'gain');
+    if (gainParam && typeof gainParam.currentValue === 'number') {
+       if (Math.abs(amplitudeGainNode.gain.value - gainParam.currentValue) > 0.001) {
+        amplitudeGainNode.gain.setTargetAtTime(gainParam.currentValue, this.audioContext.currentTime, 0.01);
       }
     }
   }
 }
 
 export const LFO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'lfo-native-v1',
+  id: 'lfo-refactored-v1',
   name: 'LFO (Native)',
   description: 'Generates a low-frequency audio signal for modulation. Its parameters control a native OscillatorNode and an optional internal GainNode for amplitude.',
   runsAtAudioRate: true,
@@ -131,14 +131,14 @@ export const LFO_BLOCK_DEFINITION: BlockDefinition = {
       description: 'LFO waveform shape (controls OscillatorNode.type).'
     },
     {
-      id: 'amplitude',
+      id: 'gain',
       name: 'Amplitude',
       type: 'slider',
       min: 0,
-      max: 1,
+      max: 10,
       step: 0.01,
       defaultValue: 1,
-      description: 'LFO output amplitude (controls an internal GainNode.gain AudioParam).'
+      description: 'Amplitude of the LFO signal (controls internal GainNode.gain AudioParam).'
     }
   ]),
 };
