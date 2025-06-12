@@ -124,7 +124,7 @@ class OscillatorProcessor extends AudioWorkletProcessor {
 // after extracting this code string. Do not include registerProcessor here.
 `;
 
-import { LFO_BLOCK_DEFINITION as REFACTORED_LFO_BLOCK_DEFINITION } from '../services/native-blocks/LFONativeBlock';
+// Removed import: import { LFO_BLOCK_DEFINITION as REFACTORED_LFO_BLOCK_DEFINITION } from '../services/native-blocks/LFONativeBlock';
 
 export const OSCILLATOR_BLOCK_DEFINITION: BlockDefinition = {
   id: 'oscillator-v1',
@@ -382,9 +382,9 @@ export const OSCILLOSCOPE_BLOCK_DEFINITION: BlockDefinition = {
 };
 
 export const NATIVE_LFO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-lfo-v1',
+  id: 'lfo-refactored-v1',
   name: 'LFO (Native)',
-  description: 'Low-Frequency Oscillator using a native OscillatorNode. Max frequency 200Hz. Outputs an audio-rate signal, typically used for modulation.',
+  description: 'Low-Frequency Oscillator using a native OscillatorNode, managed by LFONativeBlock class. Outputs an audio-rate signal, typically used for modulation.',
   runsAtAudioRate: true,
   inputs: [
     { id: 'freq_cv_in', name: 'Frequency CV', type: 'audio', description: 'Modulates LFO frequency.', audioParamTarget: 'frequency' },
@@ -1532,7 +1532,7 @@ export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   NATIVE_DELAY_BLOCK_DEFINITION,
   NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
   OSCILLOSCOPE_BLOCK_DEFINITION,
-  REFACTORED_LFO_BLOCK_DEFINITION, // Replaced NATIVE_LFO_BLOCK_DEFINITION
+  NATIVE_LFO_BLOCK_DEFINITION, // Ensured the modified NATIVE_LFO_BLOCK_DEFINITION is here
   NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
   NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
   NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
