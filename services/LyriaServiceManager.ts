@@ -74,6 +74,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         definition: BlockDefinition, // definition is not directly used in the original hook's logic but kept for signature consistency
         addBlockLog: (message: string) => void
     ): Promise<boolean> {
+        console.log("setupLyriaServiceForInstance")
         if (!this.audioContext || this.audioContext.state !== 'running') {
             addBlockLog(`[LyriaManager Setup] Lyria Service setup failed: AudioContext not ready (state: ${this.audioContext?.state}).`);
             return false;

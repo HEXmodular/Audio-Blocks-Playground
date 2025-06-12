@@ -1,33 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BlockInstance, Connection, BlockDefinition, PendingConnection } from './types';
+import { BlockInstance, Connection, PendingConnection } from './types';
 import Toolbar from './components/Toolbar';
-import BlockInstanceComponent, { getPortColor as getBlockPortBgColor } from './components/BlockInstanceComponent';
+import BlockInstanceComponent from './components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from './components/GeminiChatPanel';
 import BlockDetailPanel from './components/BlockDetailPanel';
 import {
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
-    OSCILLATOR_BLOCK_DEFINITION,
-    NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-    NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
-    NATIVE_DELAY_BLOCK_DEFINITION,
-    NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
-    GAIN_BLOCK_DEFINITION,
     ALL_BLOCK_DEFINITIONS as CORE_BLOCK_DEFINITIONS_ARRAY,
-    OSCILLOSCOPE_BLOCK_DEFINITION,
-    NATIVE_LFO_BLOCK_DEFINITION,
-    NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
-    NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
-    NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
-    MANUAL_GATE_BLOCK_DEFINITION,
-    STEP_SEQUENCER_BLOCK_DEFINITION,
-    PROBABILITY_SEQUENCER_BLOCK_DEFINITION,
-    RULE_110_BLOCK_DEFINITION,
-    RULE_110_OSCILLATOR_BLOCK_DEFINITION,
-    RULE_110_JOIN_BLOCK_DEFINITION,
-    RULE_110_BYTE_READER_BLOCK_DEFINITION,
-    BYTE_REVERSE_BLOCK_DEFINITION,
-    NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-    LYRIA_MASTER_BLOCK_DEFINITION
 } from './constants';
 
 // import { getDefaultOutputValue } from './state/BlockStateManager'; // No longer used directly in App.tsx
@@ -61,24 +39,9 @@ const App: React.FC = () => {
     blockDefinitions: appBlockDefinitionsFromCtx,
     blockInstances: appBlockInstancesFromCtx,
     blockStateManager: ctxBlockStateManager,
-    addBlockInstance: ctxAddBlockInstance,
-    updateBlockInstance: ctxUpdateBlockInstance,
-    deleteBlockInstance: ctxDeleteBlockInstance,
     updateBlockDefinition: ctxUpdateBlockDefinition,
     getDefinitionById: ctxGetDefinitionById,
-    setAllBlockDefinitions: ctxSetAllBlockDefinitions,
-    setAllBlockInstances: ctxSetAllBlockInstances,
-    addLogToBlockInstance: ctxAddLogToBlockInstance,
   } = useBlockState();
-
-  // const [, forceRender] = useState(0); // Removed forceRender
-
-  useEffect(() => {
-    if (ctxBlockStateManager && appBlockDefinitionsFromCtx.length === 0) {
-        console.log("[App] Initializing core block definitions into context...");
-        ctxSetAllBlockDefinitions(CORE_BLOCK_DEFINITIONS_ARRAY);
-    }
-  }, [ctxBlockStateManager, appBlockDefinitionsFromCtx, ctxSetAllBlockDefinitions]);
 
   // Instantiate GlobalAudioStateSyncer
   const globalAudioStateSyncer = useMemo(() => {
@@ -211,7 +174,7 @@ const App: React.FC = () => {
 
   // Effect for audio node setup and teardown
   useEffect(() => {
-    if (!audioNodeManager || !ctxBlockStateManager) return;
+    if (!audioNodeManager) return;
     const setupNodes = async () => {
       try {
         await audioNodeManager.processAudioNodeSetupAndTeardown(
@@ -229,18 +192,17 @@ const App: React.FC = () => {
     };
     setupNodes();
   }, [
-    audioNodeManager,
-    appBlockInstancesFromCtx,
+    // audioNodeManager,
+    //appBlockInstancesFromCtx,
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
     syncedGlobalAudioState.isWorkletSystemReady,
     audioEngineService.audioContext, // Dependency for audio context state changes
-    ctxBlockStateManager
   ]);
 
   // Effect for updating audio node parameters
   useEffect(() => {
-    if (!audioNodeManager || !ctxBlockStateManager) return;
+    if (!audioNodeManager) return;
     audioNodeManager.updateAudioNodeParameters(
       appBlockInstancesFromCtx,
       connections,
@@ -251,12 +213,11 @@ const App: React.FC = () => {
     appBlockInstancesFromCtx,
     connections,
     globalBpm,
-    ctxBlockStateManager
   ]);
 
   // Effect for Lyria service updates
   useEffect(() => {
-    if (!audioNodeManager || !ctxBlockStateManager) return;
+    if (!audioNodeManager) return;
     audioNodeManager.manageLyriaServiceUpdates(
       appBlockInstancesFromCtx,
       connections,
@@ -267,12 +228,11 @@ const App: React.FC = () => {
     appBlockInstancesFromCtx,
     connections,
     syncedGlobalAudioState.isAudioGloballyEnabled,
-    ctxBlockStateManager
   ]);
 
   // Effect for updating audio graph connections
   useEffect(() => {
-    if (!audioNodeManager || !ctxBlockStateManager) return;
+    if (!audioNodeManager) return;
     audioNodeManager.updateAudioGraphConnections(
       connections,
       appBlockInstancesFromCtx,
@@ -283,7 +243,6 @@ const App: React.FC = () => {
     connections,
     appBlockInstancesFromCtx,
     syncedGlobalAudioState.isAudioGloballyEnabled,
-    ctxBlockStateManager
   ]);
 
   // Instantiate WorkspacePersistenceManager
