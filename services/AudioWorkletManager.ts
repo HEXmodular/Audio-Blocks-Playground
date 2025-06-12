@@ -339,7 +339,11 @@ try {
 
   public removeAllManagedWorkletNodes(): void {
     this.managedWorkletNodesRef.forEach((info) => {
-      this.removeManagedAudioWorkletNode(info.instanceId);
+      if (info.instanceId) {
+        this.removeManagedAudioWorkletNode(info.instanceId);
+      } else {
+        console.warn(`[WorkletManager] Removing AudioworletNode failed.`, info);
+      }
     });
      console.log(`[WorkletManager] All managed worklet nodes signal sent for removal.`);
   }

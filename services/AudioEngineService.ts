@@ -178,8 +178,8 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         };
 
         await this.listOutputDevices();
-
-        if (this._audioContext && this._audioContext.state !== 'closed') {
+        //@ts-ignore
+        if (this._audioContext && this._audioContext.state !== 'closed') { 
             const defaultOutput = this._availableOutputDevices.find(d => d.deviceId === 'default') || this._availableOutputDevices[0];
             if (defaultOutput) {
                 console.log(`AudioEngineService: Attempting to set default output device to: ${defaultOutput.label} (${defaultOutput.deviceId})`);
