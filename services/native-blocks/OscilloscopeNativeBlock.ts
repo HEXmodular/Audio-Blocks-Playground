@@ -1,6 +1,7 @@
 import { BlockDefinition, BlockParameter } from '../../types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
+import { OSCILLOSCOPE_BLOCK_DEFINITION } from '../../constants';
 
 export class OscilloscopeNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {

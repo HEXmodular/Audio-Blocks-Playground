@@ -1,6 +1,7 @@
 import { BlockDefinition, BlockParameter } from '../../types';
 import { ManagedNativeNodeInfo, AllpassInternalNodes } from '../NativeNodeManager'; // AllpassInternalNodes is crucial here
 import { CreatableNode } from './CreatableNode';
+import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '../../constants';
 
 export class AllpassFilterNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {

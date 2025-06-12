@@ -1,6 +1,7 @@
 import { BlockDefinition, BlockParameter } from '../../types';
 import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
+import { NATIVE_DELAY_BLOCK_DEFINITION } from '../../constants';
 
 export class DelayNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {

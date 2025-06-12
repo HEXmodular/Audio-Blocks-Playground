@@ -7,7 +7,6 @@
  */
 import { BlockDefinition, BlockParameter, OscillatorType, BiquadFilterType } from '../types';
 import {
-    GAIN_BLOCK_DEFINITION,
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
     NATIVE_LFO_BLOCK_DEFINITION,
     NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
@@ -18,7 +17,9 @@ import {
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '../constants';
+} from '../constants'; // From root constants.ts
+
+import { GAIN_BLOCK_DEFINITION } from './native-blocks/GainControlNativeBlock'; // Specifically from its own file
 
 import { CreatableNode } from './native-blocks/CreatableNode';
 import { GainControlNativeBlock } from './native-blocks/GainControlNativeBlock';
