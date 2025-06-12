@@ -188,6 +188,29 @@ public initializeBasicAudioContext = async (): Promise<void> => {
 
         console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
 
+    // --- BEGIN MODIFICATION: Check and register predefined worklets ---
+    console.log('[AudioEngineService Init DEBUG] About to check and register predefined worklets.');
+    if (this._audioContext && (this._audioContext.state === 'running' || this._audioContext.state === 'suspended')) { // Ensure context is not 'closed'
+        try {
+            const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
+            this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
+            console.log(`[AudioEngineService Init DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
+            if (!workletsRegistered) {
+                console.warn('[AudioEngineService Init DEBUG] Not all predefined worklets may have registered successfully.');
+                // Optionally, set a global error or a more specific state if this is critical
+                // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
+            }
+        } catch (workletError) {
+            console.error('[AudioEngineService Init DEBUG] Error during checkAndRegisterPredefinedWorklets:', workletError);
+            this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
+            this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets: ${(workletError as Error).message}`;
+        }
+    } else {
+        console.warn('[AudioEngineService Init DEBUG] Skipped predefined worklets registration because AudioContext is not in a valid state for it (e.g., closed or null).');
+        this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
+    }
+    // --- END MODIFICATION ---
+
     } catch (error) {
         const specificErrorMessage = `Error during AudioContext initialization in AudioEngineService: ${(error as Error).message}`;
         console.error(specificErrorMessage);
@@ -217,8 +240,31 @@ public initializeBasicAudioContext = async (): Promise<void> => {
 
         if (this._audioContext.state === 'suspended') {
             await this._audioContext.resume();
+            // After successfully resuming and confirming the state is 'running':
+            if (this._audioContext.state === 'running') {
+                console.log('[AudioEngineService Toggle DEBUG] AudioContext resumed to running state.');
+                if (!this.audioWorkletManager.isAudioWorkletSystemReady) {
+                    console.log('[AudioEngineService Toggle DEBUG] Worklet system was not ready. Attempting to check/register predefined worklets now.');
+                    try {
+                        const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
+                        this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
+                        console.log(`[AudioEngineService Toggle DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
+                        if (!workletsRegistered) {
+                            console.warn('[AudioEngineService Toggle DEBUG] Not all predefined worklets may have registered successfully after toggle.');
+                            // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets post-toggle.'; // Decide if this should set an error
+                        }
+                    } catch (workletError) {
+                        console.error('[AudioEngineService Toggle DEBUG] Error during checkAndRegisterPredefinedWorklets post-toggle:', workletError);
+                        this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
+                        // this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets post-toggle: ${(workletError as Error).message}`;
+                    }
+                } else {
+                    console.log('[AudioEngineService Toggle DEBUG] Worklet system already reported as ready.');
+                }
+            }
         } else if (this._audioContext.state === 'running') {
             await this._audioContext.suspend();
+            console.log('[AudioEngineService Toggle DEBUG] AudioContext suspended.');
         }
         this._isAudioGloballyEnabled = this._audioContext.state === 'running';
         this._notifySubscribers();
