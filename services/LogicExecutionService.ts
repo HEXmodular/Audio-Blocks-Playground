@@ -5,7 +5,7 @@
  * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
-import { BlockInstance, Connection, BlockDefinition, PlaybackState } from '@interfaces/common'; // Added PlaybackState
+import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; // Removed unused PlaybackState
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import {

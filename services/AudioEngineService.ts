@@ -19,7 +19,7 @@ import { LyriaServiceManager } from './LyriaServiceManager';
 import {
     OutputDevice,
     AudioEngineState,
-    AudioNodeInfo, // This is a generic info, might be different from Managed...Info
+    // AudioNodeInfo, // Removed unused import
     ManagedAudioWorkletNodeMessage,
     // AudioWorkletNodeOptions, // This was unused, removing import based on previous type-check
     EnvelopeParams,
@@ -29,7 +29,7 @@ import {
     BlockParameter,
     ManagedWorkletNodeInfo, // Import from common
     ManagedNativeNodeInfo,  // Import from common
-    ManagedLyriaServiceInfo // Import from common
+    // ManagedLyriaServiceInfo // Removed unused import
 } from '@interfaces/common';
 
 export class AudioEngineService {
@@ -39,7 +39,7 @@ export class AudioEngineService {
     private _audioInitializationError: string | null = null;
     private _availableOutputDevices: OutputDevice[] = [];
     private _selectedSinkId: string | null = null;
-    private _audioContextState: AudioContextState | null = null;
+    // private _audioContextState: AudioContextState | null = null; // Removed unused member
 
     private _subscribers: (() => void)[] = [];
     private _audioContextService: AudioContextService;
@@ -145,7 +145,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         this.nativeNodeManager._setAudioContext(this._audioContext);
 
         console.log(`AudioEngineService: AudioContext obtained from service. Initial state: ${this._audioContext.state}`);
-        this._audioContextState = this._audioContext.state;
+        // this._audioContextState = this._audioContext.state; // Removed assignment to unused member
 
         if (this._masterGainNode) {
             try { this._masterGainNode.disconnect(); } catch(e) { /* ignore */ }
@@ -159,7 +159,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         this._audioContext.onstatechange = () => {
             if (this._audioContext) {
                 const currentState = this._audioContext.state;
-                this._audioContextState = currentState;
+                // this._audioContextState = currentState; // Removed assignment to unused member
                 console.log(`AudioEngineService: AudioContext state changed to ${currentState}.`);
                 if (currentState === 'closed') {
                     this._isAudioGloballyEnabled = false;
@@ -171,7 +171,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
                 }
             } else {
                 console.warn("AudioEngineService: onstatechange triggered but _audioContext is null.");
-                this._audioContextState = null;
+                // this._audioContextState = null; // Removed assignment to unused member
                 this._isAudioGloballyEnabled = false;
             }
             this._notifySubscribers();
@@ -195,20 +195,21 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
 
     // Check if context is active (not closed) before trying to register worklets
-    const currentAudioContext = this._audioContext; // Explicit variable for clarity
-    if (currentAudioContext && (currentAudioContext.state as string) !== 'closed') {
-        try {
-            const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
-            this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
-            if (!workletsRegistered) {
-                this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
-            }
-        } catch (workletError) {
-            this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
-            this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets: ${(workletError as Error).message}`;
+    // The if condition that was here previously was found to be redundant (TS2367).
+    // this._audioContext is guaranteed to be non-null and its state not 'closed'
+    // if execution reaches this point (due to checks around line 130).
+    // console.log('[AudioEngineService] TEMP LOG: Before attempting worklet registration. Context state:', this._audioContext?.state); // Removing temporary log
+    try {
+        // Assuming checkAndRegisterPredefinedWorklets and setIsAudioWorkletSystemReady use the context stored within audioWorkletManager,
+        // which should have been set correctly (and is non-null and not 'closed') if this part of the code is reached.
+        const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
+        this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
+        if (!workletsRegistered) {
+            this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
         }
-    } else {
+    } catch (workletError) {
         this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
+        this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets: ${(workletError as Error).message}`;
     }
 
     } catch (error) {
@@ -224,7 +225,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         if (!this._audioContext || this._audioContext.state === 'closed') {
             this._audioContext = null;
         }
-        this._audioContextState = this._audioContext?.state ?? null;
+        // this._audioContextState = this._audioContext?.state ?? null; // Removed assignment to unused member
     } finally {
         this._notifySubscribers();
     }
@@ -457,7 +458,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         return Array.from(this.nativeNodeManager.getManagedNodesMap().values()); // Corrected: was getAllNodeInfo
     }
 
-    public triggerNativeNodeEnvelope = (nodeId: string, params: EnvelopeParams, triggerTime?: number): void => {
+    public triggerNativeNodeEnvelope = (nodeId: string, _params: EnvelopeParams, _triggerTime?: number): void => {
         // This method seems to be a direct call if NativeNodeManager implements it with this exact signature.
         // If params is meant to be broken down, this call needs adjustment.
         // For now, assuming NativeNodeManager has this signature.
@@ -510,7 +511,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this.removeAllManagedNodes();
         this._subscribers = [];
         this._isAudioGloballyEnabled = false;
-        this._audioContextState = null;
+        // this._audioContextState = null; // Removed assignment to unused member
         console.log('AudioEngineService disposed.');
     };
 }

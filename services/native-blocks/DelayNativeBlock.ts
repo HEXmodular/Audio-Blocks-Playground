@@ -56,11 +56,11 @@ export class DelayNativeBlock implements CreatableNode {
         });
     }
 
-    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
         console.warn(`DelayNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         console.warn(`DelayNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
     }
 }

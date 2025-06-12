@@ -14,7 +14,7 @@ import {
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_LOGIC_CODE,
     GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_TEST_CODE
 } from '@constants/constants';
-// import { testRegistry } from '../test-runner'; // Assuming test-runner is one level up
+import { testRegistry } from '../test-runner'; // Assuming test-runner is one level up
 
 const API_KEY = process.env.API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -174,7 +174,7 @@ async function executeGeneratedTests(
                 overallResult.failures.push({ testName: fullTestName, error: e.message });
             }
         },
-        // expect: testRegistry.expect,
+        expect: testRegistry.expect,
     };
 
     try {
@@ -368,19 +368,19 @@ export async function generateBlockDefinitionWithTesting(
 
   if (initialDefinitionJson.parameters && Array.isArray(initialDefinitionJson.parameters)) {
     initialDefinitionJson.parameters = initialDefinitionJson.parameters.map((p: any) => {
-      let currentValue = p.defaultValue;
+      // let currentValue = p.defaultValue; // Unused variable
       let typedDefaultValue = p.defaultValue;
       if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
           const parsedDefault = parseFloat(p.defaultValue as string); 
           const parsedMin = p.min !== undefined ? parseFloat(p.min as any) : undefined;
           typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (parsedMin !== undefined && !isNaN(parsedMin) ? parsedMin : 0);
-          currentValue = typedDefaultValue; 
+          // currentValue = typedDefaultValue;
       } else if (p.type === 'toggle') {
           typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : (String(p.defaultValue).toLowerCase() === 'true');
-          currentValue = typedDefaultValue;
+          // currentValue = typedDefaultValue;
       } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: {value:any}) => opt.value === p.defaultValue)) {
           typedDefaultValue = p.options[0].value;
-          currentValue = typedDefaultValue;
+          // currentValue = typedDefaultValue;
       }
       // Ensure BlockParameterDefinition structure (no currentValue here, but ensure defaultValue is typed)
       const paramDef = { ...p, defaultValue: typedDefaultValue };

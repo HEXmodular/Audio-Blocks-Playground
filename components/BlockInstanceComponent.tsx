@@ -7,13 +7,12 @@ const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120; 
 const COMPACT_BLOCK_HEADER_HEIGHT = 38;
 const PARAM_DISPLAY_HEIGHT = 20; // Height for the single parameter display line
-const PORT_STUB_AREA_MIN_HEIGHT = 20; // Min height for area containing port stubs
 const PORT_STUB_DIAMETER = 12; 
-const PORT_STUB_MARGIN = 4; // Margin from edge for stubs
 const COMPACT_BLOCK_VERTICAL_PADDING = 5; // Top/bottom padding inside the block
 
 // Calculate total height based on content
-const calculateBlockHeight = (hasParam: boolean, inputPortsCount: number, outputPortsCount: number): number => {
+// inputPortsCount and outputPortsCount were unused, so removed.
+const calculateBlockHeight = (hasParam: boolean): number => {
   let contentHeight = 0; // Declare and initialize contentHeight
   if (hasParam) {
     contentHeight += PARAM_DISPLAY_HEIGHT + COMPACT_BLOCK_VERTICAL_PADDING;
@@ -114,7 +113,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
 
   if (!blockDefinition) {
-    const errorBlockHeight = calculateBlockHeight(false, 0, 0);
+  const errorBlockHeight = calculateBlockHeight(false);
     return (
         <div 
             style={{ 
@@ -142,7 +141,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     ? blockInstance.parameters.find(p => p.id === firstNumericalParamDef.id)
     : undefined;
 
-  const blockHeight = calculateBlockHeight(!!firstNumericalParamInstance, blockDefinition.inputs.length, blockDefinition.outputs.length);
+  const blockHeight = calculateBlockHeight(!!firstNumericalParamInstance);
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight - COMPACT_BLOCK_HEADER_HEIGHT;

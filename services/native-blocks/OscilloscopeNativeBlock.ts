@@ -57,11 +57,11 @@ export class OscilloscopeNativeBlock implements CreatableNode {
         }
     }
 
-    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
         console.warn(`OscilloscopeNativeBlock.connect called directly. Connections handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         console.warn(`OscilloscopeNativeBlock.disconnect called directly. Connections handled by AudioGraphConnectorService/manager.`);
     }
 }

@@ -8,7 +8,7 @@
  */
 // services/AudioNodeManager.ts
 import { AudioEngineService } from './AudioEngineService';
-import { BlockInstance, BlockDefinition, Connection, ValueType, PlaybackState } from '@interfaces/common';
+import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common'; // Removed unused ValueType
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // Adjust path
 import {
     LYRIA_MASTER_BLOCK_DEFINITION,

@@ -15,7 +15,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[] // initialParams might be used if envelope has initial settings not covered by ADSR values
+        _initialParams: BlockParameter[] // initialParams might be used if envelope has initial settings not covered by ADSR values
     ): ManagedNativeNodeInfo {
         if (!this.context) throw new Error("AudioContext not initialized");
         const constSourceNode = this.context.createConstantSource();
@@ -39,10 +39,10 @@ export class EnvelopeNativeBlock implements CreatableNode {
     }
 
     updateNodeParams(
-        nodeInfo: ManagedNativeNodeInfo,
-        parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
-        currentBpm?: number
+        _nodeInfo: ManagedNativeNodeInfo,
+        _parameters: BlockParameter[],
+        _currentInputs?: Record<string, any>,
+        _currentBpm?: number
     ): void {
         // For AD/AR envelopes driven by ConstantSourceNode, parameter changes (like attackTime, decayTime)
         // don't directly set AudioParams here. Instead, the block's logicCode interprets these
@@ -50,14 +50,14 @@ export class EnvelopeNativeBlock implements CreatableNode {
         // (e.g., triggerNativeNodeEnvelope) which then perform the AudioParam automations.
         // So, this updateNodeParams might be a no-op for pure envelope parameters.
         // If there were other continuous AudioParams (e.g. a 'depth' control on the envelope output), they'd be handled here.
-        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${nodeInfo.instanceId}, but typically no direct AudioParam automation here.`);
+        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${_nodeInfo.instanceId}, but typically no direct AudioParam automation here.`);
     }
 
-    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
         console.warn(`EnvelopeNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         console.warn(`EnvelopeNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
     }
 }

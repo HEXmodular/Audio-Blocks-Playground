@@ -90,42 +90,44 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
         currentY: e.clientY - svgRect.top,
       };
 
-      let newDraggedOverPort: { instanceId: string; portId: string } | null = null;
-      const targetElement = e.target as HTMLElement;
-      const portStub = targetElement.closest<HTMLElement>('.js-port-stub');
-      if (portStub) {
-        const targetInstanceId = portStub.dataset.instanceId;
-        const targetPortId = portStub.dataset.portId;
-        const targetIsOutput = portStub.dataset.isOutput === 'true';
-        const targetPortType = portStub.dataset.portType as BlockPort['type'];
+      // The following block for newDraggedOverPort was redundant and the variable unused.
+      // The logic is correctly handled by newDraggedOverPortValue later.
+      // let newDraggedOverPort: { instanceId: string; portId: string } | null = null;
+      // const targetElement = e.target as HTMLElement;
+      // const portStub = targetElement.closest<HTMLElement>('.js-port-stub');
+      // if (portStub) {
+      //   const targetInstanceId = portStub.dataset.instanceId;
+      //   const targetPortId = portStub.dataset.portId;
+      //   const targetIsOutput = portStub.dataset.isOutput === 'true';
+      //   const targetPortType = portStub.dataset.portType as BlockPort['type'];
 
-        if (targetInstanceId && targetPortId && this.pendingConnection &&
-            targetInstanceId !== this.pendingConnection.fromInstanceId &&
-            targetIsOutput !== this.pendingConnection.fromIsOutput) {
+      //   if (targetInstanceId && targetPortId && this.pendingConnection &&
+      //       targetInstanceId !== this.pendingConnection.fromInstanceId &&
+      //       targetIsOutput !== this.pendingConnection.fromIsOutput) {
 
-          const sourcePortType = this.pendingConnection.fromPort.type;
-          let typesCompatible = false;
-          if (sourcePortType === 'audio' && targetPortType === 'audio') typesCompatible = true;
-          else if ((sourcePortType === 'trigger' || sourcePortType === 'gate') && (targetPortType === 'trigger' || targetPortType === 'gate')) typesCompatible = true;
-          else if (sourcePortType === 'number' && targetPortType === 'number') typesCompatible = true;
-          else if (sourcePortType === 'string' && targetPortType === 'string') typesCompatible = true;
-          else if (sourcePortType === 'boolean' && targetPortType === 'boolean') typesCompatible = true;
-          else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;
+      //     const sourcePortType = this.pendingConnection.fromPort.type;
+      //     let typesCompatible = false;
+      //     if (sourcePortType === 'audio' && targetPortType === 'audio') typesCompatible = true;
+      //     else if ((sourcePortType === 'trigger' || sourcePortType === 'gate') && (targetPortType === 'trigger' || targetPortType === 'gate')) typesCompatible = true;
+      //     else if (sourcePortType === 'number' && targetPortType === 'number') typesCompatible = true;
+      //     else if (sourcePortType === 'string' && targetPortType === 'string') typesCompatible = true;
+      //     else if (sourcePortType === 'boolean' && targetPortType === 'boolean') typesCompatible = true;
+      //     else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;
 
-          const toInstance = this.blockInstances.find(i => i.instanceId === targetInstanceId);
-          const toDef = toInstance ? this.getDefinitionForBlock(toInstance) : undefined;
-          const toPortDef = toDef?.inputs.find(p => p.id === targetPortId);
-          // Check for audio param target specifically for output -> input connections
-          if (this.pendingConnection.fromIsOutput && toPortDef?.audioParamTarget && sourcePortType === 'audio' && toPortDef?.type === 'audio') {
-            typesCompatible = true;
-          }
+      //     const toInstance = this.blockInstances.find(i => i.instanceId === targetInstanceId);
+      //     const toDef = toInstance ? this.getDefinitionForBlock(toInstance) : undefined;
+      //     const toPortDef = toDef?.inputs.find(p => p.id === targetPortId);
+      //     // Check for audio param target specifically for output -> input connections
+      //     if (this.pendingConnection.fromIsOutput && toPortDef?.audioParamTarget && sourcePortType === 'audio' && toPortDef?.type === 'audio') {
+      //       typesCompatible = true;
+      //     }
 
 
-          if (typesCompatible) {
-            newDraggedOverPort = { instanceId: targetInstanceId, portId: targetPortId };
-          }
-        }
-      }
+      //     if (typesCompatible) {
+      //       newDraggedOverPort = { instanceId: targetInstanceId, portId: targetPortId };
+      //     }
+      //   }
+      // }
       const previousPendingX = this.pendingConnection.currentX;
       const previousPendingY = this.pendingConnection.currentY;
 
@@ -141,8 +143,8 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
       }
 
       let newDraggedOverPortValue: { instanceId: string; portId: string } | null = null;
-      // const targetElement = e.target as HTMLElement;
-      // const portStub = targetElement.closest<HTMLElement>('.js-port-stub');
+      const targetElement = e.target as HTMLElement; // Re-declare targetElement here as the previous one was part of the removed block
+      const portStub = targetElement.closest<HTMLElement>('.js-port-stub'); // Re-declare portStub here
       if (portStub) {
         const targetInstanceId = portStub.dataset.instanceId;
         const targetPortId = portStub.dataset.portId;

@@ -1,7 +1,7 @@
 import {
-    ManagedNativeNodeInfo,
-    AllpassInternalNodes, // This is already defined in interfaces/common.ts
-    BlockDefinition      // Added for ManagedNativeNodeInfo
+    ManagedNativeNodeInfo
+    // AllpassInternalNodes and BlockDefinition removed as they are not directly used in this file.
+    // They are used by ManagedNativeNodeInfo, but TypeScript resolves that implicitly.
 } from '@interfaces/common';
 
 // Removed local/placeholder AudioNode, AudioParam, GainNode, DelayNode, AnalyserNode, ConstantSourceNode declarations

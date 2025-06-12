@@ -143,14 +143,13 @@ try {
       return true;
     } catch (e) {
       const error = e as Error;
-      const cnForErrorLog = actualClassName || "[class name not determined before error]";
-      const errMsgBase = `Error in registerWorkletProcessor for '${processorName}' (class '${cnForErrorLog}')`;
+      // const cnForErrorLog = actualClassName || "[class name not determined before error]"; // Part of unused errMsgBase
+      // const errMsgBase = `Error in registerWorkletProcessor for '${processorName}' (class '${cnForErrorLog}')`; // Unused variable
 
       if (error.message.includes('is already registered') || (error.name === 'NotSupportedError' && error.message.includes(processorName) && error.message.toLowerCase().includes('already registered'))) {
         this.registeredWorkletNamesRef.add(processorName);
         return true;
       }
-      const errMsg = `${errMsgBase}: ${error.message}`;
       this.setAudioInitializationError(`RegFail ('${processorName}'): ${error.message.substring(0, 100)}`);
       this.registeredWorkletNamesRef.delete(processorName);
       return false;
@@ -269,8 +268,10 @@ try {
         console.error('CRITICAL: audioWorkletProcessorName is undefined before AudioWorkletNode construction for instanceId:', instanceId);
         return false;
       }
-      // Use definition.audioWorkletProcessorName directly in the constructor as requested
-      const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName, workletNodeOptions);
+      // After the guard, definition.audioWorkletProcessorName is known to be a non-empty string.
+      // Applying non-null assertion operator as requested.
+      // console.log('[AudioWorkletManager] TEMP LOG: Before new AudioWorkletNode. Processor name:', definition.audioWorkletProcessorName); // Removing temporary log
+      const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName!, workletNodeOptions);
 
       newNode.port.onmessage = (event) => {
         console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
@@ -288,7 +289,7 @@ try {
     } catch (e: any) {
       // Use definition.audioWorkletProcessorName in error message, ensuring it's not undefined due to the guard.
       const procNameForError = definition.audioWorkletProcessorName || "UNKNOWN_PROCESSOR";
-      const errMsg = `Failed to construct '${procNameForError}' for '${instanceId}': ${e.message}`;
+      // const errMsg = `Failed to construct '${procNameForError}' for '${instanceId}': ${e.message}`; // Unused variable
       this.setAudioInitializationError(`WorkletNode Error: ${procNameForError} - ${e.message.substring(0, 100)}`);
       return false;
     }

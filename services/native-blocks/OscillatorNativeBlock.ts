@@ -76,7 +76,7 @@ export class OscillatorNativeBlock implements CreatableNode {
     updateNodeParams(
         nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
+        _currentInputs?: Record<string, any>,
         currentBpm?: number
     ): void {
         if (!this.context || !(nodeInfo.mainProcessingNode instanceof OscillatorNode) || !nodeInfo.internalGainNode) return;
@@ -113,11 +113,11 @@ export class OscillatorNativeBlock implements CreatableNode {
         }
     }
 
-    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
         console.warn(`OscillatorNativeBlock.connect called directly. Connections handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         console.warn(`OscillatorNativeBlock.disconnect called directly. Connections handled by AudioGraphConnectorService/manager.`);
     }
 }

@@ -37,7 +37,7 @@ export class GainControlNativeBlock implements CreatableNode {
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm?: number
+        _currentBpm?: number
     ): ManagedNativeNodeInfo {
         if (!this.context) throw new Error("AudioContext not initialized for GainControlNativeBlock");
         const gainNode = this.context.createGain();
@@ -62,8 +62,8 @@ export class GainControlNativeBlock implements CreatableNode {
     updateNodeParams(
         nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
-        currentBpm?: number
+        _currentInputs?: Record<string, any>,
+        _currentBpm?: number
     ): void {
         if (!this.context || !(nodeInfo.mainProcessingNode instanceof GainNode)) return;
         const gainNode = nodeInfo.mainProcessingNode;
@@ -74,11 +74,11 @@ export class GainControlNativeBlock implements CreatableNode {
         }
     }
 
-    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
         console.warn(`GainControlNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         console.warn(`GainControlNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
     }
 }

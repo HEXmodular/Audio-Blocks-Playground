@@ -17,7 +17,7 @@ export class AllpassFilterNativeBlock implements CreatableNode {
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[]
+        _initialParams: BlockParameter[]
     ): ManagedNativeNodeInfo {
         if (!this.context) throw new Error("AudioContext not initialized");
 
@@ -80,7 +80,7 @@ export class AllpassFilterNativeBlock implements CreatableNode {
     updateNodeParams(
         nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
-        currentInputs?: Record<string, any> | undefined
+        _currentInputs?: Record<string, any> | undefined
     ): void {
         if (!this.context || !nodeInfo.allpassInternalNodes) return;
 
@@ -100,13 +100,13 @@ export class AllpassFilterNativeBlock implements CreatableNode {
     }
 
     // Placeholder implementations for connect and disconnect
-    connect(destination: AudioNode | AudioParam, outputIndex?: number | undefined, inputIndex?: number | undefined): void {
+    connect(_destination: AudioNode | AudioParam, _outputIndex?: number | undefined, _inputIndex?: number | undefined): void {
         // This specific block's output is via nodeInfo.nodeForOutputConnections (summingNode)
         // The actual connection logic is handled by AudioGraphConnectorService based on the returned ManagedNativeNodeInfo.
         console.warn(`AllpassFilterNativeBlock.connect called directly on instance for ${this.internalNodes}, but should be handled by AudioGraphConnectorService.`);
     }
 
-    disconnect(destination?: AudioNode | AudioParam | number | undefined, output?: number | undefined, input?: number | undefined): void {
+    disconnect(_destination?: AudioNode | AudioParam | number | undefined, _output?: number | undefined, _input?: number | undefined): void {
         // Similar to connect, disconnection is managed by AudioGraphConnectorService.
         // However, internal nodes should be disconnected if the block instance is removed.
         console.warn(`AllpassFilterNativeBlock.disconnect called directly on instance for ${this.internalNodes}. Disconnection is typically managed by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);

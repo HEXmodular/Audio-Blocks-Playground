@@ -1,6 +1,7 @@
 import {
-    ManagedLyriaServiceInfo,
-    BlockDefinition // Added for ManagedLyriaServiceInfo if it uses it
+    ManagedLyriaServiceInfo
+    // BlockDefinition removed as it's not directly used in this file.
+    // It's used by ManagedLyriaServiceInfo, but TypeScript resolves that implicitly.
 } from '@interfaces/common';
 
 // Removed local/placeholder AudioNode and LiveMusicService declarations

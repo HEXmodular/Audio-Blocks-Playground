@@ -60,7 +60,7 @@ export class AudioContextService {
 
   public async initialize(resumeContext: boolean = false): Promise<InitAudioResult> {
     let contextJustResumed = false;
-    let errorMessage: string | null = null;
+    // let errorMessage: string | null = null; // Removed as it was unused
 
     if (this.context && this.context.state === 'closed') {
       console.log("[AudioContextService Init] Existing AudioContext was 'closed'. Cleaning up and creating new one.");
@@ -79,7 +79,7 @@ export class AudioContextService {
           console.log(`[AudioContextService Init] Resume attempt finished. Context state: ${this.context.state}.`);
         } catch (resumeError) {
           console.error(`[AudioContextService Init Error] Error resuming existing context: ${(resumeError as Error).message}`);
-          errorMessage = `Error resuming context: ${(resumeError as Error).message}`;
+          // errorMessage = `Error resuming context: ${(resumeError as Error).message}`; // Unused variable
         }
       }
     } else {
@@ -108,7 +108,7 @@ export class AudioContextService {
       } catch (creationError) {
         const msg = `Critical Error initializing new AudioContext: ${(creationError as Error).message}`;
         console.error(`[AudioContextService Init Critical Error] ${msg}`);
-        errorMessage = msg;
+        // errorMessage = msg; // Unused variable
         if (this.context) await this.cleanupContext(); // Clean up partially initialized context
         this.setContext(null);
         this.masterGainNode = null;

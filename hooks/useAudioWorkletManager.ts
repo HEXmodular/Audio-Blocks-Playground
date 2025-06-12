@@ -1,6 +1,7 @@
 import {
-    ManagedWorkletNodeInfo,
-    BlockDefinition // Added for ManagedWorkletNodeInfo if it uses it
+    ManagedWorkletNodeInfo
+    // BlockDefinition removed as it's not directly used in this file.
+    // It's used by ManagedWorkletNodeInfo, but TypeScript resolves that implicitly.
 } from '@interfaces/common';
 
 // Removed local/placeholder AudioWorkletNode, GainNode declarations

@@ -213,7 +213,7 @@ export class LiveMusicService {
     }
   }
 
-  private async _handleSetupCompleteMessage(setupCompleteData: NonNullable<LiveMusicServerMessage['setupComplete']>) {
+  private async _handleSetupCompleteMessage(_setupCompleteData: NonNullable<LiveMusicServerMessage['setupComplete']>) {
     console.log('[LiveMusicService _handleSetupCompleteMessage] Received setupComplete.');
     this.connectionError = false;
 

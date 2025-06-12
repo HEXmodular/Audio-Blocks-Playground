@@ -9,7 +9,7 @@ import {
     BlockDefinition,
     BlockParameter,
     ManagedNativeNodeInfo,
-    AllpassInternalNodes,
+    // AllpassInternalNodes, // Removed unused import - implicitly used by ManagedNativeNodeInfo
     EnvelopeParams // Import EnvelopeParams
 } from '@interfaces/common';
 import {
@@ -256,7 +256,7 @@ export class NativeNodeManager implements INativeNodeManager {
     public getAllNodeInfo(): ManagedNativeNodeInfo[] {
         return Array.from(this.managedNativeNodesRef.values());
     }
-    public triggerEnvelope(nodeId: string, params: EnvelopeParams, triggerTime?: number): void {
+    public triggerEnvelope(nodeId: string, params: EnvelopeParams, _triggerTime?: number): void {
         // This is a generic envelope trigger. NativeNodeManager has specific AD and AR triggers.
         // We need to decide which one to call or add a more generic one.
         // For now, let's try to call AD envelope if decayTime is present, else log.

@@ -44,7 +44,7 @@ describe('LogicExecutionService', () => {
         setIntervalSpy = jest.spyOn(global, 'setInterval');
         clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
-        mockBlockStateManager = new BlockStateManager() as jest.Mocked<BlockStateManager>;
+        mockBlockStateManager = new BlockStateManager(jest.fn(), jest.fn()) as jest.Mocked<BlockStateManager>;
         mockGetDefinitionForBlock = jest.fn();
 
         mockAudioEngine = {
@@ -342,7 +342,7 @@ describe('LogicExecutionService', () => {
             mockInstances.push(inst);
 
             const originalCompileLogicFunction = (service as any).compileLogicFunction;
-            (service as any).compileLogicFunction = (instanceId: string, logicCode: string) => { // NOSONAR
+            (service as any).compileLogicFunction = (_instanceId: string, _logicCode: string) => { // NOSONAR
                 return jest.fn().mockReturnValue({ envelopeNeedsTriggering: true });
             };
 

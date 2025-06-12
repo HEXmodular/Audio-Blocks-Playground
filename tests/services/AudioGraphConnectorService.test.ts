@@ -7,7 +7,7 @@ import {
     ManagedNativeNodeInfo,  // Now from common
     ManagedLyriaServiceInfo // Now from common
 } from '@interfaces/common';
-import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION, AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
+import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants'; // Removed AUDIO_OUTPUT_BLOCK_DEFINITION
 
 // Helper to create mock AudioNode
 const createMockAudioNode = (name: string = 'node') => {
@@ -156,7 +156,7 @@ describe('AudioGraphConnectorService', () => {
 
     describe('Connection Logic', () => {
         test('should connect worklet audio node to worklet audio node', () => {
-            const { sourceAudioNode, targetAudioNode, sourceInstance, targetInstance } = setupBasicBlocks();
+            const { sourceAudioNode, targetAudioNode, sourceInstance: _sourceInstance, targetInstance: _targetInstance } = setupBasicBlocks();
             connections.push({ id: 'c1', fromInstanceId: 'source1', fromOutputId: 'out', toInstanceId: 'target1', toInputId: 'in' });
             service.updateConnections(mockAudioContext, true, connections, blockInstances, getDefinitionForBlock, mockManagedWorkletNodes, mockManagedNativeNodes, mockManagedLyriaServices);
             expect(sourceAudioNode.connect).toHaveBeenCalledWith(targetAudioNode);
@@ -164,14 +164,14 @@ describe('AudioGraphConnectorService', () => {
         });
 
         test('should connect native audio node to worklet audio node', () => {
-            const { sourceAudioNode, targetAudioNode, sourceInstance, targetInstance } = setupBasicBlocks({ sourceType: 'native' });
+            const { sourceAudioNode, targetAudioNode, sourceInstance: _sourceInstance, targetInstance: _targetInstance } = setupBasicBlocks({ sourceType: 'native' });
             connections.push({ id: 'c1', fromInstanceId: 'source1', fromOutputId: 'out', toInstanceId: 'target1', toInputId: 'in' });
             service.updateConnections(mockAudioContext, true, connections, blockInstances, getDefinitionForBlock, mockManagedWorkletNodes, mockManagedNativeNodes, mockManagedLyriaServices);
             expect(sourceAudioNode.connect).toHaveBeenCalledWith(targetAudioNode);
         });
 
         test('should connect worklet audio node to native audio param', () => {
-            const { sourceAudioNode, targetAudioNode, targetAudioParam, sourceInstance, targetInstance } = setupBasicBlocks({ targetType: 'native', targetIsParam: true });
+            const { sourceAudioNode, targetAudioNode: _targetAudioNode, targetAudioParam, sourceInstance: _sourceInstance, targetInstance: _targetInstance } = setupBasicBlocks({ targetType: 'native', targetIsParam: true });
             connections.push({ id: 'c2', fromInstanceId: 'source1', fromOutputId: 'out', toInstanceId: 'target1', toInputId: 'inParam' });
             service.updateConnections(mockAudioContext, true, connections, blockInstances, getDefinitionForBlock, mockManagedWorkletNodes, mockManagedNativeNodes, mockManagedLyriaServices);
             expect(sourceAudioNode.connect).toHaveBeenCalledWith(targetAudioParam);
@@ -188,7 +188,7 @@ describe('AudioGraphConnectorService', () => {
         });
 
         test('should not connect if port types are not audio', () => {
-            const { sourceAudioNode, sourceInstance, targetInstance } = setupBasicBlocks({ sourceDefOutputs: [{id: 'out', name: 'Out', type: 'number'}]});
+            const { sourceAudioNode, sourceInstance: _sourceInstance, targetInstance: _targetInstance } = setupBasicBlocks({ sourceDefOutputs: [{id: 'out', name: 'Out', type: 'number'}]});
             connections.push({ id: 'c_num', fromInstanceId: 'source1', fromOutputId: 'out', toInstanceId: 'target1', toInputId: 'in' });
             service.updateConnections(mockAudioContext, true, connections, blockInstances, getDefinitionForBlock, mockManagedWorkletNodes, mockManagedNativeNodes, mockManagedLyriaServices);
             expect(sourceAudioNode.connect).not.toHaveBeenCalled();
@@ -196,7 +196,7 @@ describe('AudioGraphConnectorService', () => {
         });
 
         test('should log error if sourceNode.connect throws', () => {
-            const { sourceAudioNode, targetAudioNode, sourceInstance, targetInstance } = setupBasicBlocks();
+            const { sourceAudioNode, targetAudioNode: _targetAudioNode, sourceInstance: _sourceInstance, targetInstance: _targetInstance } = setupBasicBlocks();
             sourceAudioNode.connect.mockImplementation(() => { throw new Error("Connection failed"); });
             connections.push({ id: 'c_err', fromInstanceId: 'source1', fromOutputId: 'out', toInstanceId: 'target1', toInputId: 'in' });
 
