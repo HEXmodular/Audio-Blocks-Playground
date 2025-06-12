@@ -5,7 +5,7 @@
  * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
  * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
  */
-import { BlockDefinition, BlockParameter, OscillatorType, BiquadFilterType } from '@types/types';
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
     NATIVE_LFO_BLOCK_DEFINITION,
@@ -19,17 +19,17 @@ import {
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
 } from '@constants/constants'; // From root constants.ts
 
-import { GAIN_BLOCK_DEFINITION } from './native-blocks/GainControlNativeBlock'; // Specifically from its own file
+import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Specifically from its own file
 
-import { CreatableNode } from './native-blocks/CreatableNode';
-import { GainControlNativeBlock } from './native-blocks/GainControlNativeBlock';
-import { OscillatorNativeBlock } from './native-blocks/OscillatorNativeBlock';
-import { BiquadFilterNativeBlock } from './native-blocks/BiquadFilterNativeBlock';
-import { DelayNativeBlock } from './native-blocks/DelayNativeBlock';
-import { OscilloscopeNativeBlock } from './native-blocks/OscilloscopeNativeBlock';
-import { EnvelopeNativeBlock } from './native-blocks/EnvelopeNativeBlock';
-import { AllpassFilterNativeBlock } from './native-blocks/AllpassFilterNativeBlock';
-import { NumberToConstantAudioNativeBlock } from './native-blocks/NumberToConstantAudioNativeBlock';
+import { CreatableNode } from '@services/native-blocks/CreatableNode';
+import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
+import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
+import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
+import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
+import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
+import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
+import { AllpassFilterNativeBlock } from '@services/native-blocks/AllpassFilterNativeBlock';
+import { NumberToConstantAudioNativeBlock } from '@services/native-blocks/NumberToConstantAudioNativeBlock';
 
 
 export interface AllpassInternalNodes {

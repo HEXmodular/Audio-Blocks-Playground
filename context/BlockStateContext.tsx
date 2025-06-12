@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode, useCallback } from 'react';
-import { BlockInstance, BlockDefinition, BlockParameter } from '@types/types'; // Assuming BlockParameter is used by BlockStateManager or types
-import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // getDefaultOutputValue might not be directly needed by provider, but good for BSM context
+import { BlockInstance, BlockDefinition } from '@interfaces/common'; // Assuming BlockParameter is used by BlockStateManager or types
+import { BlockStateManager } from '../state/BlockStateManager'; // getDefaultOutputValue might not be directly needed by provider, but good for BSM context
 // ALL_BLOCK_DEFINITIONS is not imported here, assuming BlockStateManager handles initial loading of core defs.
 
 interface BlockStateContextValues {

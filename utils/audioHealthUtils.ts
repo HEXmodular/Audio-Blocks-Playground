@@ -1,11 +1,11 @@
 
-import { BlockInstance, Connection, BlockParameter } from '@types/types';
-import { AudioEngine } from '../hooks/useAudioEngine';
+import { BlockInstance, Connection, BlockParameter } from '@interfaces/common';
+import { AudioEngineService } from '@services/AudioEngineService';
 
 export interface VerifyAudioPathHealthOptions {
   oscillatorInstanceId: string;
   audioOutInstanceId: string;
-  audioEngine: AudioEngine;
+  audioEngine: AudioEngineService;
   blockInstances: BlockInstance[];
   connections: Connection[];
   timeoutMs?: number; // Optional timeout for waiting for samples

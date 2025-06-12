@@ -1,5 +1,5 @@
 import React from 'react';
-import { Connection, PendingConnection, BlockInstance, BlockDefinition, BlockPort } from '@types/types';
+import { Connection, PendingConnection, BlockInstance, BlockDefinition } from '@interfaces/common';
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 
 const getPortElementCenterForConnectionLine = (

@@ -1,7 +1,6 @@
-import { BlockDefinition, BlockParameter } from '../@types/types';
-import { ManagedNativeNodeInfo } from '../NativeNodeManager';
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
-import { NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export class BiquadFilterNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {
@@ -11,7 +10,7 @@ export class BiquadFilterNativeBlock extends CreatableNode {
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[]
+        // initialParams: BlockParameter[] is not used by BiquadFilter
         // currentBpm is not used by BiquadFilter
     ): ManagedNativeNodeInfo {
         if (!this.audioContext) {

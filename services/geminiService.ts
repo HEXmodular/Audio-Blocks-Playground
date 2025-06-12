@@ -7,7 +7,7 @@
  */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { BlockDefinition, GeminiRequest, BlockParameter } from '@types/types';
+import { BlockDefinition } from '@interfaces/common';
 import { 
     GEMINI_SYSTEM_PROMPT_FOR_BLOCK_DEFINITION, 
     GEMINI_SYSTEM_PROMPT_FOR_CODE_MODIFICATION,

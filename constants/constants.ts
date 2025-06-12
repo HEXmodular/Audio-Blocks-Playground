@@ -1,5 +1,5 @@
 
-import { BlockDefinition, BlockParameterDefinition, BlockPort, BlockParameter, Scale as AppScale } from '@types/types'; // Added BlockParameterDefinition, AppScale
+import { BlockDefinition, BlockParameterDefinition, BlockPort, BlockParameter, Scale as AppScale } from '@interfaces/common'; // Added BlockParameterDefinition, AppScale
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 // Input pDefProto is effectively Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any }

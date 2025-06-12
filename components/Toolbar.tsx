@@ -2,7 +2,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from '@icons/icons'; 
-import { BlockDefinition, BlockInstance, Connection } from '@types/types';
+import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
 import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import { BlockStateManager } from '../state/BlockStateManager';

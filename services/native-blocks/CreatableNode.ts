@@ -1,5 +1,5 @@
-import { BlockDefinition, BlockParameter } from '../@types/types';
-import { ManagedNativeNodeInfo } from '../NativeNodeManager';
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
 import { NativeBlock } from './NativeBlock';
 
 export abstract class CreatableNode extends NativeBlock {

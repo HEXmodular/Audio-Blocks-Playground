@@ -1,13 +1,13 @@
-import { LogicExecutionService } from '../@services/LogicExecutionService';
-import { BlockInstance, BlockDefinition, Connection } from '../@types/types';
-import { BlockStateManager, getDefaultOutputValue as actualGetDefaultOutputValue } from '../../state/BlockStateManager';
-import { AudioEngine } from '../../hooks/useAudioEngine';
+import { LogicExecutionService } from '@services/LogicExecutionService';
+import { BlockInstance, BlockDefinition, Connection } from '@interfaces/common';
+import { BlockStateManager, getDefaultOutputValue as actualGetDefaultOutputValue } from '@state/BlockStateManager';
+import { AudioEngine } from '@hooks/useAudioEngine';
 import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '@constants/constants';
 
 
 // Mock BlockStateManager and its helper getDefaultOutputValue
-jest.mock('../../state/BlockStateManager', () => {
-    const originalModule = jest.requireActual('../../state/BlockStateManager');
+jest.mock('@state/BlockStateManager', () => {
+    const originalModule = jest.requireActual('@state/BlockStateManager');
     return {
         ...originalModule,
         BlockStateManager: jest.fn().mockImplementation(() => ({
@@ -29,7 +29,6 @@ jest.mock('../../state/BlockStateManager', () => {
         }),
     };
 });
-
 
 describe('LogicExecutionService', () => {
     let mockBlockStateManager: jest.Mocked<BlockStateManager>;

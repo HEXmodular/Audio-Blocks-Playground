@@ -1,6 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@types/types';
+import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/common';
 import { ALL_BLOCK_DEFINITIONS, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants';
 
 // --- Helper Functions (co-located with the class) ---

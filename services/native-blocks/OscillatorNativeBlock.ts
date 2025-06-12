@@ -1,6 +1,6 @@
-import { BlockDefinition, BlockParameter } from '../@types/types';
-import { ManagedNativeNodeInfo } from '../NativeNodeManager'; // Assuming AllpassInternalNodes might not be needed here, but ManagedNativeNodeInfo is.
-import { NATIVE_OSCILLATOR_BLOCK_DEFINITION, NATIVE_LFO_BLOCK_DEFINITION, NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION } from '@constants/constants';
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import { ManagedNativeNodeInfo } from '@services/NativeNodeManager'; // Assuming AllpassInternalNodes might not be needed here, but ManagedNativeNodeInfo is.
+import { NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION } from '@constants/constants';
 import { CreatableNode } from './CreatableNode';
 
 export class OscillatorNativeBlock extends CreatableNode {

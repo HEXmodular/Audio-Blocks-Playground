@@ -1,6 +1,6 @@
 // controllers/BlockInstanceController.ts
-import { BlockDefinition, BlockInstance, Connection } from '@types/types'; // Adjust path
-import { BlockStateManager } from '../state/BlockStateManager'; // Adjust path
+import { BlockDefinition, BlockInstance } from '@interfaces/common'; // Adjust path
+import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
 import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
 import { ConnectionState } from '@services/ConnectionState'; // Adjust path
 import {

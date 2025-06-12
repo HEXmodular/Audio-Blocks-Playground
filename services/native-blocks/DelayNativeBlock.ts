@@ -1,7 +1,6 @@
-import { BlockDefinition, BlockParameter } from '../@types/types';
-import { ManagedNativeNodeInfo } from '../NativeNodeManager';
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
-import { NATIVE_DELAY_BLOCK_DEFINITION } from '@constants/constants';
 
 export class DelayNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {
@@ -11,7 +10,7 @@ export class DelayNativeBlock extends CreatableNode {
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[]
+        // initialParams: BlockParameter[] is not used by DelayNode
         // currentBpm is not used by DelayNode
     ): ManagedNativeNodeInfo {
         if (!this.audioContext) {

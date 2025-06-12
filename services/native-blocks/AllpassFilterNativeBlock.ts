@@ -1,7 +1,6 @@
-import { BlockDefinition, BlockParameter } from '../@types/types';
-import { ManagedNativeNodeInfo, AllpassInternalNodes } from '../NativeNodeManager'; // AllpassInternalNodes is crucial here
+import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import { ManagedNativeNodeInfo, AllpassInternalNodes } from '@services/NativeNodeManager'; // AllpassInternalNodes is crucial here
 import { CreatableNode } from './CreatableNode';
-import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export class AllpassFilterNativeBlock extends CreatableNode {
     constructor(audioContext: AudioContext | null) {
@@ -11,7 +10,7 @@ export class AllpassFilterNativeBlock extends CreatableNode {
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[]
+        // initialParams: BlockParameter[]
         // currentBpm is not used
     ): ManagedNativeNodeInfo {
         if (!this.audioContext) {

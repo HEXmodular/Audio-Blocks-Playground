@@ -16,7 +16,7 @@ import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
 import { NativeNodeManager, ManagedNativeNodeInfo } from './NativeNodeManager';
 import { LyriaServiceManager, ManagedLyriaServiceInfo } from './LyriaServiceManager';
-import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '@types/types';
+import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '@interfaces/common';
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;

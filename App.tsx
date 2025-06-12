@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BlockInstance, Connection, PendingConnection } from '@types/types';
+import { BlockInstance, Connection, PendingConnection } from '@interfaces/common';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';

@@ -26,14 +26,15 @@
 
     "paths": {
       "@/*" :  ["./*"],
-      "@services" :  ["./services"],
-      "@types" :  ["./types"],
-      "@components" :  ["./components"],
-      "@context" :  ["./context"],
-      "@utils" :  ["./utils"],
-      "@controllers" :  ["./controllers"],
-      "@icons" :  ["./icons"],
-      "@constants" :  ["./constants"],
+      "@services/*" :  ["./services/*"],
+      "@interfaces/*" :  ["./interfaces/*"],
+      "@components/*" :  ["./components/*"],
+      "@context/*" :  ["./context/*"],
+      "@utils/*" :  ["./utils/*"],
+      "@controllers/*" :  ["./controllers/*"],
+      "@icons/*" :  ["./icons/*"],
+      "@constants/*" :  ["./constants/*"],
+      "@state/*" :  ["./state/*"],
     }
   }
 }

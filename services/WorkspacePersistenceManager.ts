@@ -6,10 +6,10 @@
  * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
  */
 // services/WorkspacePersistenceManager.ts
-import { BlockDefinition, BlockInstance, Connection } from '@types/types'; // Adjust path
-import { BlockStateManager } from '../state/BlockStateManager'; // Adjust path
-import { AudioEngineService } from './AudioEngineService'; // Adjust path
-import { ConnectionState } from './ConnectionState'; // Adjust path
+import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common'; // Adjust path
+import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
+import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
+import { ConnectionState } from '@services/ConnectionState'; // Adjust path
 import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // Adjust path
 
 export class WorkspacePersistenceManager {

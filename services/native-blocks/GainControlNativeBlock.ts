@@ -1,7 +1,7 @@
 import { CreatableNode } from './CreatableNode';
-import type { BlockDefinition, BlockParameter } from '../@types/types';
+import type { BlockDefinition, BlockParameter } from '@interfaces/common';
 import { createParameterDefinitions } from '@constants/constants';
-import type { ManagedNativeNodeInfo } from '../NativeNodeManager';
+import type { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
 
 /**
  * GainControlNativeBlock is a native block that controls the gain of the audio.

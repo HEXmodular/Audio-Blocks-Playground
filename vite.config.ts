@@ -12,13 +12,14 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
           '@services': path.resolve(__dirname, './services'),
-          '@types': path.resolve(__dirname, './types'),
+          '@interfaces': path.resolve(__dirname, './interfaces'),
           '@components': path.resolve(__dirname, './components'),
           '@context': path.resolve(__dirname, './context'),
           '@utils': path.resolve(__dirname, './utils'),
           '@controllers': path.resolve(__dirname, './controllers'),
           '@icons': path.resolve(__dirname, './icons'),
           '@constants': path.resolve(__dirname, './constants'),
+          '@state': path.resolve(__dirname, './state'),
         }
       }
     };

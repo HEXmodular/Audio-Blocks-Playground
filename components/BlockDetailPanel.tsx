@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BlockInstance, BlockView, BlockPort, BlockParameter, Connection } from '@types/types';
+import type { BlockInstance, BlockPort, BlockParameter, Connection } from '@interfaces/common';
+import { BlockView } from '@interfaces/common';
 import CodeLogToggle from './CodeLogToggle';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
 import { OSCILLOSCOPE_BLOCK_DEFINITION, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed

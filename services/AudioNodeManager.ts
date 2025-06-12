@@ -8,10 +8,9 @@
  */
 // services/AudioNodeManager.ts
 import { AudioEngineService } from './AudioEngineService';
-import { BlockInstance, BlockDefinition, Connection, ValueType } from '@types/types';
+import { BlockInstance, BlockDefinition, Connection, ValueType } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // Adjust path
 import {
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
     LYRIA_MASTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
 } from '@constants/constants'; // Adjust path

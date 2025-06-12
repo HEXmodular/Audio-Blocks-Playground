@@ -1,7 +1,7 @@
 
 // Adjust path as necessary
-import { deepCopyParametersAndEnsureTypes, getDefaultOutputValue } from '../state/BlockStateManager'; 
-import { BlockDefinition, BlockParameter, BlockParameterDefinition } from '@types/types'; // Import BlockParameterDefinition
+import { deepCopyParametersAndEnsureTypes, getDefaultOutputValue } from '@state/BlockStateManager'; 
+import { BlockDefinition, BlockParameter, BlockParameterDefinition } from '@interfaces/common'; // Import BlockParameterDefinition
 
 
 describe('useBlockState Helper Functions', () => {

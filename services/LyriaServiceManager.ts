@@ -5,7 +5,7 @@
  * The manager ensures that each Lyria block's audio output is correctly routed and that callbacks are in place to react to changes in the Lyria service's state, triggering application-level updates.
  * It acts as the specialized controller for all Lyria AI-powered music generation blocks within the system.
  */
-import { BlockDefinition, LiveMusicGenerationConfig, WeightedPrompt } from '@types/types'; // Adjusted as WeightedPrompt is used by LiveMusicService
+import { BlockDefinition, LiveMusicGenerationConfig } from '@interfaces/common'; // Adjusted as WeightedPrompt is used by LiveMusicService
 import { LiveMusicService, LiveMusicServiceCallbacks, DEFAULT_MUSIC_GENERATION_CONFIG } from '@services/LiveMusicService';
 import { Scale as GenAIScale } from '@google/genai'; // GenAIScale is used in updateLyriaServiceState
 

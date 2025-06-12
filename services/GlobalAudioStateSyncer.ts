@@ -6,8 +6,8 @@
  * This allows other application components to easily react to important global audio events without needing to subscribe to the more granular `AudioEngineService` directly.
  */
 // services/GlobalAudioStateSyncer.ts
-import { AudioEngineService } from './AudioEngineService'; // Assuming path
-import { AudioDevice } from '@types/types'; // Assuming path
+import { AudioEngineService } from '@services/AudioEngineService'; // Assuming path
+import { AudioDevice } from '@interfaces/common'; // Assuming path
 
 // Define the state structure this class will manage
 export interface GlobalAudioState {

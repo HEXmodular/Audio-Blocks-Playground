@@ -1,8 +1,8 @@
-import { AudioGraphConnectorService, ActiveWebAudioConnection } from '../@services/AudioGraphConnectorService';
-import { Connection, BlockInstance, BlockDefinition } from '../@types/types';
-import { ManagedWorkletNodeInfo } from '../../hooks/useAudioWorkletManager';
-import { ManagedNativeNodeInfo } from '../../hooks/useNativeNodeManager';
-import { ManagedLyriaServiceInfo } from '../../hooks/useLyriaServiceManager';
+import { AudioGraphConnectorService, ActiveWebAudioConnection } from '@services/AudioGraphConnectorService';
+import { Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
+import { ManagedWorkletNodeInfo } from '@hooks/useAudioWorkletManager';
+import { ManagedNativeNodeInfo } from '@hooks/useNativeNodeManager';
+import { ManagedLyriaServiceInfo } from '@hooks/hooks/useLyriaServiceManager';
 import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION, AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 
 // Helper to create mock AudioNode
