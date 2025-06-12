@@ -1,5 +1,5 @@
-import { BlockDefinition, BlockParameter } from '../types';
-import { ManagedNativeNodeInfo } from '../../NativeNodeManager';
+import { BlockDefinition, BlockParameter } from '../../types';
+import { ManagedNativeNodeInfo } from '../NativeNodeManager';
 import { CreatableNode } from './CreatableNode';
 
 export class OscilloscopeNativeBlock extends CreatableNode {
