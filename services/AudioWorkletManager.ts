@@ -106,6 +106,7 @@ export class AudioWorkletManager implements IAudioWorkletManager {
     processorName: string,
     workletCode: string
   ): Promise<boolean> {
+    console.log(`[AudioWorkletManager Register DEBUG] Attempting to register worklet processor: ${processorName}`);
     if (!this.audioContext) {
       console.error(`[WorkletManager Critical] Cannot register worklet ${processorName}: AudioContext is null.`);
       return false;
@@ -156,6 +157,7 @@ try {
 }`;
       const blob = new Blob([finalCode], { type: 'application/javascript' });
       objectURL = URL.createObjectURL(blob);
+      console.log(`[AudioWorkletManager Register DEBUG] Calling audioWorklet.addModule for ${processorName} with URL: ${objectURL}`);
       await this.audioContext.audioWorklet.addModule(objectURL);
       this.registeredWorkletNamesRef.add(processorName);
       return true;
@@ -165,12 +167,12 @@ try {
       const errMsgBase = `Error in registerWorkletProcessor for '${processorName}' (class '${cnForErrorLog}')`;
 
       if (error.message.includes('is already registered') || (error.name === 'NotSupportedError' && error.message.includes(processorName) && error.message.toLowerCase().includes('already registered'))) {
-        console.log(`[WorkletManager Info] Worklet '${processorName}' reported as 'already registered'. Adding to cache.`);
+        console.log(`[AudioWorkletManager Register DEBUG] Worklet '${processorName}' already registered or addModule indicated so. Adding to cache.`);
         this.registeredWorkletNamesRef.add(processorName);
         return true;
       }
       const errMsg = `${errMsgBase}: ${error.message}`;
-      console.error(errMsg, e);
+      console.error(`[AudioWorkletManager Register DEBUG Critical] ${errMsg}`, e);
       this.setAudioInitializationError(`RegFail ('${processorName}'): ${error.message.substring(0, 100)}`);
       this.registeredWorkletNamesRef.delete(processorName);
       return false;
@@ -180,6 +182,7 @@ try {
   }
 
   public async checkAndRegisterPredefinedWorklets(logActivity: boolean = true): Promise<boolean> {
+    console.log(`[AudioWorkletManager Worklets DEBUG] checkAndRegisterPredefinedWorklets called. logActivity: ${logActivity}`);
     if (!this.audioContext) {
       if (logActivity) console.log(`[WorkletManager Worklets] AudioContext is null. Cannot register worklets.`);
       return false;
@@ -190,33 +193,35 @@ try {
     );
 
     if (currentState === 'suspended') {
-      if (logActivity) console.log(`[WorkletManager Worklets] Context is 'suspended'. All cached: ${allCached}. Cannot actively register.`);
+      if (logActivity) console.log(`[AudioWorkletManager Worklets DEBUG] Context is 'suspended'. All cached: ${allCached}. Cannot actively register.`);
       return allCached;
     }
     if (currentState === 'closed') {
-      if (logActivity) console.warn(`[WorkletManager Worklets] Context is 'closed'. Not ready. All cached: ${allCached}. Cannot actively register.`);
+      if (logActivity) console.warn(`[AudioWorkletManager Worklets DEBUG] Context is 'closed'. Not ready. All cached: ${allCached}. Cannot actively register.`);
       return false;
     }
-    if (logActivity) console.log(`[WorkletManager Worklets] Context is 'running'. Proceeding with registration check.`);
+    if (logActivity) console.log(`[AudioWorkletManager Worklets DEBUG] Context is 'running'. Proceeding with registration check.`);
 
     let allEffectivelyRegistered = true;
     for (const def of PREDEFINED_WORKLET_DEFS) {
       if (def.audioWorkletCode && def.audioWorkletProcessorName) {
+        console.log(`[AudioWorkletManager Worklets DEBUG] Checking predefined worklet: ${def.audioWorkletProcessorName}`);
         if (!this.registeredWorkletNamesRef.has(def.audioWorkletProcessorName)) {
-          if (logActivity) console.log(`[WorkletManager Worklets] Attempting registration for '${def.audioWorkletProcessorName}'...`);
+          if (logActivity) console.log(`[AudioWorkletManager Worklets DEBUG] Attempting registration for '${def.audioWorkletProcessorName}'...`);
           const regSuccess = await this.registerWorkletProcessor(def.audioWorkletProcessorName, def.audioWorkletCode);
           if (!regSuccess) {
             allEffectivelyRegistered = false;
-            if (logActivity) console.error(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`);
+            if (logActivity) console.error(`[AudioWorkletManager Worklets DEBUG] Predefined worklet '${def.audioWorkletProcessorName}' registration FAILED.`);
             break;
           } else {
-            if (logActivity) console.log(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`);
+            if (logActivity) console.log(`[AudioWorkletManager Worklets DEBUG] Predefined worklet '${def.audioWorkletProcessorName}' registration SUCCEEDED.`);
           }
         } else {
-          if (logActivity) console.log(`[WorkletManager Worklets] Predefined worklet '${def.audioWorkletProcessorName}' already cached.`);
+          if (logActivity) console.log(`[AudioWorkletManager Worklets DEBUG] Predefined worklet '${def.audioWorkletProcessorName}' already cached.`);
         }
       }
     }
+    console.log(`[AudioWorkletManager Worklets DEBUG] Finished checkAndRegisterPredefinedWorklets. Result: ${allEffectivelyRegistered}`);
     return allEffectivelyRegistered;
   }
 
@@ -225,31 +230,40 @@ try {
     definition: BlockDefinition,
     initialParams: BlockParameter[]
   ): Promise<boolean> {
+    console.log(`[AudioWorkletManager NodeSetup DEBUG] Attempting setup for instanceId: ${instanceId}, definition: ${definition.name} (ID: ${definition.id})`);
+    console.log(`[AudioWorkletManager NodeSetup DEBUG] Current state: isAudioWorkletSystemReady: ${this.isAudioWorkletSystemReady}, audioContext.state: ${this.audioContext?.state}`);
+
     if (!this.audioContext || this.audioContext.state !== 'running' || !this.isAudioWorkletSystemReady) {
-      console.warn(`[WorkletManager NodeSetup] Cannot setup '${definition.name}' (ID: ${instanceId}): System not ready (ctx: ${this.audioContext?.state}, worklets: ${this.isAudioWorkletSystemReady}).`);
+      console.warn(`[AudioWorkletManager NodeSetup DEBUG] Cannot setup '${definition.name}' (ID: ${instanceId}): System not ready (ctx: ${this.audioContext?.state}, worklets: ${this.isAudioWorkletSystemReady}). SKIPPING.`);
       return false;
     }
     if (!definition.audioWorkletProcessorName || !definition.audioWorkletCode) {
-      console.log(`[WorkletManager NodeSetup] Skipping '${definition.name}' (ID: ${instanceId}): Missing processorName or code.`);
-      return true; // Not a failure, just a skip.
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Skipping '${definition.name}' (ID: ${instanceId}): Missing processorName or code. SKIPPING.`);
+      return true;
     }
     if (this.managedWorkletNodesRef.has(instanceId)) {
-      console.log(`[WorkletManager NodeSetup] Node ID '${instanceId}' already exists. Skipping.`);
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Node ID '${instanceId}' already exists. SKIPPING.`);
       return true;
     }
 
     if (!this.registeredWorkletNamesRef.has(definition.audioWorkletProcessorName)) {
-      console.log(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' not registered. Attempting registration...`);
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' not registered. Attempting registration...`);
       const regSuccess = await this.registerWorkletProcessor(definition.audioWorkletProcessorName, definition.audioWorkletCode);
       if (!regSuccess) {
-        console.error(`[WorkletManager NodeSetup Critical] Failed to register '${definition.audioWorkletProcessorName}'. Cannot create node.`);
+        console.error(`[AudioWorkletManager NodeSetup DEBUG Critical] Failed to register '${definition.audioWorkletProcessorName}'. Cannot create node for ${instanceId}.`);
         this.setAudioInitializationError(`WorkletNode RegFail: ${definition.audioWorkletProcessorName}`);
         return false;
       }
-      console.log(`[WorkletManager NodeSetup] Worklet '${definition.audioWorkletProcessorName}' registered successfully.`);
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Worklet '${definition.audioWorkletProcessorName}' registered successfully during setup for ${instanceId}.`);
+    } else {
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Worklet '${definition.audioWorkletProcessorName}' for '${definition.name}' (Instance: ${instanceId}) already registered.`);
     }
 
     try {
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Preparing to create AudioWorkletNode for ${instanceId} with processor '${definition.audioWorkletProcessorName}'.`);
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] ProcessorOptions for ${instanceId}:`, JSON.stringify(workletNodeOptions.processorOptions, null, 2));
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] ParameterData for ${instanceId}:`, JSON.stringify(workletNodeOptions.parameterData, null, 2));
+
       const paramDescriptors: Record<string, any> = {};
       definition.parameters.forEach(p => {
         if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
@@ -275,7 +289,7 @@ try {
       };
 
       const newNode = new AudioWorkletNode(this.audioContext, definition.audioWorkletProcessorName, workletNodeOptions);
-      console.log(`[WorkletManager NodeSetup] AudioWorkletNode '${definition.audioWorkletProcessorName}' created for '${instanceId}'.`);
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] AudioWorkletNode '${definition.audioWorkletProcessorName}' CREATED for '${instanceId}'.`);
 
       newNode.port.onmessage = (event) => {
         console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
@@ -289,15 +303,16 @@ try {
         const volumeParam = initialParams.find(p => p.id === 'volume');
         inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
         inputGainNodeForOutputBlock.connect(newNode);
-         console.log(`[WorkletManager NodeSetup] AudioOutput block '${instanceId}' internal gain node created. Connection to master gain will be handled by AudioEngine.`);
+        console.log(`[AudioWorkletManager NodeSetup DEBUG] AudioOutput block '${instanceId}' internal gain node created and connected to worklet input. Initial gain: ${inputGainNodeForOutputBlock.gain.value}`);
       }
 
       this.managedWorkletNodesRef.set(instanceId, { node: newNode, definition, instanceId, inputGainNode: inputGainNodeForOutputBlock });
+      console.log(`[AudioWorkletManager NodeSetup DEBUG] Successfully added node ${instanceId} to managedWorkletNodesRef. Map size: ${this.managedWorkletNodesRef.size}`);
       this.onStateChangeForReRender();
       return true;
     } catch (e: any) {
       const errMsg = `Failed to construct '${definition.audioWorkletProcessorName}' for '${instanceId}': ${e.message}`;
-      console.error(`[WorkletManager NodeSetup Critical] ${errMsg}`, e);
+      console.error(`[AudioWorkletManager NodeSetup DEBUG Critical] ${errMsg}`, e);
       this.setAudioInitializationError(`WorkletNode Error: ${definition.audioWorkletProcessorName} - ${e.message.substring(0, 100)}`);
       return false;
     }
