@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import React, { useState, useEffect, useRef } from 'react';
+React, { useState, useEffect, useRef } from 'react'; // Duplicate import removed by keeping one
 import { BlockInstance, BlockDefinition, BlockView, BlockPort, BlockParameter, Connection, BlockParameterDefinition } from '../types';
 import CodeLogToggle from './CodeLogToggle';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from './icons';
-import { OSCILLOSCOPE_BLOCK_DEFINITION, NATIVE_LOGIC_CODE_PLACEHOLDER, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants';
+import { OSCILLOSCOPE_BLOCK_DEFINITION, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
 import OscilloscopeDisplay from './OscilloscopeDisplay';
 import { parseFrequencyInput } from '../utils/noteUtils';
 import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
@@ -58,11 +58,10 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null; // Use context version
 
   const isSimplifiedNativeBlock = blockInstance && blockDefinition &&
-                                  blockDefinition.logicCode === NATIVE_LOGIC_CODE_PLACEHOLDER &&
-                                  !blockDefinition.audioWorkletCode &&
-                                  !blockDefinition.logicCodeTests &&
-                                  (!blockInstance.modificationPrompts || blockInstance.modificationPrompts.length === 0) &&
-                                  blockDefinition.id !== NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id; 
+                                    !blockDefinition.audioWorkletCode &&
+                                    !blockDefinition.logicCode && // logicCode is undefined or empty for these blocks now
+                                    (!blockInstance.modificationPrompts || blockInstance.modificationPrompts.length === 0) &&
+                                    blockDefinition.id !== NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id;
 
   const availableViewsForToggle = isSimplifiedNativeBlock
       ? [BlockView.UI, BlockView.CONNECTIONS]
