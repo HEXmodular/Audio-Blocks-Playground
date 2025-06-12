@@ -122,7 +122,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         if (!this._audioContext || this._audioContext.state === 'closed') {
             // If context fails to initialize here, ensure managers still get a null context if they were expecting one.
             // However, they are already initialized with null, so this is more about handling the error path.
-            console.log('[AudioEngineService Init DEBUG] AudioContext is null or closed after initialization attempt. Setting null for managers.');
+            // console.log('[AudioEngineService Init DEBUG] AudioContext is null or closed after initialization attempt. Setting null for managers.');
             this.audioWorkletManager._setAudioContext(null);
             this.nativeNodeManager._setAudioContext(null);
             const errorMessage = `Failed to initialize AudioContext or it's closed. State: ${this._audioContext?.state || 'null'}`;
@@ -134,7 +134,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         }
 
         // AudioContext is valid and not closed here
-        console.log('[AudioEngineService Init DEBUG] Setting AudioContext for managers.');
+        // console.log('[AudioEngineService Init DEBUG] Setting AudioContext for managers.');
         this.audioWorkletManager._setAudioContext(this._audioContext);
         this.nativeNodeManager._setAudioContext(this._audioContext);
 
@@ -195,24 +195,24 @@ public initializeBasicAudioContext = async (): Promise<void> => {
 
     // --- BEGIN MODIFICATION: Check and register predefined worklets ---
     // This block is already here from the previous step, and its placement after _setAudioContext is correct.
-    console.log('[AudioEngineService Init DEBUG] About to check and register predefined worklets.');
+    // console.log('[AudioEngineService Init DEBUG] About to check and register predefined worklets.');
     if (this._audioContext && (this._audioContext.state === 'running' || this._audioContext.state === 'suspended')) { // Ensure context is not 'closed'
         try {
             const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
             this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
-            console.log(`[AudioEngineService Init DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
+            // console.log(`[AudioEngineService Init DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
             if (!workletsRegistered) {
-                console.warn('[AudioEngineService Init DEBUG] Not all predefined worklets may have registered successfully.');
+                // console.warn('[AudioEngineService Init DEBUG] Not all predefined worklets may have registered successfully.');
                 // Optionally, set a global error or a more specific state if this is critical
                 // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
             }
         } catch (workletError) {
-            console.error('[AudioEngineService Init DEBUG] Error during checkAndRegisterPredefinedWorklets:', workletError);
+            // console.error('[AudioEngineService Init DEBUG] Error during checkAndRegisterPredefinedWorklets:', workletError);
             this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
             this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets: ${(workletError as Error).message}`;
         }
     } else {
-        console.warn('[AudioEngineService Init DEBUG] Skipped predefined worklets registration because AudioContext is not in a valid state for it (e.g., closed or null).');
+        // console.warn('[AudioEngineService Init DEBUG] Skipped predefined worklets registration because AudioContext is not in a valid state for it (e.g., closed or null).');
         this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
     }
     // --- END MODIFICATION ---
@@ -248,29 +248,29 @@ public initializeBasicAudioContext = async (): Promise<void> => {
             await this._audioContext.resume();
             // After successfully resuming and confirming the state is 'running':
             if (this._audioContext.state === 'running') {
-                console.log('[AudioEngineService Toggle DEBUG] AudioContext resumed to running state.');
+                // console.log('[AudioEngineService Toggle DEBUG] AudioContext resumed to running state.');
                 if (!this.audioWorkletManager.isAudioWorkletSystemReady) {
-                    console.log('[AudioEngineService Toggle DEBUG] Worklet system was not ready. Attempting to check/register predefined worklets now.');
+                    // console.log('[AudioEngineService Toggle DEBUG] Worklet system was not ready. Attempting to check/register predefined worklets now.');
                     try {
                         const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
                         this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
-                        console.log(`[AudioEngineService Toggle DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
+                        // console.log(`[AudioEngineService Toggle DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
                         if (!workletsRegistered) {
-                            console.warn('[AudioEngineService Toggle DEBUG] Not all predefined worklets may have registered successfully after toggle.');
+                            // console.warn('[AudioEngineService Toggle DEBUG] Not all predefined worklets may have registered successfully after toggle.');
                             // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets post-toggle.'; // Decide if this should set an error
                         }
                     } catch (workletError) {
-                        console.error('[AudioEngineService Toggle DEBUG] Error during checkAndRegisterPredefinedWorklets post-toggle:', workletError);
+                        // console.error('[AudioEngineService Toggle DEBUG] Error during checkAndRegisterPredefinedWorklets post-toggle:', workletError);
                         this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
                         // this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets post-toggle: ${(workletError as Error).message}`;
                     }
                 } else {
-                    console.log('[AudioEngineService Toggle DEBUG] Worklet system already reported as ready.');
+                    // console.log('[AudioEngineService Toggle DEBUG] Worklet system already reported as ready.');
                 }
             }
         } else if (this._audioContext.state === 'running') {
             await this._audioContext.suspend();
-            console.log('[AudioEngineService Toggle DEBUG] AudioContext suspended.');
+            // console.log('[AudioEngineService Toggle DEBUG] AudioContext suspended.');
         }
         this._isAudioGloballyEnabled = this._audioContext.state === 'running';
         this._notifySubscribers();
@@ -402,42 +402,42 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
 
     // --- BEGIN GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
     if (this._audioContext && this._masterGainNode) {
-      console.log(`[AudioEngineService] updateAudioGraphConnections: Processing ${blockInstances.length} instances for potential master output connection.`); // New Log: Count
+      // console.log(`[AudioEngineService] updateAudioGraphConnections: Processing ${blockInstances.length} instances for potential master output connection.`); // New Log: Count
 
       blockInstances.forEach(instance => {
-        console.log(`[AudioEngineService] Processing instance: ${instance.instanceId}, Def ID from instance: ${instance.definitionId}`); // New Log 1
+        // console.log(`[AudioEngineService] Processing instance: ${instance.instanceId}, Def ID from instance: ${instance.definitionId}`); // New Log 1
 
         const definition = getDefinitionForBlock(instance);
         if (!definition) {
-          console.log(`[AudioEngineService] No definition found by getDefinitionForBlock for instance ${instance.instanceId}`); // New Log 2
+          // console.log(`[AudioEngineService] No definition found by getDefinitionForBlock for instance ${instance.instanceId}`); // New Log 2
           return; // continue to next instance
         }
         // New Log 3 (Combined with check for AUDIO_OUTPUT_BLOCK_DEFINITION.id for context)
-        console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
+        // console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
 
         if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
 
-          console.log(`[AudioOutputDebug] Instance: ${instance.instanceId} IS an AUDIO_OUTPUT_BLOCK.`); // Moved from previous [AudioOutputDebug] set
+          // console.log(`[AudioOutputDebug] Instance: ${instance.instanceId} IS an AUDIO_OUTPUT_BLOCK.`); // Moved from previous [AudioOutputDebug] set
 
           if (workletInfo && workletInfo.node) {
             const workletNode = workletInfo.node;
             const isTrackedAsConnected = this._outputWorkletConnections.has(instance.instanceId);
 
             // Previous [AudioOutputDebug] logs for states and gain values:
-            console.log(`[AudioOutputDebug]   _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
-            console.log(`[AudioOutputDebug]   _audioContext.state: ${this._audioContext?.state}`);
-            console.log(`[AudioOutputDebug]   _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
+            // console.log(`[AudioOutputDebug]   _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
+            // console.log(`[AudioOutputDebug]   _audioContext.state: ${this._audioContext?.state}`);
+            // console.log(`[AudioOutputDebug]   _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
             if (workletInfo.inputGainNode) {
-              console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
+              // console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
             } else {
-              console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode: NOT FOUND`);
+              // console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode: NOT FOUND`);
             }
-            console.log(`[AudioOutputDebug]   Is worklet already tracked as connected: ${isTrackedAsConnected}`);
+            // console.log(`[AudioOutputDebug]   Is worklet already tracked as connected: ${isTrackedAsConnected}`);
 
             if (this._isAudioGloballyEnabled && this._audioContext && this._audioContext.state === 'running') {
               if (!isTrackedAsConnected) {
-                console.log(`[AudioOutputDebug]   Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
+                // console.log(`[AudioOutputDebug]   Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.connect(this._masterGainNode!);
                   this._outputWorkletConnections.set(instance.instanceId, workletNode);
@@ -450,7 +450,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
               }
             } else {
               if (isTrackedAsConnected) {
-                console.log(`[AudioOutputDebug]   Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
+                // console.log(`[AudioOutputDebug]   Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.disconnect(this._masterGainNode!);
                   this._outputWorkletConnections.delete(instance.instanceId);
@@ -463,12 +463,12 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
               }
             }
           } else {
-            console.log(`[AudioOutputDebug] WorkletInfo or WorkletInfo.node NOT FOUND for AUDIO_OUTPUT_BLOCK instance ${instance.instanceId}`);
+            // console.log(`[AudioOutputDebug] WorkletInfo or WorkletInfo.node NOT FOUND for AUDIO_OUTPUT_BLOCK instance ${instance.instanceId}`);
           }
         } // End of: if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id)
       }); // End of: blockInstances.forEach
 
-      console.log(`[AudioEngineService] Finished processing blockInstances for master output connection. Processed ${blockInstances.length} instances this call.`); // New Log 4
+      // console.log(`[AudioEngineService] Finished processing blockInstances for master output connection. Processed ${blockInstances.length} instances this call.`); // New Log 4
 
       // Cleanup stale connections from _outputWorkletConnections (existing logic)
       const currentOutputInstanceIds = new Set(
@@ -491,7 +491,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         }
       });
     } else {
-      console.log(`[AudioEngineService] updateAudioGraphConnections: Master output connection logic skipped: _audioContext or _masterGainNode is null/invalid. Context state: ${this._audioContext?.state}, MasterGain valid: ${!!this._masterGainNode}`); // New Log 5
+      // console.log(`[AudioEngineService] updateAudioGraphConnections: Master output connection logic skipped: _audioContext or _masterGainNode is null/invalid. Context state: ${this._audioContext?.state}, MasterGain valid: ${!!this._masterGainNode}`); // New Log 5
     }
     // --- END GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
 
