@@ -124,6 +124,8 @@ class OscillatorProcessor extends AudioWorkletProcessor {
 // after extracting this code string. Do not include registerProcessor here.
 `;
 
+import { LFO_BLOCK_DEFINITION as REFACTORED_LFO_BLOCK_DEFINITION } from '../services/native-blocks/LFONativeBlock';
+
 export const OSCILLATOR_BLOCK_DEFINITION: BlockDefinition = {
   id: 'oscillator-v1',
   name: 'Oscillator (Worklet)',
@@ -1530,7 +1532,7 @@ export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   NATIVE_DELAY_BLOCK_DEFINITION,
   NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
   OSCILLOSCOPE_BLOCK_DEFINITION,
-  NATIVE_LFO_BLOCK_DEFINITION,
+  REFACTORED_LFO_BLOCK_DEFINITION, // Replaced NATIVE_LFO_BLOCK_DEFINITION
   NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
   NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
   NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
