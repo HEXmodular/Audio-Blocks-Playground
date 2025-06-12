@@ -41,7 +41,7 @@ export class LFONativeBlock extends NativeBlock {
     // Waveform 'type' is not an AudioParam, so it cannot be directly modulated by an audio signal here.
 
     return {
-      nodeForInputConnections: amplitudeGainNode, // Nothing connects directly to LFO input in this design yet
+      nodeForInputConnections: oscillatorNode, // Changed from amplitudeGainNode
       nodeForOutputConnections: amplitudeGainNode, // Output is the gain-controlled oscillator
       mainProcessingNode: oscillatorNode, // The core LFO functionality
       auxiliaryNodes: { amplitudeGain: amplitudeGainNode }, // Store gain node if needed later
