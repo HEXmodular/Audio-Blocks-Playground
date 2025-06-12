@@ -260,35 +260,50 @@ try {
     }
 
     try {
+      // Step 1: Define paramDescriptors
+      const paramDescriptors: Record<string, any> = {};
+      definition.parameters.forEach(p => {
+          if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
+              const initialVal = initialParams.find(ip => ip.id === p.id)?.currentValue;
+              // Ensure defaultValue is used if initialVal is not a number, or provide a fallback like 0
+              let valueToSet = 0;
+              if (typeof initialVal === 'number') {
+                  valueToSet = initialVal;
+              } else if (typeof p.defaultValue === 'number') {
+                  valueToSet = p.defaultValue;
+              }
+              paramDescriptors[p.id] = valueToSet;
+          }
+      });
+
+      // Step 2: Define workletNodeOptions using paramDescriptors
+      const workletNodeOptions: AudioWorkletNodeOptions = {
+          processorOptions: {
+              instanceId: instanceId,
+              // Ensure this.audioContext is valid here; previous checks should guarantee it.
+              // If this.audioContext can be null here due to some path, it needs to be handled.
+              // However, the function should return early if audioContext is not 'running'.
+              sampleRate: this.audioContext!.sampleRate, // Added non-null assertion based on prior checks
+              ...(definition.id === OSCILLATOR_BLOCK_DEFINITION.id && {
+                  waveform: initialParams.find(p => p.id === 'waveform')?.currentValue || OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform')?.defaultValue
+              }),
+              ...(definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id && {
+                  coreLength: initialParams.find(p => p.id === 'core_length')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'core_length')?.defaultValue,
+                  initialPattern: initialParams.find(p => p.id === 'initial_pattern_plus_boundaries')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_pattern_plus_boundaries')?.defaultValue,
+                  outputMode: initialParams.find(p => p.id === 'output_mode')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'output_mode')?.defaultValue,
+              }),
+              // Add other specific processorOptions as needed for other worklet types
+          },
+          parameterData: paramDescriptors,
+      };
+
+      // Step 3: Now it's safe to log workletNodeOptions
       console.log(`[AudioWorkletManager NodeSetup DEBUG] Preparing to create AudioWorkletNode for ${instanceId} with processor '${definition.audioWorkletProcessorName}'.`);
       console.log(`[AudioWorkletManager NodeSetup DEBUG] ProcessorOptions for ${instanceId}:`, JSON.stringify(workletNodeOptions.processorOptions, null, 2));
       console.log(`[AudioWorkletManager NodeSetup DEBUG] ParameterData for ${instanceId}:`, JSON.stringify(workletNodeOptions.parameterData, null, 2));
 
-      const paramDescriptors: Record<string, any> = {};
-      definition.parameters.forEach(p => {
-        if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
-          const initialVal = initialParams.find(ip => ip.id === p.id)?.currentValue;
-          paramDescriptors[p.id] = typeof initialVal === 'number' ? initialVal : (typeof p.defaultValue === 'number' ? p.defaultValue : 0);
-        }
-      });
-
-      const workletNodeOptions: AudioWorkletNodeOptions = {
-        processorOptions: {
-          instanceId: instanceId,
-          sampleRate: this.audioContext.sampleRate,
-          ...(definition.id === OSCILLATOR_BLOCK_DEFINITION.id && {
-            waveform: initialParams.find(p => p.id === 'waveform')?.currentValue || OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform')?.defaultValue
-          }),
-          ...(definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id && {
-            coreLength: initialParams.find(p => p.id === 'core_length')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'core_length')?.defaultValue,
-            initialPattern: initialParams.find(p => p.id === 'initial_pattern_plus_boundaries')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_pattern_plus_boundaries')?.defaultValue,
-            outputMode: initialParams.find(p => p.id === 'output_mode')?.currentValue || RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'output_mode')?.defaultValue,
-          }),
-        },
-        parameterData: paramDescriptors,
-      };
-
-      const newNode = new AudioWorkletNode(this.audioContext, definition.audioWorkletProcessorName, workletNodeOptions);
+      // Step 4: Create the node
+      const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName, workletNodeOptions); // Added non-null assertion
       console.log(`[AudioWorkletManager NodeSetup DEBUG] AudioWorkletNode '${definition.audioWorkletProcessorName}' CREATED for '${instanceId}'.`);
 
       newNode.port.onmessage = (event) => {
@@ -299,7 +314,7 @@ try {
 
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
       if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
-        inputGainNodeForOutputBlock = this.audioContext.createGain();
+        inputGainNodeForOutputBlock = this.audioContext!.createGain(); // Added non-null assertion
         const volumeParam = initialParams.find(p => p.id === 'volume');
         inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
         inputGainNodeForOutputBlock.connect(newNode);
@@ -327,9 +342,9 @@ try {
       const audioParam = info.node.parameters.get(param.id);
       if (audioParam && typeof param.currentValue === 'number') {
         if (info.definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && param.id === 'volume' && info.inputGainNode) {
-          info.inputGainNode.gain.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
+          info.inputGainNode.gain.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01); // Added non-null assertion
         } else {
-          audioParam.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
+          audioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01); // Added non-null assertion
         }
       }
     });
