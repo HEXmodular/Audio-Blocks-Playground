@@ -38,8 +38,8 @@ export class AudioEngineService {
 
     constructor() {
         this._audioContextService = new AudioContextService(this._notifySubscribers.bind(this));
-        this.audioWorkletManager = new AudioWorkletManager(() => this._audioContext, this._notifySubscribers.bind(this));
-        this.nativeNodeManager = new NativeNodeManager(() => this._audioContext, this._notifySubscribers.bind(this));
+        this.audioWorkletManager = new AudioWorkletManager(null, this._notifySubscribers.bind(this));
+        this.nativeNodeManager = new NativeNodeManager(null, this._notifySubscribers.bind(this));
         this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this));
         this.audioGraphConnectorService = new AudioGraphConnectorService();
 
@@ -119,12 +119,12 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         const initResult = await this._audioContextService.initialize(false); // false means don't force resume here
         this._audioContext = initResult.context;
 
-        // Update NativeNodeManager with the new AudioContext
-        if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
-            this.nativeNodeManager._setAudioContext(this._audioContext);
-        }
-
         if (!this._audioContext || this._audioContext.state === 'closed') {
+            // If context fails to initialize here, ensure managers still get a null context if they were expecting one.
+            // However, they are already initialized with null, so this is more about handling the error path.
+            console.log('[AudioEngineService Init DEBUG] AudioContext is null or closed after initialization attempt. Setting null for managers.');
+            this.audioWorkletManager._setAudioContext(null);
+            this.nativeNodeManager._setAudioContext(null);
             const errorMessage = `Failed to initialize AudioContext or it's closed. State: ${this._audioContext?.state || 'null'}`;
             console.error(`AudioEngineService: ${errorMessage}`);
             this._audioInitializationError = errorMessage;
@@ -132,6 +132,11 @@ public initializeBasicAudioContext = async (): Promise<void> => {
             this._audioContext = null; // Ensure it's null if in this state
             throw new Error(errorMessage);
         }
+
+        // AudioContext is valid and not closed here
+        console.log('[AudioEngineService Init DEBUG] Setting AudioContext for managers.');
+        this.audioWorkletManager._setAudioContext(this._audioContext);
+        this.nativeNodeManager._setAudioContext(this._audioContext);
 
         console.log(`AudioEngineService: AudioContext obtained from service. Initial state: ${this._audioContext.state}`);
         this._audioContextState = this._audioContext.state; // Set initial state
@@ -189,6 +194,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
 
     // --- BEGIN MODIFICATION: Check and register predefined worklets ---
+    // This block is already here from the previous step, and its placement after _setAudioContext is correct.
     console.log('[AudioEngineService Init DEBUG] About to check and register predefined worklets.');
     if (this._audioContext && (this._audioContext.state === 'running' || this._audioContext.state === 'suspended')) { // Ensure context is not 'closed'
         try {
