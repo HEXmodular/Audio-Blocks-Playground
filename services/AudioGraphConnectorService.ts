@@ -5,17 +5,21 @@
  * It maintains a record of active connections and intelligently updates them, only making necessary changes to reflect the current graph structure provided by the application.
  * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
  */
-import { Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
-import { ManagedWorkletNodeInfo } from '../hooks/useAudioWorkletManager';
-import { ManagedNativeNodeInfo } from '../hooks/useNativeNodeManager';
-import { ManagedLyriaServiceInfo } from '../hooks/useLyriaServiceManager';
+import {
+    Connection,
+    BlockInstance,
+    BlockDefinition,
+    ManagedWorkletNodeInfo, // Import from common
+    ManagedNativeNodeInfo,  // Import from common
+    ManagedLyriaServiceInfo // Import from common
+} from '@interfaces/common';
 import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export interface ActiveWebAudioConnection {
   connectionId: string;
   sourceNode: AudioNode;
-  targetNode: AudioNode; // The main AudioNode of the target block, or the specific AudioNode connected to.
-  targetParam?: AudioParam; // The specific AudioParam connected to, if any.
+  targetNode: AudioNode;
+  targetParam?: AudioParam;
 }
 
 export class AudioGraphConnectorService {
@@ -32,9 +36,9 @@ export class AudioGraphConnectorService {
     connections: Connection[],
     blockInstances: BlockInstance[],
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    managedWorkletNodes: Map<string, ManagedWorkletNodeInfo>,
-    managedNativeNodes: Map<string, ManagedNativeNodeInfo>,
-    managedLyriaServices: Map<string, ManagedLyriaServiceInfo>
+    managedWorkletNodes: Map<string, ManagedWorkletNodeInfo>, // Now uses type from common
+    managedNativeNodes: Map<string, ManagedNativeNodeInfo>,   // Now uses type from common
+    managedLyriaServices: Map<string, ManagedLyriaServiceInfo> // Now uses type from common
   ): void {
     if (!audioContext || !isAudioGloballyEnabled || audioContext.state !== 'running') {
       this.activeWebAudioConnections.forEach(connInfo => {
@@ -78,8 +82,8 @@ export class AudioGraphConnectorService {
 
       if (!sourceAudioNode) return;
 
-      let targetAudioNode: AudioNode | undefined | null; // The AudioNode to connect to or the owner of the AudioParam. null means handled.
-      let targetAudioParam: AudioParam | undefined; // The specific AudioParam to connect to
+      let targetAudioNode: AudioNode | undefined | null;
+      let targetAudioParam: AudioParam | undefined;
 
       const toWorkletInfo = managedWorkletNodes.get(toInstance.instanceId);
       const toNativeInfo = managedNativeNodes.get(toInstance.instanceId);
@@ -90,7 +94,7 @@ export class AudioGraphConnectorService {
           targetAudioNode = toWorkletInfo.node;
         } else if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
           targetAudioParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
-          targetAudioNode = toNativeInfo.node;
+          targetAudioNode = toNativeInfo.node; // Assuming .node is the main node for param targeting
         } else if (toNativeInfo?.allpassInternalNodes && inputPortDef.audioParamTarget === 'delayTime') {
             targetAudioParam = toNativeInfo.allpassInternalNodes.inputDelay.delayTime;
             targetAudioNode = toNativeInfo.allpassInternalNodes.inputDelay;

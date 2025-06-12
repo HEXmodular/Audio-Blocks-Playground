@@ -177,12 +177,16 @@ export class AudioContextService {
     }
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        return devices.filter(device => device.kind === 'audiooutput').map(device => ({
-            deviceId: device.deviceId,
-            groupId: device.groupId,
-            kind: device.kind,
-            label: device.label || `Output device ${devices.filter(d => d.kind === 'audiooutput').indexOf(device) + 1}`
-        }));
+        return devices.filter(device => device.kind === 'audiooutput').map(device => {
+            const outputDevice: OutputDevice = {
+                deviceId: device.deviceId,
+                groupId: device.groupId,
+                kind: 'audiooutput', // Already filtered so kind is 'audiooutput'
+                label: device.label || `Output device ${devices.filter(d => d.kind === 'audiooutput').indexOf(device) + 1}`,
+                toJSON: device.toJSON.bind(device) // MediaDeviceInfo guarantees toJSON
+            };
+            return outputDevice;
+        });
     } catch (err) {
         console.error('[AudioContextService] Error listing output devices:', err);
         return [];

@@ -1,81 +1,80 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class BiquadFilterNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class BiquadFilterNativeBlock implements CreatableNode {
+    private context: AudioContext;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        // initialParams: BlockParameter[] is not used by BiquadFilter
-        // currentBpm is not used by BiquadFilter
+        initialParams: BlockParameter[]
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for BiquadFilterNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
+        const filterNode = this.context.createBiquadFilter();
 
-        const biquad = this.audioContext.createBiquadFilter();
+        const paramTargetsForCv = new Map<string, AudioParam>();
+        paramTargetsForCv.set('frequency', filterNode.frequency);
+        paramTargetsForCv.set('Q', filterNode.Q);
+        paramTargetsForCv.set('gain', filterNode.gain);
 
-        const paramTargets = new Map<string, AudioParam>();
-        paramTargets.set('frequency', biquad.frequency);
-        paramTargets.set('Q', biquad.Q);
-        paramTargets.set('gain', biquad.gain);
-
-        // Initial parameters are applied by NativeNodeManager via updateNodeParams
+        // Apply initial parameters
+        initialParams.forEach(param => {
+            switch (param.id) {
+                case 'frequency': filterNode.frequency.value = Number(param.currentValue); break;
+                case 'q': filterNode.Q.value = Number(param.currentValue); break;
+                case 'gain': filterNode.gain.value = Number(param.currentValue); break;
+                case 'type': filterNode.type = param.currentValue as BiquadFilterType; break;
+            }
+        });
 
         return {
-            nodeForInputConnections: biquad,
-            nodeForOutputConnections: biquad,
-            mainProcessingNode: biquad,
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: filterNode, // The BiquadFilterNode itself is the main node
+            nodeForInputConnections: filterNode,
+            nodeForOutputConnections: filterNode,
+            mainProcessingNode: filterNode,
+            paramTargetsForCv,
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[]
-        // currentInputs and currentBpm are not used by BiquadFilter
     ): void {
-        if (!this.audioContext || !info.mainProcessingNode || !(info.mainProcessingNode instanceof BiquadFilterNode)) {
-            console.warn(`[BiquadFilterNativeBlock Update] AudioContext not ready or node not a BiquadFilterNode for instance ${info.instanceId}.`);
-            return;
-        }
-
-        const biquadNode = info.mainProcessingNode as BiquadFilterNode;
+        if (!this.context || !(nodeInfo.mainProcessingNode instanceof BiquadFilterNode)) return;
+        const filterNode = nodeInfo.mainProcessingNode;
 
         parameters.forEach(param => {
-            const targetAudioParam = info.paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) {
-                if (typeof param.currentValue === 'number') {
-                    targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                }
-            } else if (param.id === 'type' && typeof param.currentValue === 'string') {
-                biquadNode.type = param.currentValue as globalThis.BiquadFilterType;
+            if (param.id === 'frequency' && filterNode.frequency) {
+                filterNode.frequency.setTargetAtTime(Number(param.currentValue), this.context!.currentTime, 0.01);
+            } else if (param.id === 'q' && filterNode.Q) {
+                filterNode.Q.setTargetAtTime(Number(param.currentValue), this.context!.currentTime, 0.01);
+            } else if (param.id === 'gain' && filterNode.gain) {
+                filterNode.gain.setTargetAtTime(Number(param.currentValue), this.context!.currentTime, 0.01);
+            } else if (param.id === 'type') {
+                filterNode.type = param.currentValue as BiquadFilterType;
             }
         });
     }
 
-    // connect and disconnect are inherited, not typically called directly by NativeNodeManager
-    // connect(destination: AudioNode): void {
-    //     if (this.audioContext && this.isContextInitialized() && this.isContextInitialized() && info.mainProcessingNode) {
-    //          // Assuming info.mainProcessingNode holds the biquad filter
-    //         info.mainProcessingNode.connect(destination);
-    //     } else {
-    //         console.warn("BiquadFilterNativeBlock.connect() called but context or node is not initialized.");
-    //     }
-    // }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`BiquadFilterNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
+    }
 
-    // disconnect(destination: AudioNode): void {
-    //     if (this.audioContext && this.isContextInitialized() && info.mainProcessingNode) {
-    //         // Assuming info.mainProcessingNode holds the biquad filter
-    //         info.mainProcessingNode.disconnect(destination);
-    //     } else {
-    //         console.warn("BiquadFilterNativeBlock.disconnect() called but context or node is not initialized.");
-    //     }
-    // }
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`BiquadFilterNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+        // If this main node needs to be disconnected from everything it was connected to:
+        // if (this.node && typeof this.node.disconnect === 'function') {
+        //    this.node.disconnect();
+        // }
+    }
 }

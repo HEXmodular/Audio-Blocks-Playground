@@ -5,7 +5,7 @@
  * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
-import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common';
+import { BlockInstance, Connection, BlockDefinition, PlaybackState } from '@interfaces/common'; // Added PlaybackState
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import {
@@ -76,14 +76,11 @@ export class LogicExecutionService {
   private runIntervalId: number | null = null;
   private currentTickOutputs: Record<string, Record<string, any>> = {};
 
-  // Cache for compiled logic functions
   private logicFunctionCache: Map<string, Function> = new Map();
 
-  // --- Comparison Helper Methods ---
-
   private areShallowObjectsDifferent(obj1: Record<string, any> | null | undefined, obj2: Record<string, any> | null | undefined): boolean {
-    if (obj1 === obj2) return false; // Same reference or both null/undefined
-    if (!obj1 || !obj2) return true; // One is null/undefined, the other isn't
+    if (obj1 === obj2) return false;
+    if (!obj1 || !obj2) return true;
 
     const keys1 = Object.keys(obj1);
     const keys2 = Object.keys(obj2);
@@ -91,7 +88,7 @@ export class LogicExecutionService {
     if (keys1.length !== keys2.length) return true;
 
     for (const key of keys1) {
-      if (!obj2.hasOwnProperty(key)) return true; // Key in obj1 but not in obj2
+      if (!obj2.hasOwnProperty(key)) return true;
 
       const val1 = obj1[key];
       const val2 = obj2[key];
@@ -102,8 +99,6 @@ export class LogicExecutionService {
           if (val1[i] !== val2[i]) return true;
         }
       } else if (typeof val1 === 'object' && val1 !== null && typeof val2 === 'object' && val2 !== null) {
-        // For nested objects, this shallow compare will check reference.
-        // If actual deep value comparison is needed for some sub-objects, this needs enhancement.
         if (val1 !== val2) return true;
       } else {
         if (val1 !== val2) return true;
@@ -113,13 +108,10 @@ export class LogicExecutionService {
   }
 
   private areOutputsDifferent(prevOutputs: Record<string, any> | null | undefined, newOutputs: Record<string, any> | null | undefined): boolean {
-    // Outputs are generally simple value types or arrays of simple types.
     return this.areShallowObjectsDifferent(prevOutputs, newOutputs);
   }
 
   private areInternalStatesDifferent(prevState: Record<string, any> | null | undefined, newState: Record<string, any> | null | undefined): boolean {
-    // Internal state can be more complex, but we'll start with shallow.
-    // Specific complex properties might need custom handling or deeper comparison if this proves insufficient.
     return this.areShallowObjectsDifferent(prevState, newState);
   }
 
@@ -142,27 +134,22 @@ export class LogicExecutionService {
     isAudioGloballyEnabled: boolean,
     audioEngine: AudioEngineService | null
   ): void {
-    this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled; // Update state first
+    this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled;
     this.currentBlockInstances = blockInstances;
     this.currentConnections = connections;
     this.currentGlobalBpm = globalBpm;
     this.audioEngine = audioEngine;
 
-    // If audio was disabled and is now enabled, and processing isn't running, start it.
-    if (isAudioGloballyEnabled && !this.runIntervalId) { // Simpler condition: if it's enabled and not running, start
+    if (isAudioGloballyEnabled && !this.runIntervalId) {
         this.startProcessingLoop();
     }
-    // If audio was enabled and is now disabled, and processing is running, stop it.
-    else if (!isAudioGloballyEnabled && this.runIntervalId !== null) { // Simpler: if it's disabled and running, stop
+    else if (!isAudioGloballyEnabled && this.runIntervalId !== null) {
         this.stopProcessingLoop();
     }
   }
 
   private compileLogicFunction(instanceId: string, logicCode: string): Function {
     if (this.logicFunctionCache.has(instanceId)) {
-      // Potentially add a check if logicCode has changed to recompile,
-      // but for now, assume logicCode per instanceId is stable or managed externally.
-      // If block definitions can change at runtime, this cache would need invalidation.
       return this.logicFunctionCache.get(instanceId)!;
     }
     const compiledFunction = new Function(
@@ -178,15 +165,13 @@ export class LogicExecutionService {
     return compiledFunction;
   }
 
-  // New method to prepare updates for a single instance
   private prepareInstanceUpdate(
     instance: BlockInstance,
     audioContextInfo: { sampleRate: number; bpm: number }
   ): { instanceId: string; updates: Partial<BlockInstance> } | null {
     const definition = this.getDefinitionForBlock(instance);
     if (!definition) {
-      // Error handling: prepare an update that sets the error state
-      this.blockStateManager.addLogToBlockInstance(instance.instanceId, `Error: Definition ${instance.definitionId} not found.`); // Added log
+      this.blockStateManager.addLogToBlockInstance(instance.instanceId, `Error: Definition ${instance.definitionId} not found.`);
       return {
         instanceId: instance.instanceId,
         updates: { error: `Definition ${instance.definitionId} not found.` }
@@ -198,7 +183,6 @@ export class LogicExecutionService {
     }
 
     const inputValuesForLogic: Record<string, any> = {};
-    // ... (logic for inputValuesForLogic as in current handleRunInstance)
     definition.inputs.forEach(inputPort => {
       const conn = this.currentConnections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
       if (conn) {
@@ -213,7 +197,6 @@ export class LogicExecutionService {
       }
     });
 
-
     const parameterValuesForLogic: Record<string, any> = {};
     instance.parameters.forEach(param => parameterValuesForLogic[param.id] = param.currentValue);
 
@@ -222,8 +205,6 @@ export class LogicExecutionService {
       let outputsFromLogic: Record<string, any> = {};
       const setOutputInLogic = (outputId: string, value: any) => { outputsFromLogic[outputId] = value; };
       const loggerInLogic = (message: string) => {
-        // This logger call still needs to happen immediately or be batched in a different way.
-        // For now, let it call directly, as logs aren't usually performance critical in the same way as state updates.
         this.blockStateManager.addLogToBlockInstance(instance.instanceId, message);
       };
       const postMessageToWorkletInLogic = this.audioEngine
@@ -244,14 +225,13 @@ export class LogicExecutionService {
 
       let newInternalState = { ...(instance.internalState || {}), ...nextInternalStateOpaque };
 
-      // ... (audioEngine calls like triggerNativeNodeEnvelope as in current handleRunInstance) ...
-      if (this.audioEngine) {
+      if (this.audioEngine && this.audioEngine.nativeNodeManager) { // Ensure nativeNodeManager exists
         if (definition.id === NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id && newInternalState.envelopeNeedsTriggering) {
           const attackParam = instance.parameters.find(p => p.id === 'attackTime');
           const decayParam = instance.parameters.find(p => p.id === 'decayTime');
           const peakLevelParam = instance.parameters.find(p => p.id === 'peakLevel');
           if (attackParam && decayParam && peakLevelParam) {
-            this.audioEngine.triggerNativeNodeEnvelope?.(
+            this.audioEngine.nativeNodeManager.triggerNativeNodeEnvelope?.(
               instance.instanceId,
               Number(attackParam.currentValue),
               Number(decayParam.currentValue),
@@ -264,7 +244,7 @@ export class LogicExecutionService {
             const attackParam = instance.parameters.find(p => p.id === 'attackTime');
             const sustainLevelParam = instance.parameters.find(p => p.id === 'sustainLevel');
             if (attackParam && sustainLevelParam) {
-              this.audioEngine.triggerNativeNodeAttackHold?.(
+              this.audioEngine.nativeNodeManager.triggerNativeNodeAttackHold?.(
                   instance.instanceId,
                   Number(attackParam.currentValue),
                   Number(sustainLevelParam.currentValue)
@@ -274,14 +254,14 @@ export class LogicExecutionService {
           } else if (newInternalState.gateStateChangedToLow) {
             const releaseParam = instance.parameters.find(p => p.id === 'releaseTime');
             if (releaseParam) {
-              this.audioEngine.triggerNativeNodeRelease?.(instance.instanceId, Number(releaseParam.currentValue));
+              this.audioEngine.nativeNodeManager.triggerNativeNodeRelease?.(instance.instanceId, Number(releaseParam.currentValue));
             }
             newInternalState.gateStateChangedToLow = false;
           }
         }
         if (definition.id.startsWith('native-') && !instance.internalState.needsAudioNodeSetup && this.audioEngine.audioContext) {
              if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
-                 this.audioEngine.updateManagedNativeNodeParams?.(
+                 this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(
                     instance.instanceId,
                     instance.parameters,
                     inputValuesForLogic,
@@ -291,7 +271,6 @@ export class LogicExecutionService {
         }
       }
 
-
           return {
             instanceId: instance.instanceId,
             updates: {
@@ -300,19 +279,15 @@ export class LogicExecutionService {
         error: null,
             }
           };
-
         } catch (e: any) {
           const errorMsg = `Runtime error in '${instance.name}': ${e.message}`;
-          this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg); // Log immediately
+          this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg);
           return {
             instanceId: instance.instanceId,
             updates: { error: errorMsg, lastRunOutputs: {} }
           };
   }
       }
-
-      // Remove or comment out the old handleRunInstance method
-      // private handleRunInstance(instance: BlockInstance, audioContextInfo: { sampleRate: number, bpm: number }): void { ... }
 
       private runInstancesLoop(): void {
         if (!this.audioEngine || !this.currentIsAudioGloballyEnabled) {
@@ -349,32 +324,22 @@ export class LogicExecutionService {
                 this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
             }
 
-            const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo); // New method
+            const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo);
             if (updatePayload) {
                 let significantChange = false;
-
-                // 1. Check for error state change
                 if ((instance.error || null) !== (updatePayload.updates.error || null)) {
                     significantChange = true;
                 }
-
-                // 2. Check for output changes (if no error change detected yet)
-                // Ensure `lastRunOutputs` exists on `updatePayload.updates` before comparing.
-                // `prepareInstanceUpdate` should always provide it if no error, or empty if error.
                 if (!significantChange) {
                     if (this.areOutputsDifferent(instance.lastRunOutputs, updatePayload.updates.lastRunOutputs)) {
                         significantChange = true;
                     }
                 }
-
-                // 3. Check for internal state changes (if no other change detected yet)
-                // Ensure `internalState` exists on `updatePayload.updates` before comparing.
                 if (!significantChange) {
                     if (this.areInternalStatesDifferent(instance.internalState, updatePayload.updates.internalState)) {
                         significantChange = true;
                     }
                 }
-
                 if (significantChange) {
                     instanceUpdates.push(updatePayload);
                 }
@@ -383,16 +348,14 @@ export class LogicExecutionService {
             console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
     }
   }
-
         if (instanceUpdates.length > 0) {
-          this.blockStateManager.updateMultipleBlockInstances(instanceUpdates); // New method in BlockStateManager
+          this.blockStateManager.updateMultipleBlockInstances(instanceUpdates);
         }
       }
 
       public startProcessingLoop(): void {
     if (this.runIntervalId === null && this.currentIsAudioGloballyEnabled) {
-      this.currentTickOutputs = {}; // Clear outputs from previous runs
-      // Initialize currentTickOutputs with lastRunOutputs for all current instances
+      this.currentTickOutputs = {};
       this.currentBlockInstances.forEach(instance => {
         this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
       });

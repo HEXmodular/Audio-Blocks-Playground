@@ -79,7 +79,7 @@ export async function verifyAudioPathHealth(options: VerifyAudioPathHealthOption
   // Request Samples from Audio Output Worklet
   let samples: Float32Array;
   try {
-    samples = await audioEngine.requestSamplesFromWorklet(audioOutInstance.instanceId, timeoutMs);
+    samples = await audioEngine.audioWorkletManager.requestSamplesFromWorklet(audioOutInstance.instanceId, timeoutMs);
   } catch (error) {
     // Re-throw error from requestSamplesFromWorklet (e.g., timeout, node not found)
     throw new Error(`[AudioHealthCheck] Failed to retrieve samples from '${audioOutInstance.name}': ${(error as Error).message}`);

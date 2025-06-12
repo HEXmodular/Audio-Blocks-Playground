@@ -1,74 +1,66 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class DelayNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class DelayNativeBlock implements CreatableNode {
+    private context: AudioContext;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        // initialParams: BlockParameter[] is not used by DelayNode
-        // currentBpm is not used by DelayNode
+        initialParams: BlockParameter[]
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for DelayNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
+        // Max delay time of 5 seconds, can be configured if needed
+        const delayNode = this.context.createDelay(5.0);
 
-        // Default maxDelayTime is 1.0 sec, consistent with AudioNodeManager's previous value for DelayNode if not specified.
-        // The NATIVE_DELAY_BLOCK_DEFINITION might specify a maxDelayTime in its parameters if needed,
-        // but typical DelayNode creation takes maxDelayTime as an argument.
-        // We'll use a default of 5.0 as was in the original NativeNodeManager.
-        const delay = this.audioContext.createDelay(5.0);
+        const paramTargetsForCv = new Map<string, AudioParam>();
+        paramTargetsForCv.set('delayTime', delayNode.delayTime);
 
-        const paramTargets = new Map<string, AudioParam>();
-        paramTargets.set('delayTime', delay.delayTime);
-
-        // Initial parameters are applied by NativeNodeManager via updateNodeParams
+        // Apply initial parameters
+        initialParams.forEach(param => {
+            if (param.id === 'delayTime') {
+                delayNode.delayTime.value = Number(param.currentValue);
+            }
+        });
 
         return {
-            nodeForInputConnections: delay,
-            nodeForOutputConnections: delay,
-            mainProcessingNode: delay,
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: delayNode, // The DelayNode itself is the main node
+            nodeForInputConnections: delayNode,
+            nodeForOutputConnections: delayNode,
+            mainProcessingNode: delayNode,
+            paramTargetsForCv,
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[]
-        // currentInputs and currentBpm are not used by DelayNode
     ): void {
-        if (!this.audioContext || !info.mainProcessingNode || !(info.mainProcessingNode instanceof DelayNode)) {
-            console.warn(`[DelayNativeBlock Update] AudioContext not ready or node not a DelayNode for instance ${info.instanceId}.`);
-            return;
-        }
-
-        // const delayNode = info.mainProcessingNode as DelayNode; // Not strictly needed if only using paramTargetsForCv
+        if (!this.context || !(nodeInfo.mainProcessingNode instanceof DelayNode)) return;
+        const delayNode = nodeInfo.mainProcessingNode;
 
         parameters.forEach(param => {
-            const targetAudioParam = info.paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) {
-                if (typeof param.currentValue === 'number') {
-                    // Ensure delayTime is not set to a value outside the allowed range if applicable,
-                    // though setTargetAtTime usually handles this gracefully.
-                    targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                }
+            if (param.id === 'delayTime' && delayNode.delayTime) {
+                delayNode.delayTime.setTargetAtTime(Number(param.currentValue), this.context!.currentTime, 0.01);
             }
-            // No other specific parameters like 'type' for DelayNode.
         });
     }
 
-    // connect and disconnect are inherited, commented out as per previous block's reasoning
-    // connect(destination: AudioNode): void {
-    //     // ...
-    // }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`DelayNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
+    }
 
-    // disconnect(destination: AudioNode): void {
-    //     // ...
-    // }
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`DelayNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+    }
 }

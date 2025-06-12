@@ -1,109 +1,123 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager'; // Assuming AllpassInternalNodes might not be needed here, but ManagedNativeNodeInfo is.
-import { NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION } from '@constants/constants';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class OscillatorNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class OscillatorNativeBlock implements CreatableNode {
+    private context: AudioContext;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm?: number // Not used directly in oscillator creation but part of interface
+        currentBpm?: number // Used for LFO BPM Sync variant
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for OscillatorNativeBlock.");
+        if (!this.context) throw new Error("AudioContext not initialized");
+
+        const oscillatorNode = this.context.createOscillator();
+        const gainNode = this.context.createGain(); // Internal gain node for amplitude/CV depth
+
+        oscillatorNode.connect(gainNode);
+        oscillatorNode.start();
+
+        const paramTargetsForCv = new Map<string, AudioParam>();
+        paramTargetsForCv.set('frequency', oscillatorNode.frequency);
+        // If gain were CV controllable on this block type directly:
+        // paramTargetsForCv.set('gain', gainNode.gain);
+
+
+        // Apply initial parameters
+        let freqParam = initialParams.find(p => p.id === 'frequency');
+        const waveformParam = initialParams.find(p => p.id === 'waveform');
+        const gainValueParam = initialParams.find(p => p.id === 'gain'); // For LFO amplitude or direct gain control
+        const bpmFractionParam = initialParams.find(p => p.id === 'bpm_fraction_rate');
+
+
+        if (definition.id === 'native-lfo-bpm-sync-v1' && bpmFractionParam && currentBpm) {
+            const bpmFraction = parseFloat(bpmFractionParam.currentValue as string);
+            const beatsPerStep = bpmFraction;
+            const secondsPerBeat = 60.0 / currentBpm;
+            const secondsPerStep = secondsPerBeat * beatsPerStep;
+            const calculatedFreq = secondsPerStep > 0 ? 1.0 / secondsPerStep : 0;
+            oscillatorNode.frequency.value = Math.min(200, Math.max(0.01, calculatedFreq)); // LFO Clamp
+        } else if (freqParam) {
+             const maxFreq = definition.id.includes('-lfo-') ? 200 : 20000; // Max 200Hz for LFOs
+            oscillatorNode.frequency.value = Math.min(maxFreq, Math.max(0.01, Number(freqParam.currentValue)));
         }
 
-        const osc = this.audioContext.createOscillator();
-        const internalGain = this.audioContext.createGain();
-        osc.connect(internalGain);
-        osc.start();
-
-        const paramTargets = new Map<string, AudioParam>();
-        paramTargets.set('frequency', osc.frequency);
-        paramTargets.set('gain', internalGain.gain);
-
-        // Initial parameters are applied by the NativeNodeManager after this call via updateNodeParams
+        if (waveformParam) {
+            oscillatorNode.type = waveformParam.currentValue as OscillatorType;
+        }
+        if (gainValueParam) {
+            gainNode.gain.value = Number(gainValueParam.currentValue);
+        } else {
+            // Default gain if not specified (e.g. for regular oscillator if gain param is missing)
+            gainNode.gain.value = 0.5;
+        }
 
         return {
-            nodeForInputConnections: internalGain, // Input to the gain node controls the oscillator's amplitude
-            nodeForOutputConnections: internalGain, // Output from the gain node
-            mainProcessingNode: osc,
-            internalGainNode: internalGain,
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: oscillatorNode, // The OscillatorNode is the main source
+            nodeForInputConnections: oscillatorNode, // Not typical, but for consistency if direct connections were allowed
+            nodeForOutputConnections: gainNode,   // Output is from the internal gain node
+            mainProcessingNode: oscillatorNode,
+            internalGainNode: gainNode,
+            paramTargetsForCv,
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
-        currentInputs?: Record<string, any>, // Not typically used by basic oscillator params
-        currentBpm: number = 120 // Required for LFO BPM Sync
+        currentInputs?: Record<string, any>,
+        currentBpm?: number
     ): void {
-        if (!this.audioContext || !info.mainProcessingNode || !(info.mainProcessingNode instanceof OscillatorNode) || !info.internalGainNode) {
-            console.warn(`[OscillatorNativeBlock Update] AudioContext not ready or node not an OscillatorNode for instance ${info.instanceId}.`);
-            return;
+        if (!this.context || !(nodeInfo.mainProcessingNode instanceof OscillatorNode) || !nodeInfo.internalGainNode) return;
+
+        const oscillatorNode = nodeInfo.mainProcessingNode;
+        const gainNode = nodeInfo.internalGainNode;
+
+        const freqParam = parameters.find(p => p.id === 'frequency');
+        const waveformParam = parameters.find(p => p.id === 'waveform');
+        const gainValueParam = parameters.find(p => p.id === 'gain');
+        const bpmFractionParam = parameters.find(p => p.id === 'bpm_fraction_rate');
+
+        if (nodeInfo.definition.id === 'native-lfo-bpm-sync-v1' && bpmFractionParam && currentBpm) {
+            const bpmFraction = parseFloat(bpmFractionParam.currentValue as string);
+            const beatsPerStep = bpmFraction;
+            const secondsPerBeat = 60.0 / currentBpm;
+            const secondsPerStep = secondsPerBeat * beatsPerStep;
+            const calculatedFreq = secondsPerStep > 0 ? 1.0 / secondsPerStep : 0;
+            const targetFreq = Math.min(200, Math.max(0.01, calculatedFreq)); // LFO Clamp
+            if (oscillatorNode.frequency.value !== targetFreq) { // Avoid unnecessary updates if BPM hasn't effectively changed rate
+                 oscillatorNode.frequency.setTargetAtTime(targetFreq, this.context.currentTime, 0.01);
+            }
+        } else if (freqParam && oscillatorNode.frequency) {
+            const maxFreq = nodeInfo.definition.id.includes('-lfo-') ? 200 : 20000;
+            const targetFreq = Math.min(maxFreq, Math.max(0.01, Number(freqParam.currentValue)));
+            oscillatorNode.frequency.setTargetAtTime(targetFreq, this.context.currentTime, 0.01);
         }
 
-        const oscNode = info.mainProcessingNode as OscillatorNode;
-        // const gainNode = info.internalGainNode as GainNode; // This is available if direct gain updates are needed outside of paramTargetsForCv
-
-        parameters.forEach(param => {
-            const targetAudioParam = info.paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) {
-                if (typeof param.currentValue === 'number') {
-                    // Default handling for frequency and gain if they are CV-targetable
-                    targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                }
-            } else if (param.id === 'waveform' && typeof param.currentValue === 'string') {
-                oscNode.type = param.currentValue as globalThis.OscillatorType;
-            }
-
-            // Specific handling for LFO BPM Sync frequency
-            if (info.definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id && param.id === 'frequency') {
-                 // This parameter is named 'frequency' in the UI for LFOs, but its calculation is based on BPM.
-                 // The actual 'frequency' AudioParam of the oscillator is what we're targeting.
-                const bpmFractionParam = parameters.find(p => p.id === 'bpm_fraction');
-                // Use a default bpmFraction if not found, though it should be part of the block's definition
-                const bpmFractionString = bpmFractionParam?.currentValue?.toString() ?? "1";
-                const bpmFraction = parseFloat(bpmFractionString);
-
-                if (!isNaN(bpmFraction) && currentBpm > 0) {
-                    const lfoFreq = 1.0 / ((60.0 / currentBpm) * bpmFraction);
-                    if (isFinite(lfoFreq) && lfoFreq > 0) {
-                        // console.log(`[OscillatorNativeBlock Update] LFO BPM Sync: bpm=${currentBpm}, fraction=${bpmFraction}, calculatedFreq=${lfoFreq}`);
-                        oscNode.frequency.setTargetAtTime(lfoFreq, this.audioContext!.currentTime, 0.01);
-                    } else {
-                        // console.warn(`[OscillatorNativeBlock Update] LFO BPM Sync: Invalid LFO frequency calculated: ${lfoFreq}`);
-                    }
-                }
-            }
-        });
-    }
-
-    // `connect` and `disconnect` methods are inherited from NativeBlock if needed,
-    // but for nodes created by NativeNodeManager, connection/disconnection is handled by AudioGraphConnectorService using the
-    // nodeForInputConnections and nodeForOutputConnections from ManagedNativeNodeInfo.
-    // These might need implementation if OscillatorNativeBlock itself were to manage its own connections directly.
-    connect(destination: AudioNode): void {
-        if (this.audioContext && this.isContextInitialized()) {
-            // This implementation depends on how OscillatorNativeBlock is intended to be used.
-            // If it holds a direct reference to its output node (e.g., from createNode), it would connect that.
-            // However, NativeNodeManager usually handles connections based on ManagedNativeNodeInfo.
-            // For now, let's assume this is for more direct usage if ever needed.
-            console.warn("OscillatorNativeBlock.connect() called - ensure this is the intended connection management path.");
+        if (waveformParam) {
+            oscillatorNode.type = waveformParam.currentValue as OscillatorType;
+        }
+        if (gainValueParam && gainNode.gain) {
+            gainNode.gain.setTargetAtTime(Number(gainValueParam.currentValue), this.context.currentTime, 0.01);
         }
     }
 
-    disconnect(destination: AudioNode): void {
-        if (this.audioContext && this.isContextInitialized()) {
-            console.warn("OscillatorNativeBlock.disconnect() called - ensure this is the intended connection management path.");
-        }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`OscillatorNativeBlock.connect called directly. Connections handled by AudioGraphConnectorService.`);
+    }
+
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`OscillatorNativeBlock.disconnect called directly. Connections handled by AudioGraphConnectorService/manager.`);
     }
 }

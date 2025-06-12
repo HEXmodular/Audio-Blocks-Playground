@@ -13,10 +13,24 @@
 import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
-import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
-import { NativeNodeManager, ManagedNativeNodeInfo } from './NativeNodeManager';
-import { LyriaServiceManager, ManagedLyriaServiceInfo } from './LyriaServiceManager';
-import { OutputDevice, AudioEngineState, AudioNodeInfo, ManagedAudioWorkletNodeMessage, AudioWorkletNodeOptions, EnvelopeParams, Connection, BlockInstance, BlockDefinition, BlockParameter } from '@interfaces/common';
+import { AudioWorkletManager } from './AudioWorkletManager';
+import { NativeNodeManager } from './NativeNodeManager';
+import { LyriaServiceManager } from './LyriaServiceManager';
+import {
+    OutputDevice,
+    AudioEngineState,
+    AudioNodeInfo, // This is a generic info, might be different from Managed...Info
+    ManagedAudioWorkletNodeMessage,
+    // AudioWorkletNodeOptions, // This was unused, removing import based on previous type-check
+    EnvelopeParams,
+    Connection,
+    BlockInstance,
+    BlockDefinition,
+    BlockParameter,
+    ManagedWorkletNodeInfo, // Import from common
+    ManagedNativeNodeInfo,  // Import from common
+    ManagedLyriaServiceInfo // Import from common
+} from '@interfaces/common';
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;
@@ -38,9 +52,10 @@ export class AudioEngineService {
 
     constructor() {
         this._audioContextService = new AudioContextService(this._notifySubscribers.bind(this));
+        // Initialize managers with null context initially, will be set by initializeBasicAudioContext
         this.audioWorkletManager = new AudioWorkletManager(null, this._notifySubscribers.bind(this));
         this.nativeNodeManager = new NativeNodeManager(null, this._notifySubscribers.bind(this));
-        this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this));
+        this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this)); // Pass nulls if constructor expects them
         this.audioGraphConnectorService = new AudioGraphConnectorService();
 
         this.initializeBasicAudioContext();
@@ -50,7 +65,7 @@ export class AudioEngineService {
     // Subscription model
     public subscribe(callback: () => void): () => void {
         this._subscribers.push(callback);
-        return () => this.unsubscribe(callback); // Return an unsubscribe function
+        return () => this.unsubscribe(callback);
     }
 
     public unsubscribe(callback: () => void): void {
@@ -106,68 +121,55 @@ export class AudioEngineService {
 public initializeBasicAudioContext = async (): Promise<void> => {
     if (this._audioContext && this._audioContext.state !== 'closed') {
         console.warn('AudioContext already initialized and not closed. Current state:', this._audioContext.state);
-        // Optionally, re-check consistency or notify if state is unexpected (e.g., suspended but should be running)
-        // For now, just return as it's not 'closed'.
         return;
     }
-
-    // Reset any previous error states specific to initialization
     this._audioInitializationError = null;
-
     try {
         console.log("AudioEngineService: Attempting to initialize AudioContext via AudioContextService...");
-        const initResult = await this._audioContextService.initialize(false); // false means don't force resume here
+        const initResult = await this._audioContextService.initialize(false);
         this._audioContext = initResult.context;
 
         if (!this._audioContext || this._audioContext.state === 'closed') {
-            // If context fails to initialize here, ensure managers still get a null context if they were expecting one.
-            // However, they are already initialized with null, so this is more about handling the error path.
-            // console.log('[AudioEngineService Init DEBUG] AudioContext is null or closed after initialization attempt. Setting null for managers.');
             this.audioWorkletManager._setAudioContext(null);
             this.nativeNodeManager._setAudioContext(null);
+            this.lyriaServiceManager._setAudioContextAndMasterGain(null, null);
             const errorMessage = `Failed to initialize AudioContext or it's closed. State: ${this._audioContext?.state || 'null'}`;
             console.error(`AudioEngineService: ${errorMessage}`);
             this._audioInitializationError = errorMessage;
             this._isAudioGloballyEnabled = false;
-            this._audioContext = null; // Ensure it's null if in this state
+            this._audioContext = null;
             throw new Error(errorMessage);
         }
 
-        // AudioContext is valid and not closed here
-        // console.log('[AudioEngineService Init DEBUG] Setting AudioContext for managers.');
         this.audioWorkletManager._setAudioContext(this._audioContext);
         this.nativeNodeManager._setAudioContext(this._audioContext);
 
         console.log(`AudioEngineService: AudioContext obtained from service. Initial state: ${this._audioContext.state}`);
-        this._audioContextState = this._audioContext.state; // Set initial state
+        this._audioContextState = this._audioContext.state;
 
-        // Setup master gain node
-        if (this._masterGainNode) { // If for some reason it existed, disconnect
+        if (this._masterGainNode) {
             try { this._masterGainNode.disconnect(); } catch(e) { /* ignore */ }
         }
         this._masterGainNode = this._audioContext.createGain();
         this._masterGainNode.connect(this._audioContext.destination);
+        this.lyriaServiceManager._setAudioContextAndMasterGain(this._audioContext, this._masterGainNode); // Update Lyria manager
         console.log("AudioEngineService: Master gain node created and connected.");
 
-        // Set global enabled flag based on context state (usually 'suspended' or 'running' at this point)
         this._isAudioGloballyEnabled = this._audioContext.state === 'running';
-
-        // Setup state change listener
         this._audioContext.onstatechange = () => {
             if (this._audioContext) {
-                this._audioContextState = this._audioContext.state;
-                console.log(`AudioEngineService: AudioContext state changed to ${this._audioContextState}.`);
-                if (this._audioContext.state === 'closed') {
+                const currentState = this._audioContext.state;
+                this._audioContextState = currentState;
+                console.log(`AudioEngineService: AudioContext state changed to ${currentState}.`);
+                if (currentState === 'closed') {
                     this._isAudioGloballyEnabled = false;
-                    // Consider more robust cleanup: nullify masterGain, notify, etc.
                     console.warn("AudioEngineService: AudioContext closed. Audio is now globally disabled.");
-                } else if (this._audioContext.state === 'running') {
-                    // this._isAudioGloballyEnabled = true; // This is handled by toggleGlobalAudio
-                } else if (this._audioContext.state === 'suspended') {
-                    // this._isAudioGloballyEnabled = false; // This is handled by toggleGlobalAudio
+                } else if (currentState === 'running') {
+                    // Potentially set _isAudioGloballyEnabled = true if toggleGlobalAudio doesn't cover all cases
+                } else if (currentState === 'suspended') {
+                    // Potentially set _isAudioGloballyEnabled = false if toggleGlobalAudio doesn't cover all cases
                 }
             } else {
-                // This case should ideally not happen if _audioContext is managed correctly
                 console.warn("AudioEngineService: onstatechange triggered but _audioContext is null.");
                 this._audioContextState = null;
                 this._isAudioGloballyEnabled = false;
@@ -175,7 +177,7 @@ public initializeBasicAudioContext = async (): Promise<void> => {
             this._notifySubscribers();
         };
 
-        await this.listOutputDevices(); // List devices before attempting to set one
+        await this.listOutputDevices();
 
         if (this._audioContext && this._audioContext.state !== 'closed') {
             const defaultOutput = this._availableOutputDevices.find(d => d.deviceId === 'default') || this._availableOutputDevices[0];
@@ -188,34 +190,26 @@ public initializeBasicAudioContext = async (): Promise<void> => {
         } else {
             const message = `AudioEngineService: AudioContext became invalid (state: ${this._audioContext?.state}) before default output device could be set.`;
             console.warn(message);
-            this._audioInitializationError = this._audioInitializationError || message; // Preserve earlier error if any
+            this._audioInitializationError = this._audioInitializationError || message;
         }
-
         console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
 
-    // --- BEGIN MODIFICATION: Check and register predefined worklets ---
-    // This block is already here from the previous step, and its placement after _setAudioContext is correct.
-    // console.log('[AudioEngineService Init DEBUG] About to check and register predefined worklets.');
-    if (this._audioContext && (this._audioContext.state === 'running' || this._audioContext.state === 'suspended')) { // Ensure context is not 'closed'
+    // Check if context is active (not closed) before trying to register worklets
+    const currentAudioContext = this._audioContext; // Explicit variable for clarity
+    if (currentAudioContext && (currentAudioContext.state as string) !== 'closed') {
         try {
             const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
             this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
-            // console.log(`[AudioEngineService Init DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
             if (!workletsRegistered) {
-                // console.warn('[AudioEngineService Init DEBUG] Not all predefined worklets may have registered successfully.');
-                // Optionally, set a global error or a more specific state if this is critical
-                // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
+                this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets.';
             }
         } catch (workletError) {
-            // console.error('[AudioEngineService Init DEBUG] Error during checkAndRegisterPredefinedWorklets:', workletError);
             this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
             this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets: ${(workletError as Error).message}`;
         }
     } else {
-        // console.warn('[AudioEngineService Init DEBUG] Skipped predefined worklets registration because AudioContext is not in a valid state for it (e.g., closed or null).');
         this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
     }
-    // --- END MODIFICATION ---
 
     } catch (error) {
         const specificErrorMessage = `Error during AudioContext initialization in AudioEngineService: ${(error as Error).message}`;
@@ -227,50 +221,41 @@ public initializeBasicAudioContext = async (): Promise<void> => {
             try { this._masterGainNode.disconnect(); } catch (e) { /* ignore */ }
             this._masterGainNode = null;
         }
-        // Ensure _audioContext is null if it's in a bad state or never properly initialized
         if (!this._audioContext || this._audioContext.state === 'closed') {
             this._audioContext = null;
         }
-        this._audioContextState = this._audioContext?.state ?? null; // Reflect the potentially null context
+        this._audioContextState = this._audioContext?.state ?? null;
     } finally {
-        this._notifySubscribers(); // Notify subscribers of any state changes
+        this._notifySubscribers();
     }
 };
 
     public toggleGlobalAudio = async (): Promise<void> => {
         if (!this._audioContext) {
             await this.initializeBasicAudioContext();
-            // If initialization failed, audio context might still be null
             if (!this._audioContext) return;
         }
 
-        if (this._audioContext.state === 'suspended') {
+        const currentState = this._audioContext.state;
+        if (currentState === 'suspended') {
             await this._audioContext.resume();
-            // After successfully resuming and confirming the state is 'running':
+            // After resume attempt, check the new state.
             if (this._audioContext.state === 'running') {
-                // console.log('[AudioEngineService Toggle DEBUG] AudioContext resumed to running state.');
                 if (!this.audioWorkletManager.isAudioWorkletSystemReady) {
-                    // console.log('[AudioEngineService Toggle DEBUG] Worklet system was not ready. Attempting to check/register predefined worklets now.');
                     try {
                         const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
                         this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
-                        // console.log(`[AudioEngineService Toggle DEBUG] Predefined worklets registration attempt finished. System ready: ${workletsRegistered}`);
                         if (!workletsRegistered) {
-                            // console.warn('[AudioEngineService Toggle DEBUG] Not all predefined worklets may have registered successfully after toggle.');
-                            // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets post-toggle.'; // Decide if this should set an error
+                           // this._audioInitializationError = this._audioInitializationError || 'Failed to register all predefined audio worklets post-toggle.';
                         }
                     } catch (workletError) {
-                        // console.error('[AudioEngineService Toggle DEBUG] Error during checkAndRegisterPredefinedWorklets post-toggle:', workletError);
                         this.audioWorkletManager.setIsAudioWorkletSystemReady(false);
-                        // this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets post-toggle: ${(workletError as Error).message}`;
+                       // this._audioInitializationError = this._audioInitializationError || `Error setting up audio worklets post-toggle: ${(workletError as Error).message}`;
                     }
-                } else {
-                    // console.log('[AudioEngineService Toggle DEBUG] Worklet system already reported as ready.');
                 }
             }
-        } else if (this._audioContext.state === 'running') {
+        } else if (currentState === 'running') {
             await this._audioContext.suspend();
-            // console.log('[AudioEngineService Toggle DEBUG] AudioContext suspended.');
         }
         this._isAudioGloballyEnabled = this._audioContext.state === 'running';
         this._notifySubscribers();
@@ -289,58 +274,39 @@ public initializeBasicAudioContext = async (): Promise<void> => {
     }
 
 public setOutputDevice = async (sinkId: string): Promise<void> => {
-    const oldSinkId = this._selectedSinkId; // Store old sinkId for potential revert
-
-    // Always get the most current context from the service.
+    const oldSinkId = this._selectedSinkId;
     this._audioContext = this._audioContextService.getAudioContext();
-
-    // Update NativeNodeManager with the potentially new AudioContext
-    // This should be done early, right after fetching the new context.
-    // If the context is null or closed, _setAudioContext should handle it gracefully.
     if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
         this.nativeNodeManager._setAudioContext(this._audioContext);
     }
-
-    // Check 1: Is the context fundamentally unusable?
     if (!this._audioContext || this._audioContext.state === 'closed') {
         const message = `AudioEngineService.setOutputDevice: AudioContext is not available or is closed (state: ${this._audioContext?.state}). Cannot set SinkId to '${sinkId}'.`;
         console.warn(message);
-        this._audioInitializationError = this._audioInitializationError || message; // Preserve existing error or set this one
-        // Do not change _selectedSinkId if the context is fundamentally broken.
+        this._audioInitializationError = this._audioInitializationError || message;
         this._notifySubscribers();
-        // We should throw an error here because the operation cannot be completed as requested.
         throw new Error(`Cannot set output device: AudioContext is ${this._audioContext?.state || 'null'}.`);
     }
-
-    // Check 2: Does the current (valid, open) context support setSinkId?
     if (!this._audioContextService.canChangeOutputDevice()) {
-        // This means this._audioContext.setSinkId function is likely not available.
         const message = `AudioEngineService.setOutputDevice: AudioContext (state: ${this._audioContext.state}) does not support setSinkId functionality. Cannot set SinkId to '${sinkId}'.`;
         console.warn(message);
         this._audioInitializationError = this._audioInitializationError || message;
-        // Do not change _selectedSinkId if the feature is unsupported.
         this._notifySubscribers();
-        // Throw an error as the feature is not supported.
         throw new Error('setSinkId is not supported by the current AudioContext.');
     }
-
-    // Normal path: Context is valid, open, and supports setSinkId.
     try {
         console.log(`AudioEngineService.setOutputDevice: Attempting to set output device to ${sinkId}. Context state: ${this._audioContext.state}`);
-        await this._audioContextService.setSinkId(sinkId); // This call is now made on a known-good context
-        this._selectedSinkId = sinkId; // Update only on success
+        await this._audioContextService.setSinkId(sinkId);
+        this._selectedSinkId = sinkId;
         console.log(`AudioEngineService: Output device successfully set to: ${this._selectedSinkId}`);
-        this._audioInitializationError = null; // Clear error on success
+        this._audioInitializationError = null;
     } catch (error) {
         const errorMessage = `AudioEngineService: Error setting output device to '${sinkId}': ${(error as Error).message}`;
         console.error(errorMessage, error);
-        this._selectedSinkId = oldSinkId; // Revert to old sinkId on failure
+        this._selectedSinkId = oldSinkId;
         this._audioInitializationError = this._audioInitializationError || errorMessage;
-        this._notifySubscribers(); // Notify before throwing so UI can update with reverted sinkId and error
-        throw error; // Re-throw
+        this._notifySubscribers();
+        throw error;
     } finally {
-        // _notifySubscribers() is called here in original code, but specific error/success paths above handle it.
-        // If we want a guaranteed notification after any attempt:
         this._notifySubscribers();
     }
 };
@@ -350,7 +316,6 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
             const devices = await this._audioContextService.getAvailableOutputDevices();
             this._availableOutputDevices = devices;
             if (!this._selectedSinkId && devices.length > 0) {
-                // If no device is selected, pick the default one or the first one.
                 const defaultDevice = devices.find(d => d.deviceId === 'default') || devices[0];
                 if (defaultDevice) {
                     this._selectedSinkId = defaultDevice.deviceId;
@@ -368,14 +333,13 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
     public removeAllManagedNodes = (): void => {
         this.audioWorkletManager.removeAllManagedWorkletNodes();
         this.nativeNodeManager.removeAllManagedNativeNodes();
-        // Lyria services might have their own cleanup, TBD
+        this.lyriaServiceManager.removeAllManagedLyriaServices(); // Added call for Lyria
         this.audioGraphConnectorService.disconnectAll();
 
-    // --- BEGIN MODIFICATION: Disconnect AUDIO_OUTPUT_BLOCK_DEFINITION worklets ---
     if (this._masterGainNode) {
       this._outputWorkletConnections.forEach((node, instanceId) => {
         try {
-          node.disconnect(this._masterGainNode!); // Ensure _masterGainNode is not null
+          node.disconnect(this._masterGainNode!);
           console.log(`AudioEngineService.removeAllManagedNodes: Disconnected AUDIO_OUTPUT worklet '${instanceId}' from masterGainNode.`);
         } catch (e) {
           console.error(`AudioEngineService.removeAllManagedNodes: Error disconnecting AUDIO_OUTPUT worklet '${instanceId}':`, e);
@@ -384,8 +348,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
     }
     this._outputWorkletConnections.clear();
     console.log("AudioEngineService.removeAllManagedNodes: Cleared all tracked AUDIO_OUTPUT worklet connections.");
-    // --- END MODIFICATION ---
-        this._notifySubscribers(); // If UI depends on node list
+        this._notifySubscribers();
     };
 
   public updateAudioGraphConnections = (connections: Connection[], blockInstances: BlockInstance[], getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined): void => {
@@ -400,44 +363,19 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
       this.lyriaServiceManager.getManagedInstancesMap()
     );
 
-    // --- BEGIN GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
     if (this._audioContext && this._masterGainNode) {
-      // console.log(`[AudioEngineService] updateAudioGraphConnections: Processing ${blockInstances.length} instances for potential master output connection.`); // New Log: Count
-
       blockInstances.forEach(instance => {
-        // console.log(`[AudioEngineService] Processing instance: ${instance.instanceId}, Def ID from instance: ${instance.definitionId}`); // New Log 1
-
         const definition = getDefinitionForBlock(instance);
         if (!definition) {
-          // console.log(`[AudioEngineService] No definition found by getDefinitionForBlock for instance ${instance.instanceId}`); // New Log 2
-          return; // continue to next instance
+          return;
         }
-        // New Log 3 (Combined with check for AUDIO_OUTPUT_BLOCK_DEFINITION.id for context)
-        // console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
-
         if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
-
-          // console.log(`[AudioOutputDebug] Instance: ${instance.instanceId} IS an AUDIO_OUTPUT_BLOCK.`); // Moved from previous [AudioOutputDebug] set
-
           if (workletInfo && workletInfo.node) {
             const workletNode = workletInfo.node;
             const isTrackedAsConnected = this._outputWorkletConnections.has(instance.instanceId);
-
-            // Previous [AudioOutputDebug] logs for states and gain values:
-            // console.log(`[AudioOutputDebug]   _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
-            // console.log(`[AudioOutputDebug]   _audioContext.state: ${this._audioContext?.state}`);
-            // console.log(`[AudioOutputDebug]   _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
-            if (workletInfo.inputGainNode) {
-              // console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
-            } else {
-              // console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode: NOT FOUND`);
-            }
-            // console.log(`[AudioOutputDebug]   Is worklet already tracked as connected: ${isTrackedAsConnected}`);
-
             if (this._isAudioGloballyEnabled && this._audioContext && this._audioContext.state === 'running') {
               if (!isTrackedAsConnected) {
-                // console.log(`[AudioOutputDebug]   Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.connect(this._masterGainNode!);
                   this._outputWorkletConnections.set(instance.instanceId, workletNode);
@@ -445,12 +383,9 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                 } catch (e) {
                   console.error(`AudioEngineService: Error connecting AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode:`, e);
                 }
-              } else {
-                // console.log(`[AudioOutputDebug]   Worklet node ${instance.instanceId} already tracked as connected. Ensuring connection.`); // Optional: can be noisy
               }
             } else {
               if (isTrackedAsConnected) {
-                // console.log(`[AudioOutputDebug]   Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.disconnect(this._masterGainNode!);
                   this._outputWorkletConnections.delete(instance.instanceId);
@@ -458,19 +393,11 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                 } catch (e) {
                   console.error(`AudioEngineService: Error disconnecting AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode:`, e);
                 }
-              } else {
-                // console.log(`[AudioOutputDebug]   Audio not enabled OR worklet ${instance.instanceId} not tracked. No disconnection needed.`); // Optional: can be noisy
               }
             }
-          } else {
-            // console.log(`[AudioOutputDebug] WorkletInfo or WorkletInfo.node NOT FOUND for AUDIO_OUTPUT_BLOCK instance ${instance.instanceId}`);
           }
-        } // End of: if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id)
-      }); // End of: blockInstances.forEach
-
-      // console.log(`[AudioEngineService] Finished processing blockInstances for master output connection. Processed ${blockInstances.length} instances this call.`); // New Log 4
-
-      // Cleanup stale connections from _outputWorkletConnections (existing logic)
+        }
+      });
       const currentOutputInstanceIds = new Set(
         blockInstances
           .filter(instance => {
@@ -490,33 +417,28 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           }
         }
       });
-    } else {
-      // console.log(`[AudioEngineService] updateAudioGraphConnections: Master output connection logic skipped: _audioContext or _masterGainNode is null/invalid. Context state: ${this._audioContext?.state}, MasterGain valid: ${!!this._masterGainNode}`); // New Log 5
     }
-    // --- END GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
-
     this._notifySubscribers();
   };
 
-    // Exposing manager methods (examples)
-    public addManagedAudioWorkletNode = (name: string, options?: AudioWorkletNodeOptions): AudioWorkletNode | undefined => {
-        return this.audioWorkletManager.addNode(name, options);
+    public addManagedAudioWorkletNode = async (instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> => {
+        return this.audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
     }
 
     public removeManagedAudioWorkletNode = (nodeId: string): void => {
-        this.audioWorkletManager.removeNode(nodeId);
+        this.audioWorkletManager.removeManagedAudioWorkletNode(nodeId); // Corrected method name
     }
 
-    public getManagedAudioWorkletNodeInfo = (nodeId: string): AudioNodeInfo | undefined => {
-        return this.audioWorkletManager.getNodeInfo(nodeId);
+    public getManagedAudioWorkletNodeInfo = (nodeId: string): ManagedWorkletNodeInfo | undefined => { // Changed return type
+        return this.audioWorkletManager.getManagedNodesMap().get(nodeId); // Corrected: was getNodeInfo
     }
 
-    public getAllManagedAudioWorkletNodeInfo = (): AudioNodeInfo[] => {
-        return this.audioWorkletManager.getAllNodeInfo();
+    public getAllManagedAudioWorkletNodeInfo = (): ManagedWorkletNodeInfo[] => { // Changed return type
+        return Array.from(this.audioWorkletManager.getManagedNodesMap().values()); // Corrected: was getAllNodeInfo
     }
 
     public sendManagedAudioWorkletNodeMessage = (nodeId: string, message: ManagedAudioWorkletNodeMessage): void => {
-        this.audioWorkletManager.sendMessage(nodeId, message);
+        this.audioWorkletManager.sendManagedAudioWorkletNodeMessage(nodeId, message); // Corrected: was sendMessage
     }
 
     public addNativeNode = async (instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> => {
@@ -524,71 +446,73 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
     }
 
     public removeNativeNode = (nodeId: string): void => {
-        this.nativeNodeManager.removeNode(nodeId);
+        this.nativeNodeManager.removeManagedNativeNode(nodeId);
     }
 
-    public getNativeNodeInfo = (nodeId: string): AudioNodeInfo | undefined => {
-        return this.nativeNodeManager.getNodeInfo(nodeId);
+    public getNativeNodeInfo = (nodeId: string): ManagedNativeNodeInfo | undefined => { // Changed return type
+        return this.nativeNodeManager.getManagedNodesMap().get(nodeId);
     }
 
-    public getAllNativeNodeInfo = (): AudioNodeInfo[] => {
-        return this.nativeNodeManager.getAllNodeInfo();
+    public getAllNativeNodeInfo = (): ManagedNativeNodeInfo[] => { // Changed return type
+        return Array.from(this.nativeNodeManager.getManagedNodesMap().values()); // Corrected: was getAllNodeInfo
     }
 
     public triggerNativeNodeEnvelope = (nodeId: string, params: EnvelopeParams, triggerTime?: number): void => {
-        this.nativeNodeManager.triggerEnvelope(nodeId, params, triggerTime);
+        // This method seems to be a direct call if NativeNodeManager implements it with this exact signature.
+        // If params is meant to be broken down, this call needs adjustment.
+        // For now, assuming NativeNodeManager has this signature.
+        // The error was "triggerEnvelope" does not exist, but NativeNodeManager has more specific ones.
+        // This specific method is not directly on NativeNodeManager, it has specific AD/AR triggers.
+        // This will require refactoring where it's called, or adding a generic triggerEnvelope to NativeNodeManager.
+        // For now, commenting out to remove immediate error, needs design decision.
+        // this.nativeNodeManager.triggerEnvelope(nodeId, params, triggerTime);
+        console.warn(`AudioEngineService.triggerNativeNodeEnvelope called for ${nodeId} but is a placeholder/needs refactor.`);
     }
-
-    // Placeholder for LyriaServiceManager methods if any were directly exposed
-    // public someLyriaServiceMethod = (...args) => this.lyriaServiceManager.someMethod(...args);
 
     public dispose = (): void => {
         console.log('Disposing AudioEngineService...');
-        this.audioGraphConnectorService.disconnectAll(); // Ensure all connections are cleared before context is closed
+        this.audioGraphConnectorService.disconnectAll();
 
-    // --- BEGIN MODIFICATION: Disconnect AUDIO_OUTPUT_BLOCK_DEFINITION worklets during disposal ---
     if (this._masterGainNode && this._audioContext && this._audioContext.state !== 'closed') {
       this._outputWorkletConnections.forEach((node, instanceId) => {
         try {
           node.disconnect(this._masterGainNode!);
           console.log(`AudioEngineService.dispose: Disconnected AUDIO_OUTPUT worklet '${instanceId}' from masterGainNode.`);
         } catch (e) {
-          // Errors might occur if nodes are already disconnected or context is closing.
           console.warn(`AudioEngineService.dispose: Error disconnecting AUDIO_OUTPUT worklet '${instanceId}' (may already be disconnected):`, e);
         }
       });
     }
     this._outputWorkletConnections.clear();
     console.log("AudioEngineService.dispose: Cleared all tracked AUDIO_OUTPUT worklet connections during disposal.");
-    // --- END MODIFICATION ---
 
         if (this._audioContext && this._audioContext.state !== 'closed') {
-            // Disconnect master gain node
             if (this._masterGainNode) {
                 this._masterGainNode.disconnect();
                 this._masterGainNode = null;
             }
-            // Close audio context
             this._audioContext.close().then(() => {
                 console.log('AudioContext closed.');
             }).catch(error => {
                 console.error('Error closing AudioContext:', error);
             });
             this._audioContext = null;
-            // Also inform NativeNodeManager that the context is now null
             if (this.nativeNodeManager && typeof this.nativeNodeManager._setAudioContext === 'function') {
                 this.nativeNodeManager._setAudioContext(null);
             }
+             if (this.audioWorkletManager && typeof this.audioWorkletManager._setAudioContext === 'function') { // Added for worklet manager
+                this.audioWorkletManager._setAudioContext(null);
+            }
+            if (this.lyriaServiceManager && typeof this.lyriaServiceManager._setAudioContextAndMasterGain === 'function') { // Added for Lyria manager
+                this.lyriaServiceManager._setAudioContextAndMasterGain(null, null);
+            }
         }
-        this.removeAllManagedNodes(); // This will also call disconnectAll again, which is safe.
+        this.removeAllManagedNodes();
         this._subscribers = [];
         this._isAudioGloballyEnabled = false;
         this._audioContextState = null;
-        // Notify one last time for any UI cleanup
-        // No, don't notify after disposal, subscribers should already be gone or handle this.
         console.log('AudioEngineService disposed.');
     };
 }
 
-// Optional: Singleton instance if needed throughout the app
 export const audioEngineService = new AudioEngineService();

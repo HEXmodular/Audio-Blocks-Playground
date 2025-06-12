@@ -5,15 +5,16 @@
  * The manager ensures that each Lyria block's audio output is correctly routed and that callbacks are in place to react to changes in the Lyria service's state, triggering application-level updates.
  * It acts as the specialized controller for all Lyria AI-powered music generation blocks within the system.
  */
-import { BlockDefinition, LiveMusicGenerationConfig } from '@interfaces/common'; // Adjusted as WeightedPrompt is used by LiveMusicService
+import {
+    BlockDefinition,
+    LiveMusicGenerationConfig,
+    PlaybackState,
+    ManagedLyriaServiceInfo // Import from common
+} from '@interfaces/common';
 import { LiveMusicService, LiveMusicServiceCallbacks, DEFAULT_MUSIC_GENERATION_CONFIG } from '@services/LiveMusicService';
-import { Scale as GenAIScale } from '@google/genai'; // GenAIScale is used in updateLyriaServiceState
+import { Scale as GenAIScale } from '@google/genai';
 
-export type ManagedLyriaServiceInfo = {
-    instanceId: string;
-    service: LiveMusicService;
-    outputNode: AudioNode;
-};
+// Local definition of ManagedLyriaServiceInfo removed.
 
 export interface ILyriaServiceManager {
     setupLyriaServiceForInstance: (instanceId: string, definition: BlockDefinition, addBlockLog: (message: string) => void) => Promise<boolean>;
@@ -21,57 +22,45 @@ export interface ILyriaServiceManager {
     getLyriaServiceInstance: (instanceId: string) => LiveMusicService | null;
     updateLyriaServiceState: (instanceId: string, blockInternalState: Record<string, any>, blockParams: Record<string,any>, blockInputs: Record<string,any>, clearRequestsFn: () => void) => void;
     removeAllManagedLyriaServices: () => void;
-    // managedLyriaServiceInstancesRef will be a private property, so it's not part of the public interface.
 }
 
 export class LyriaServiceManager implements ILyriaServiceManager {
     private managedLyriaServiceInstancesRef: Map<string, ManagedLyriaServiceInfo>;
-
     private audioContext: AudioContext | null;
     private masterGainNode: GainNode | null;
     private readonly onStateChangeForReRender: () => void;
 
     constructor(
-        audioContext: AudioContext | null,
-        masterGainNode: GainNode | null,
+        // Removed audioContext and masterGainNode from constructor params as they are set via _setAudioContextAndMasterGain
         onStateChangeForReRender: () => void,
+        initialAudioContext: AudioContext | null = null, // Optional initial context
+        initialMasterGainNode: GainNode | null = null    // Optional initial gain
     ) {
-        this.audioContext = audioContext;
-        this.masterGainNode = masterGainNode;
+        this.audioContext = initialAudioContext;
+        this.masterGainNode = initialMasterGainNode;
         this.onStateChangeForReRender = onStateChangeForReRender;
         this.managedLyriaServiceInstancesRef = new Map<string, ManagedLyriaServiceInfo>();
     }
 
-    /**
-     * Allows AudioEngine to update the AudioContext and MasterGainNode for this manager.
-     * @param newContext The new AudioContext, or null.
-     * @param newMasterGainNode The new MasterGainNode, or null.
-     */
     public _setAudioContextAndMasterGain(newContext: AudioContext | null, newMasterGainNode: GainNode | null): void {
         let contextChanged = false;
         if (this.audioContext !== newContext) {
             contextChanged = true;
             if (this.managedLyriaServiceInstancesRef.size > 0) {
                 console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services.", true);
-                this.removeAllManagedLyriaServices(); // Clears services and the map
+                this.removeAllManagedLyriaServices();
             }
             this.audioContext = newContext;
         }
-
-        this.masterGainNode = newMasterGainNode; // Update masterGainNode regardless
-
-        // If context changed, it might affect overall state, trigger re-render
+        this.masterGainNode = newMasterGainNode;
         if (contextChanged) {
             this.onStateChangeForReRender();
         }
-        // Note: If masterGainNode changes, existing service output nodes might need re-connection.
-        // This is partially handled in setupLyriaServiceForInstance if an instance is re-setup,
-        // and by onOutputNodeChanged callback. A more direct re-patching could be added here if needed for all existing services.
     }
 
     public async setupLyriaServiceForInstance(
         instanceId: string,
-        definition: BlockDefinition, // definition is not directly used in the original hook's logic but kept for signature consistency
+        definition: BlockDefinition,
         addBlockLog: (message: string) => void
     ): Promise<boolean> {
         console.log("setupLyriaServiceForInstance")
@@ -79,22 +68,15 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             addBlockLog(`[LyriaManager Setup] Lyria Service setup failed: AudioContext not ready (state: ${this.audioContext?.state}).`);
             return false;
         }
-        // Assuming API_KEY is available in the environment. The class cannot directly access process.env.
-        // This check might need to be handled by the consumer of the class or passed in if it's dynamic.
-        // For now, we'll replicate the hook's assumption that it's globally available via process.env.
-        // In a pure class model, this would ideally be passed in or handled differently.
         if (typeof process === 'undefined' || !process.env.API_KEY) {
              addBlockLog("[LyriaManager Setup] Lyria Service setup failed: API_KEY not configured (Note: process.env access from class has limitations).");
-            // Consider how API_KEY should be provided to the class instance if not via process.env directly.
-            // This might be an architectural consideration for the larger application.
             return false;
         }
         if (this.managedLyriaServiceInstancesRef.has(instanceId)) {
             addBlockLog("[LyriaManager Setup] Lyria Service already initialized for this block.");
             const existingServiceInfo = this.managedLyriaServiceInstancesRef.get(instanceId);
-            // Re-connect if masterGainNode is available and output is not already connected to it.
             if (existingServiceInfo && this.masterGainNode && existingServiceInfo.outputNode !== this.masterGainNode) {
-                 try { existingServiceInfo.outputNode.disconnect(); } catch (e) { /*ignore*/ } // Disconnect from wherever it was
+                 try { existingServiceInfo.outputNode.disconnect(); } catch (e) { /*ignore*/ }
                 try { existingServiceInfo.outputNode.connect(this.masterGainNode); }
                 catch (e) { console.log(`[LyriaManager Error] Re-connecting existing Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
             }
@@ -119,7 +101,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
                     }
                     try { newNode.connect(this.masterGainNode); }
                     catch (e) { console.log(`[LyriaManager Error] Connecting new Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
-                } else if (this.masterGainNode) { // if lyriaServiceInfo is somehow not found but we have a masterGainNode
+                } else if (this.masterGainNode) {
                     try { newNode.connect(this.masterGainNode); }
                     catch (e) { console.log(`[LyriaManager Error] Connecting new Lyria output (no service info) for ${instanceId} to master gain: ${(e as Error).message}`, true); }
                 }
@@ -128,15 +110,14 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         };
 
         try {
-            // Again, process.env.API_KEY access here.
             const service = new LiveMusicService(process.env.API_KEY!, this.audioContext, serviceCallbacks, initialMusicConfig);
             const lyriaOutputNode = service.getOutputNode();
             if (this.masterGainNode) {
                 lyriaOutputNode.connect(this.masterGainNode);
             }
-            this.managedLyriaServiceInstancesRef.set(instanceId, { instanceId, service, outputNode: lyriaOutputNode });
+            this.managedLyriaServiceInstancesRef.set(instanceId, { instanceId, service, outputNode: lyriaOutputNode, definition }); // Added definition
             addBlockLog("[LyriaManager Setup] Lyria Service initialized and output connected.");
-            await service.connect(); // Ensure service connection is attempted
+            await service.connect();
             this.onStateChangeForReRender();
             return true;
         } catch (error: any) {
@@ -155,11 +136,9 @@ export class LyriaServiceManager implements ILyriaServiceManager {
                     try { info.outputNode.disconnect(this.masterGainNode); }
                     catch (eInnerMaster) { /* console.warn(`[LyriaManager Remove] Inner disconnect error for Lyria output from masterGain: ${eInnerMaster.message}`); */ }
                 }
-                // Attempt to disconnect from any other connections as well
                 info.outputNode.disconnect();
             } catch (e) {
-                // Only log if the general disconnect fails, as disconnecting from masterGainNode might have already handled it or it wasn't connected.
-                if (!(e instanceof DOMException && e.name === 'InvalidAccessError')) { // Avoid logging if already disconnected
+                if (!(e instanceof DOMException && e.name === 'InvalidAccessError')) {
                     console.log(`[LyriaManager Remove] Error disconnecting Lyria service outputNode for '${instanceId}': ${(e as Error).message}`, true);
                 }
             }
@@ -181,8 +160,6 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         clearRequestsFn: () => void
     ): void {
         const service = this.getLyriaServiceInstance(instanceId);
-        // audioContext check is implicitly handled by service's own checks if needed for specific operations,
-        // but good to ensure service exists.
         if (!service) return;
 
         if (blockInternalState.reconnectRequest) service.reconnect();
@@ -192,7 +169,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         } else if (blockInternalState.playRequest) service.play(blockInternalState.lastEffectivePrompts || []);
         else if (blockInternalState.pauseRequest) service.pause();
 
-        if (service.isConnected() || service.getPlaybackState() === PlaybackState.PAUSED) { // Used PlaybackState enum
+        if (service.isConnected() || service.getPlaybackState() === PlaybackState.PAUSED) {
             if (blockInternalState.configUpdateNeeded) {
                 const newConfig: Partial<LiveMusicGenerationConfig> = {};
                 if (blockInputs.scale_cv_in !== undefined && blockInputs.scale_cv_in !== null && Object.values(GenAIScale).includes(blockInputs.scale_cv_in as any)) newConfig.scale = blockInputs.scale_cv_in as GenAIScale;
@@ -206,7 +183,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
 
                 if (blockInputs.seed_cv_in !== undefined) newConfig.seed = Math.floor(Number(blockInputs.seed_cv_in));
                 else if (blockParams.seed !== undefined && Number(blockParams.seed) !== 0) newConfig.seed = Math.floor(Number(blockParams.seed));
-                else if (blockParams.seed === 0) newConfig.seed = undefined; // Allow unsetting seed
+                else if (blockParams.seed === 0) newConfig.seed = undefined;
 
                 if (blockInputs.temperature_cv_in !== undefined) newConfig.temperature = Number(blockInputs.temperature_cv_in);
                 else if (blockParams.temperature !== undefined) newConfig.temperature = Number(blockParams.temperature);
@@ -230,12 +207,12 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             });
         }
         clearRequestsFn();
-        this.onStateChangeForReRender(); // Ensure UI updates based on state changes
+        this.onStateChangeForReRender();
     }
 
     public removeAllManagedLyriaServices(): void {
         this.managedLyriaServiceInstancesRef.forEach((_, instanceId) => {
-            this.removeLyriaServiceForInstance(instanceId); // Call the class method
+            this.removeLyriaServiceForInstance(instanceId);
         });
         console.log("[LyriaManager] All managed Lyria services removed.", true);
     }

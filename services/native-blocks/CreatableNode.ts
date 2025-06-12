@@ -1,28 +1,25 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
-import { NativeBlock } from './NativeBlock';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 
-export abstract class CreatableNode extends NativeBlock {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
-    }
-
-    abstract createNode(
+export interface CreatableNode {
+    createNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm?: number
+        currentBpm?: number // Optional for BPM-dependent nodes
     ): ManagedNativeNodeInfo;
 
-    abstract updateNodeParams(
-        info: ManagedNativeNodeInfo,
+    updateNodeParams(
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
+        currentInputs?: Record<string, any>, // For blocks that react to input values directly on params
         currentBpm?: number
     ): void;
 
-    // Placeholder for potential future envelope trigger methods
-    // triggerEnvelope?(instanceId: string, attackTime: number, decayTime: number, peakLevel: number): void;
-    // triggerAttackHold?(instanceId: string, attackTime: number, sustainLevel: number): void;
-    // triggerRelease?(instanceId: string, releaseTime: number): void;
+    setAudioContext(context: AudioContext | null): void; // Method to update the context
+
+    // Optional connect/disconnect if the block itself needs to manage complex internal routing
+    // not handled by simple nodeForInput/OutputConnections.
+    // Most simple blocks will not need these, AudioGraphConnectorService handles external connections.
+    connect?(destinationNode: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): AudioNode | void;
+    disconnect?(destinationNode?: AudioNode | AudioParam, output?: number, input?: number): void;
 }

@@ -36,10 +36,10 @@ export class BlockInstanceController {
     }
 
     private getDefinitionForBlock(instance: BlockInstance): BlockDefinition | undefined {
-        return this.blockStateManager.getDefinitionById(instance.definitionId);
+        return this.blockStateManager.getDefinitionForBlock(instance.definitionId);
     }
 
-    public addBlockFromDefinition = (definition: BlockDefinition, name?: string, position?: { x: number; y: number }): BlockInstance | null => {
+    public addBlockFromDefinition = async (definition: BlockDefinition, name?: string, position?: { x: number; y: number }): Promise<BlockInstance | null> => {
         const newInstance = this.blockStateManager.addBlockInstance(definition, name, position);
         const globalBpm = this.getGlobalBpm();
 
@@ -59,15 +59,17 @@ export class BlockInstanceController {
                     }));
                 });
             } else if (definition.audioWorkletProcessorName && this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady) {
-                const node = this.audioEngineService.addManagedAudioWorkletNode(newInstance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: newInstance.parameters });
-                if (node) {
+                // The addManagedAudioWorkletNode method is now async and returns a boolean
+                const success = await this.audioEngineService.addManagedAudioWorkletNode(newInstance.instanceId, definition, newInstance.parameters);
+                if (success) {
                     this.blockStateManager.updateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } });
                 } else {
                     this.blockStateManager.updateBlockInstance(newInstance.instanceId, { error: "Failed to add audio worklet node." });
                 }
             } else if (!definition.audioWorkletProcessorName) { // Native node
-                const node = this.audioEngineService.addNativeNode(newInstance.instanceId, definition, newInstance.parameters, globalBpm);
-                if (node) {
+                // Assuming addNativeNode returns a boolean or similar indication of success
+                const success = await this.audioEngineService.addNativeNode(newInstance.instanceId, definition, newInstance.parameters, globalBpm);
+                if (success) {
                     this.blockStateManager.updateBlockInstance(newInstance.instanceId, { internalState: { ...newInstance.internalState, needsAudioNodeSetup: false } });
                 } else {
                     this.blockStateManager.updateBlockInstance(newInstance.instanceId, { error: "Failed to add native audio node." });

@@ -1,72 +1,67 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class OscilloscopeNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class OscilloscopeNativeBlock implements CreatableNode {
+    private context: AudioContext;
+    private analyserNode: AnalyserNode | null = null;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
+        // If context changes, existing analyserNode becomes invalid if it was created with old context
+        if (!context && this.analyserNode) {
+            try { this.analyserNode.disconnect(); } catch(e) {/*ignore*/}
+            this.analyserNode = null;
+        } else if (context && this.analyserNode && this.analyserNode.context !== context) {
+            // This case is tricky; ideally, nodes are recreated. For now, nullify.
+            try { this.analyserNode.disconnect(); } catch(e) {/*ignore*/}
+            this.analyserNode = null;
+        }
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[]
-        // currentBpm is not used by AnalyserNode
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for OscilloscopeNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
+        this.analyserNode = this.context.createAnalyser();
 
-        const analyser = this.audioContext.createAnalyser();
-
-        // AnalyserNode does not have AudioParam targets in the same way as oscillators or filters for CV control.
-        // Parameters like fftSize, minDecibels, etc., are properties.
-        const paramTargets = new Map<string, AudioParam>(); // Empty for now, can be extended if any AudioParam-like control is found/needed.
-
-        // Initial parameters (like fftSize) are applied by NativeNodeManager via updateNodeParams.
+        const fftSizeParam = initialParams.find(p => p.id === 'fftSize');
+        this.analyserNode.fftSize = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 
         return {
-            nodeForInputConnections: analyser,
-            nodeForOutputConnections: analyser, // AnalyserNode can pass through audio.
-            mainProcessingNode: analyser,
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: this.analyserNode, // The AnalyserNode itself
+            nodeForInputConnections: this.analyserNode,
+            nodeForOutputConnections: this.analyserNode, // Analyser can pass through audio
+            mainProcessingNode: this.analyserNode,
+            paramTargetsForCv: new Map<string, AudioParam>(), // No direct CV targets for AnalyserNode params
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[]
-        // currentInputs and currentBpm are not used by AnalyserNode
     ): void {
-        if (!this.audioContext || !info.mainProcessingNode || !(info.mainProcessingNode instanceof AnalyserNode)) {
-            console.warn(`[OscilloscopeNativeBlock Update] AudioContext not ready or node not an AnalyserNode for instance ${info.instanceId}.`);
-            return;
+        if (!this.context || !(nodeInfo.mainProcessingNode instanceof AnalyserNode)) return;
+        const analyserNode = nodeInfo.mainProcessingNode;
+
+        const fftSizeParam = parameters.find(p => p.id === 'fftSize');
+        if (fftSizeParam) {
+            analyserNode.fftSize = Number(fftSizeParam.currentValue);
         }
-
-        const analyserNode = info.mainProcessingNode as AnalyserNode;
-
-        parameters.forEach(param => {
-            // AnalyserNode parameters are direct properties, not AudioParams for setTargetAtTime.
-            if (param.id === 'fftSize' && typeof param.currentValue === 'number') {
-                try {
-                    analyserNode.fftSize = param.currentValue;
-                } catch (e) {
-                    console.error(`[OscilloscopeNativeBlock Update] Error setting fftSize to ${param.currentValue} for instance ${info.instanceId}:`, e);
-                }
-            } else if (param.id === 'minDecibels' && typeof param.currentValue === 'number') {
-                analyserNode.minDecibels = param.currentValue;
-            } else if (param.id === 'maxDecibels' && typeof param.currentValue === 'number') {
-                analyserNode.maxDecibels = param.currentValue;
-            } else if (param.id === 'smoothingTimeConstant' && typeof param.currentValue === 'number') {
-                analyserNode.smoothingTimeConstant = param.currentValue;
-            }
-            // Add other AnalyserNode properties as needed.
-        });
     }
 
-    // connect and disconnect are inherited, commented out
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`OscilloscopeNativeBlock.connect called directly. Connections handled by AudioGraphConnectorService.`);
+    }
+
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`OscilloscopeNativeBlock.disconnect called directly. Connections handled by AudioGraphConnectorService/manager.`);
+    }
 }

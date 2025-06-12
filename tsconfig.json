@@ -35,6 +35,7 @@
       "@icons/*" :  ["./icons/*"],
       "@constants/*" :  ["./constants/*"],
       "@state/*" :  ["./state/*"],
+      "@hooks/*": ["./hooks/*"]
     }
   }
 }

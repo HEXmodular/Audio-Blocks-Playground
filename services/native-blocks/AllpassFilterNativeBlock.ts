@@ -1,119 +1,119 @@
 import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo, AllpassInternalNodes } from '@services/NativeNodeManager'; // AllpassInternalNodes is crucial here
+import { ManagedNativeNodeInfo, AllpassInternalNodes } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class AllpassFilterNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class AllpassFilterNativeBlock implements CreatableNode {
+    private context: AudioContext;
+    private internalNodes: AllpassInternalNodes | null = null;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!; // TODO: Handle null context more gracefully if needed
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        // initialParams: BlockParameter[]
-        // currentBpm is not used
+        initialParams: BlockParameter[]
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for AllpassFilterNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
 
-        const apInputPassthrough = this.audioContext.createGain();
-        const apInputGain1 = this.audioContext.createGain();
-        const apInputDelay = this.audioContext.createDelay(1.0); // Max delay time
-        const apFeedbackGain = this.audioContext.createGain();
-        const apFeedbackDelay = this.audioContext.createDelay(1.0); // Max delay time
-        const apSummingNode = this.audioContext.createGain();
+        const inputPassthroughNode = this.context.createGain();
+        const inputGain1 = this.context.createGain();
+        const inputDelay = this.context.createDelay(1.0); // Max delay of 1 second
+        const feedbackGain = this.context.createGain();
+        const feedbackDelay = this.context.createDelay(1.0);
+        const summingNode = this.context.createGain();
 
-        // Connections for the all-pass structure
-        apInputGain1.connect(apInputDelay);
-        apInputDelay.connect(apSummingNode);
-        apInputPassthrough.connect(apSummingNode); // Dry signal mixed in
+        // Configure connections for the all-pass filter structure
+        // y[n] = -g*x[n] + x[n-M] + g*y[n-M]
+        // This typically involves:
+        // Input -> to +1 gain (inputPassthroughNode to summingNode)
+        // Input -> to -g gain (inputGain1 to summingNode)
+        // Input -> to Delay M (inputDelay) -> to summingNode
+        // Output of summingNode (y[n]) -> to feedbackDelay M -> to feedbackGain (g) -> back to summingNode input
 
-        // Feedback loop
-        apSummingNode.connect(apFeedbackDelay);
-        apFeedbackDelay.connect(apFeedbackGain);
-        apFeedbackGain.connect(apSummingNode); // Feedback to summing node (or input of delay, depending on specific AP structure)
-                                            // Original NativeNodeManager connects feedbackGain to apSummingNode.
+        // Simplified direct path for x[n-M]
+        inputPassthroughNode.connect(inputDelay);
+        inputDelay.connect(summingNode);
 
-        const allpassNodes: AllpassInternalNodes = {
-            inputPassthroughNode: apInputPassthrough,
-            inputGain1: apInputGain1,
-            inputDelay: apInputDelay,
-            feedbackGain: apFeedbackGain,
-            feedbackDelay: apFeedbackDelay,
-            summingNode: apSummingNode
+        // Path for -g*x[n]
+        inputPassthroughNode.connect(inputGain1);
+        inputGain1.connect(summingNode);
+        inputGain1.gain.value = -1; // Will be modulated by 'coefficient' param
+
+        // Feedback path g*y[n-M]
+        summingNode.connect(feedbackDelay);
+        feedbackDelay.connect(feedbackGain);
+        feedbackGain.connect(summingNode);
+
+        this.internalNodes = {
+            inputPassthroughNode,
+            inputGain1,
+            inputDelay,
+            feedbackGain,
+            feedbackDelay,
+            summingNode,
         };
 
-        const paramTargets = new Map<string, AudioParam>();
-        // The 'delayTime' parameter controls both delay lines.
-        // The 'coefficient' parameter controls gains for the all-pass effect.
-        // Note: The original code sets delayTime on apInputDelay.delayTime and apFeedbackDelay.delayTime.
-        // For CV control via paramTargets, we need to pick one or manage both if NativeNodeManager did.
-        // Typically, for an all-pass, both delays are identical. Let's target apInputDelay.delayTime
-        // and ensure updateNodeParams handles setting both if needed.
-        paramTargets.set('delayTime', apInputDelay.delayTime);
-        // 'coefficient' is not a direct AudioParam; it controls gains on inputPassthroughNode and feedbackGain.
-        // This will be handled in updateNodeParams.
+        const paramTargetsForCv = new Map<string, AudioParam>();
+        paramTargetsForCv.set('delayTime', inputDelay.delayTime); // Main delay control
+        paramTargetsForCv.set('coefficient', feedbackGain.gain); // 'g' coefficient for feedback and inputGain1
+                                                                // Note: inputGain1 also needs to be controlled by 'coefficient' but negatively.
+                                                                // This might require separate handling in updateNodeParams or a more complex graph.
 
         return {
-            nodeForInputConnections: apInputGain1, // Audio input goes into the primary path.
-            nodeForOutputConnections: apSummingNode, // Output is taken from the summing node.
-            mainProcessingNode: undefined, // No single "main" node, structure is key. Or perhaps summingNode?
-            internalGainNode: undefined, // Not applicable in the same way as for oscillators.
-            allpassInternalNodes: allpassNodes, // Store the internal structure.
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: inputPassthroughNode, // Main input node
+            nodeForInputConnections: inputPassthroughNode,
+            nodeForOutputConnections: summingNode, // Main output node
+            mainProcessingNode: summingNode, // Or identify a central node if applicable
+            allpassInternalNodes: this.internalNodes,
+            paramTargetsForCv,
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
-        parameters: BlockParameter[]
-        // currentInputs and currentBpm are not used
+        nodeInfo: ManagedNativeNodeInfo,
+        parameters: BlockParameter[],
+        currentInputs?: Record<string, any> | undefined
     ): void {
-        if (!this.audioContext || !info.allpassInternalNodes) {
-            console.warn(`[AllpassFilterNativeBlock Update] AudioContext not ready or internal nodes not present for instance ${info.instanceId}.`);
-            return;
+        if (!this.context || !nodeInfo.allpassInternalNodes) return;
+
+        const delayTimeParam = parameters.find(p => p.id === 'delayTime');
+        const coefficientParam = parameters.find(p => p.id === 'coefficient');
+
+        if (delayTimeParam && nodeInfo.allpassInternalNodes.inputDelay.delayTime && nodeInfo.allpassInternalNodes.feedbackDelay.delayTime) {
+            const delayValue = Math.max(0.0001, Math.min(1.0, Number(delayTimeParam.currentValue))); // Clamp to typical allpass values
+            nodeInfo.allpassInternalNodes.inputDelay.delayTime.setValueAtTime(delayValue, this.context.currentTime);
+            nodeInfo.allpassInternalNodes.feedbackDelay.delayTime.setValueAtTime(delayValue, this.context.currentTime);
         }
-
-        const { inputDelay, feedbackDelay, inputPassthroughNode, feedbackGain } = info.allpassInternalNodes;
-
-        parameters.forEach(param => {
-            if (param.id === 'delayTime' && typeof param.currentValue === 'number') {
-                // Both delay times are typically kept equal in an all-pass filter.
-                inputDelay.delayTime.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                feedbackDelay.delayTime.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-
-                // If 'delayTime' was added to paramTargetsForCv (e.g., targeting inputDelay.delayTime),
-                // this explicit setting might be redundant or complementary.
-                // The original code set it directly.
-            } else if (param.id === 'coefficient' && typeof param.currentValue === 'number') {
-                // Coefficient 'k': y[n] = k*x[n] + x[n-D] - k*y[n-D]
-                // inputPassthroughNode handles the k*x[n] part (feedforward of input, scaled)
-                // feedbackGain handles the -k*y[n-D] part (feedback of output, scaled)
-                // The original NativeNodeManager set:
-                // allpassInternalNodes.inputPassthroughNode.gain to -param.currentValue (this seems unusual, typically positive)
-                // allpassInternalNodes.feedbackGain.gain to param.currentValue
-                // Let's re-verify the standard all-pass structure gain settings.
-                // A common form is: H(z) = (k + z^-D) / (1 + k*z^-D)
-                // This implies inputGain1 might be 1, inputPassthrough (feedforward of input x[n]) gain is 'k',
-                // and feedbackGain (from output y[n-D]) is '-k'.
-                // Or, if H(z) = (-k + z^-D) / (1 - k*z^-D), then inputPassthrough gain is -k, feedbackGain is k.
-                // The original code used:
-                // inputPassthroughNode.gain = -coefficient (controls direct path contribution)
-                // feedbackGain.gain = coefficient (controls feedback contribution)
-                // inputGain1.gain = 1 (implicitly, or could be set if structure varies)
-                // This configuration seems to implement H(z) = (z^-D - k) / (1 - k z^-D)
-                // (assuming inputGain1 is where x[n] enters before splitting to delay and passthrough scaling)
-                // Let's stick to the original implementation's gain logic for now.
-                inputPassthroughNode.gain.setTargetAtTime(-param.currentValue, this.audioContext!.currentTime, 0.01);
-                feedbackGain.gain.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-            }
-        });
+        if (coefficientParam && nodeInfo.allpassInternalNodes.feedbackGain.gain && nodeInfo.allpassInternalNodes.inputGain1.gain) {
+            const g = Number(coefficientParam.currentValue);
+            nodeInfo.allpassInternalNodes.feedbackGain.gain.setValueAtTime(g, this.context.currentTime);
+            nodeInfo.allpassInternalNodes.inputGain1.gain.setValueAtTime(-g, this.context.currentTime); // Inverted gain for the feedforward path
+        }
     }
 
-    // connect and disconnect are inherited
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    // Placeholder implementations for connect and disconnect
+    connect(destination: AudioNode | AudioParam, outputIndex?: number | undefined, inputIndex?: number | undefined): void {
+        // This specific block's output is via nodeInfo.nodeForOutputConnections (summingNode)
+        // The actual connection logic is handled by AudioGraphConnectorService based on the returned ManagedNativeNodeInfo.
+        console.warn(`AllpassFilterNativeBlock.connect called directly on instance for ${this.internalNodes}, but should be handled by AudioGraphConnectorService.`);
+    }
+
+    disconnect(destination?: AudioNode | AudioParam | number | undefined, output?: number | undefined, input?: number | undefined): void {
+        // Similar to connect, disconnection is managed by AudioGraphConnectorService.
+        // However, internal nodes should be disconnected if the block instance is removed.
+        console.warn(`AllpassFilterNativeBlock.disconnect called directly on instance for ${this.internalNodes}. Disconnection is typically managed by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+        if (this.internalNodes) {
+            Object.values(this.internalNodes).forEach(node => {
+                try { node.disconnect(); } catch(e) { /* ignore if already disconnected or error */ }
+            });
+        }
+    }
 }

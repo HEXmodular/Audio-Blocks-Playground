@@ -27,7 +27,7 @@ describe('AudioContextService', () => {
                 resume: jest.fn().mockResolvedValue(undefined),
                 close: jest.fn().mockResolvedValue(undefined),
                 createGain: jest.fn().mockReturnValue(gainNodeMock),
-                destination: { type: 'AudioDestinationNode' } as AudioDestinationNode, // Simplified mock
+                destination: { type: 'AudioDestinationNode' } as unknown as AudioDestinationNode, // Simplified mock, cast to unknown first
                 sampleRate: 44100,
                 state: 'suspended' as AudioContextState,
                 onstatechange: null as (() => void) | null,

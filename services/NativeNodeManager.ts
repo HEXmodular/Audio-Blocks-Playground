@@ -5,7 +5,13 @@
  * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
  * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
  */
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
+import {
+    BlockDefinition,
+    BlockParameter,
+    ManagedNativeNodeInfo,
+    AllpassInternalNodes,
+    EnvelopeParams // Import EnvelopeParams
+} from '@interfaces/common';
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
     NATIVE_LFO_BLOCK_DEFINITION,
@@ -17,9 +23,9 @@ import {
     NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
     NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '@constants/constants'; // From root constants.ts
+} from '@constants/constants';
 
-import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Specifically from its own file
+import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock';
 
 import { CreatableNode } from '@services/native-blocks/CreatableNode';
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
@@ -32,27 +38,6 @@ import { AllpassFilterNativeBlock } from '@services/native-blocks/AllpassFilterN
 import { NumberToConstantAudioNativeBlock } from '@services/native-blocks/NumberToConstantAudioNativeBlock';
 
 
-export interface AllpassInternalNodes {
-    inputPassthroughNode: GainNode;
-    inputGain1: GainNode;
-    inputDelay: DelayNode;
-    feedbackGain: GainNode;
-    feedbackDelay: DelayNode;
-    summingNode: GainNode;
-}
-
-export type ManagedNativeNodeInfo = {
-    nodeForInputConnections: AudioNode;
-    nodeForOutputConnections: AudioNode;
-    mainProcessingNode?: AudioNode;
-    internalGainNode?: GainNode;
-    allpassInternalNodes?: AllpassInternalNodes;
-    paramTargetsForCv?: Map<string, AudioParam>;
-    definition: BlockDefinition;
-    instanceId: string;
-    constantSourceValueNode?: ConstantSourceNode;
-};
-
 export interface INativeNodeManager {
     setupManagedNativeNode: (instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number) => Promise<boolean>;
     updateManagedNativeNodeParams: (instanceId: string, parameters: BlockParameter[], currentInputs?: Record<string, any>, currentBpm?: number) => void;
@@ -62,15 +47,17 @@ export interface INativeNodeManager {
     removeManagedNativeNode: (instanceId: string) => void;
     removeAllManagedNativeNodes: () => void;
     getAnalyserNodeForInstance: (instanceId: string) => AnalyserNode | null;
-    // managedNativeNodesRef will be a private property, so it's not part of the public interface.
+
+    // Added methods to match usage in AudioEngineService
+    removeNode: (nodeId: string) => void;
+    getNodeInfo: (nodeId: string) => ManagedNativeNodeInfo | undefined;
+    getAllNodeInfo: () => ManagedNativeNodeInfo[];
+    triggerEnvelope: (nodeId: string, params: EnvelopeParams, triggerTime?: number) => void;
 }
 
 export class NativeNodeManager implements INativeNodeManager {
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
-    // private gainControlNativeBlock: GainControlNativeBlock; // Removed as it's now part of blockHandlers
     private blockHandlers: Map<string, CreatableNode>;
-
-    // Make audioContext mutable
     private audioContext: AudioContext | null;
     private readonly onStateChangeForReRender: () => void;
 
@@ -81,18 +68,14 @@ export class NativeNodeManager implements INativeNodeManager {
         this.audioContext = audioContext;
         this.onStateChangeForReRender = onStateChangeForReRender;
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
-
         this.blockHandlers = new Map<string, CreatableNode>();
-        // No longer need separate gainControlNativeBlock field initialization here
-        // this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-
-        if (this.audioContext) { // Ensure context is available for handlers
+        if (this.audioContext) {
             this.initializeBlockHandlers(this.audioContext);
         }
     }
 
     private initializeBlockHandlers(context: AudioContext): void {
-        this.blockHandlers.set(GAIN_BLOCK_DEFINITION.id, new GainControlNativeBlock(context)); // Add GainControlNativeBlock
+        this.blockHandlers.set(GAIN_BLOCK_DEFINITION.id, new GainControlNativeBlock(context));
         this.blockHandlers.set(NATIVE_OSCILLATOR_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
         this.blockHandlers.set(NATIVE_LFO_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
         this.blockHandlers.set(NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
@@ -105,21 +88,14 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id, new NumberToConstantAudioNativeBlock(context));
     }
 
-    /**
-     * Allows AudioEngine to update the AudioContext for this manager.
-     * @param newContext The new AudioContext, or null.
-     */
     public _setAudioContext(newContext: AudioContext | null): void {
         if (this.audioContext !== newContext) {
             if (this.managedNativeNodesRef.size > 0) {
                 console.log("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes.", true);
-                this.removeAllManagedNativeNodes(); // Clears the map and disconnects nodes
+                this.removeAllManagedNativeNodes();
             }
             this.audioContext = newContext;
-
-            // Update context for all handlers
             if (this.audioContext) {
-                // Initialize handlers if context was previously null
                 if (this.blockHandlers.size === 0) {
                     this.initializeBlockHandlers(this.audioContext);
                 } else {
@@ -127,16 +103,10 @@ export class NativeNodeManager implements INativeNodeManager {
                         handler.setAudioContext(this.audioContext);
                     }
                 }
-                // No longer need separate gainControlNativeBlock.setAudioContext call
-                // this.gainControlNativeBlock.setAudioContext(this.audioContext);
-
             } else {
-                // Context is null, clear handlers or set their context to null
                 for (const handler of this.blockHandlers.values()) {
                     handler.setAudioContext(null);
                 }
-                // No longer need separate gainControlNativeBlock.setAudioContext call
-                // this.gainControlNativeBlock.setAudioContext(null);
             }
             this.onStateChangeForReRender();
         }
@@ -156,20 +126,15 @@ export class NativeNodeManager implements INativeNodeManager {
             console.log(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
             return true;
         }
-
         try {
             const handler = this.blockHandlers.get(definition.id);
-
             if (handler) {
                 const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
                 this.managedNativeNodesRef.set(instanceId, nodeInfo);
-                // Initial parameters are typically applied by the handler's createNode or an initial call to updateNodeParams within it.
-                // However, we call updateManagedNativeNodeParams here to ensure consistency, especially if createNode doesn't apply all initial params.
                 this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
                 console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created via handler.`, true);
                 this.onStateChangeForReRender();
                 return true;
-            // Removed the specific 'else if (definition.id === GAIN_BLOCK_DEFINITION.id)' block
             } else {
                 console.log(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, true);
                 return false;
@@ -191,16 +156,11 @@ export class NativeNodeManager implements INativeNodeManager {
         if (!this.audioContext || this.audioContext.state !== 'running') return;
         const info = this.managedNativeNodesRef.get(instanceId);
         if (!info) return;
-
         const handler = this.blockHandlers.get(info.definition.id);
-
         if (handler) {
             handler.updateNodeParams(info, parameters, currentInputs, currentBpm);
             return;
         }
-        // Removed the specific fallback for GAIN_BLOCK_DEFINITION.id
-
-        // If no handler was found, log an error or handle as appropriate.
         console.warn(`[NativeManager Update] No handler found for definition ID '${info.definition.id}'. Update failed.`);
     }
 
@@ -223,7 +183,7 @@ export class NativeNodeManager implements INativeNodeManager {
         const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
         const now = this.audioContext.currentTime;
         constSourceNode.offset.cancelScheduledValues(now);
-        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now); // Use current value
+        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now);
         constSourceNode.offset.linearRampToValueAtTime(sustainLevel, now + attackTime);
     }
 
@@ -234,7 +194,7 @@ export class NativeNodeManager implements INativeNodeManager {
         const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
         const now = this.audioContext.currentTime;
         constSourceNode.offset.cancelScheduledValues(now);
-        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now); // Use current value
+        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now);
         constSourceNode.offset.linearRampToValueAtTime(0, now + releaseTime);
     }
 
@@ -269,7 +229,7 @@ export class NativeNodeManager implements INativeNodeManager {
 
     public removeAllManagedNativeNodes(): void {
         this.managedNativeNodesRef.forEach((_, instanceId) => {
-            this.removeManagedNativeNode(instanceId); // Call the class method
+            this.removeManagedNativeNode(instanceId);
         });
         console.log("[NativeManager] All managed native nodes removed.", true);
     }
@@ -284,5 +244,40 @@ export class NativeNodeManager implements INativeNodeManager {
 
     public getManagedNodesMap(): Map<string, ManagedNativeNodeInfo> {
         return this.managedNativeNodesRef;
+    }
+
+    // Public methods to match AudioEngineService calls
+    public removeNode(nodeId: string): void {
+        this.removeManagedNativeNode(nodeId);
+    }
+    public getNodeInfo(nodeId: string): ManagedNativeNodeInfo | undefined {
+        return this.managedNativeNodesRef.get(nodeId);
+    }
+    public getAllNodeInfo(): ManagedNativeNodeInfo[] {
+        return Array.from(this.managedNativeNodesRef.values());
+    }
+    public triggerEnvelope(nodeId: string, params: EnvelopeParams, triggerTime?: number): void {
+        // This is a generic envelope trigger. NativeNodeManager has specific AD and AR triggers.
+        // We need to decide which one to call or add a more generic one.
+        // For now, let's try to call AD envelope if decayTime is present, else log.
+        // This is a simplification and might need specific block definition check.
+        const info = this.managedNativeNodesRef.get(nodeId);
+        if (info && info.definition) {
+            if (info.definition.id === NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id && params.decayTime !== undefined && params.peakLevel !== undefined) {
+                this.triggerNativeNodeEnvelope(nodeId, params.attackTime, params.decayTime, params.peakLevel);
+            } else if (info.definition.id === NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id && params.releaseTime !== undefined && params.sustainLevel !== undefined) {
+                // AR logic is more gate-driven, not a simple one-shot trigger with these params.
+                // This mapping is imperfect. LogicExecutionService should call specific AD/AR methods.
+                console.warn(`triggerEnvelope called for AR block '${nodeId}', but AR is gate-driven. Use specific attack/release methods if applicable.`);
+                 // Attempting to map to an attack phase for simplicity for now if sustainLevel is available
+                if (params.sustainLevel !== undefined) {
+                     this.triggerNativeNodeAttackHold(nodeId, params.attackTime, params.sustainLevel);
+                }
+            } else {
+                 console.warn(`triggerEnvelope called for '${nodeId}' with unhandled params or block type for generic trigger.`);
+            }
+        } else {
+            console.warn(`triggerEnvelope called for unknown or non-native-envelope node '${nodeId}'.`);
+        }
     }
 }

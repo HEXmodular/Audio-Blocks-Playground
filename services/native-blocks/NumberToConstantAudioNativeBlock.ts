@@ -1,96 +1,86 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
 
-export class NumberToConstantAudioNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class NumberToConstantAudioNativeBlock implements CreatableNode {
+    private context: AudioContext;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[]
-        // currentBpm is not used
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for NumberToConstantAudioNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
 
-        const constSrcNode = this.audioContext.createConstantSource();
-        constSrcNode.offset.value = 0; // Initial value, will be updated based on input.
-        constSrcNode.start();
+        const constantSourceNode = this.context.createConstantSource();
+        constantSourceNode.offset.value = 0; // Initial value, will be updated by inputs/params
+        constantSourceNode.start();
 
-        // An internal gain node is used to connect the ConstantSourceNode to,
-        // and this internal gain node becomes the output. This matches the original structure.
-        // This might be for level scaling or simply as a connection point.
-        const internalGain = this.audioContext.createGain();
-        constSrcNode.connect(internalGain);
+        const gainNode = this.context.createGain();
+        constantSourceNode.connect(gainNode);
 
-        const paramTargets = new Map<string, AudioParam>();
-        // The 'gain' of the internalGain can be a parameter, as in the original.
-        // The actual value being converted is applied to constSrcNode.offset.
-        paramTargets.set('gain', internalGain.gain);
+        // Apply initial parameters (specifically gain)
+        const gainParam = initialParams.find(p => p.id === 'gain');
+        gainNode.gain.value = gainParam ? Number(gainParam.currentValue) : 1;
 
+        // No direct CV targets on ConstantSourceNode.offset via audioParamTarget convention.
+        // The 'number_in' input is handled by updateNodeParams.
+        const paramTargetsForCv = new Map<string, AudioParam>();
+        // If gain were CV controllable, it would be: paramTargetsForCv.set('gain', gainNode.gain);
 
         return {
-            nodeForInputConnections: internalGain, // Or constSrcNode? Original had input to internalGain. This seems like an output.
-                                                 // This block doesn't take audio input. It takes a number via `currentInputs` in `updateNodeParams`.
-                                                 // So, nodeForInputConnections is somewhat moot for audio.
-                                                 // Let's clarify: the internalGain is the output.
-                                                 // The NativeNodeManager used internalGain for both input and output connections for this block type.
-                                                 // This implies that while it doesn't process incoming audio, it might be part of a chain.
-            nodeForOutputConnections: internalGain,
-            mainProcessingNode: constSrcNode, // The ConstantSourceNode is the core element.
-            internalGainNode: internalGain,   // Store the internal gain.
-            constantSourceValueNode: constSrcNode, // Specific reference for this type.
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: constantSourceNode, // The ConstantSourceNode is the core processing node
+            nodeForInputConnections: constantSourceNode, // Inputs will update offset
+            nodeForOutputConnections: gainNode, // Output is from the gain node
+            mainProcessingNode: constantSourceNode,
+            internalGainNode: gainNode,
+            constantSourceValueNode: constantSourceNode, // Specific for NativeNodeManager to control offset
+            paramTargetsForCv,
+            definition,
+            instanceId,
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         parameters: BlockParameter[],
         currentInputs?: Record<string, any>
-        // currentBpm is not used
     ): void {
-        if (!this.audioContext || !info.constantSourceValueNode || !(info.constantSourceValueNode instanceof ConstantSourceNode) || !info.internalGainNode) {
-            console.warn(`[NumToConstAudio Update] AudioContext not ready or essential nodes not present for instance ${info.instanceId}.`);
-            return;
+        if (!this.context || !nodeInfo.constantSourceValueNode || !(nodeInfo.constantSourceValueNode instanceof ConstantSourceNode) || !nodeInfo.internalGainNode) return;
+
+        const constantSource = nodeInfo.constantSourceValueNode;
+        const gainNode = nodeInfo.internalGainNode;
+
+        const numberInValue = currentInputs?.['number_in'];
+        const gainParam = parameters.find(p => p.id === 'gain');
+        const maxExpectedInputParam = parameters.find(p => p.id === 'max_input_value');
+
+        if (gainParam) {
+            gainNode.gain.setTargetAtTime(Number(gainParam.currentValue), this.context.currentTime, 0.01);
         }
 
-        const constSrcNode = info.constantSourceValueNode as ConstantSourceNode;
-
-        // Handle parameters for the internal gain node, if any (like a master volume for this block)
-        parameters.forEach(param => {
-            const targetAudioParam = info.paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) { // This would be for the internalGain.gain
-                if (typeof param.currentValue === 'number') {
-                    targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                }
+        if (typeof numberInValue === 'number') {
+            let normalizedValue = numberInValue;
+            if (maxExpectedInputParam && Number(maxExpectedInputParam.currentValue) !== 0) {
+                normalizedValue = numberInValue / Number(maxExpectedInputParam.currentValue);
+                normalizedValue = Math.max(-1, Math.min(1, normalizedValue)); // Clamp to [-1, 1]
             }
-        });
-
-        // Handle the 'number_in' input which drives the ConstantSourceNode's offset
-        if (currentInputs && currentInputs.number_in !== undefined) {
-            const numberIn = Number(currentInputs.number_in);
-
-            // Determine the normalization range from parameters
-            const maxExpectedParam = parameters.find(p => p.id === 'max_input_value');
-            const maxExpected = maxExpectedParam ? Number(maxExpectedParam.currentValue) : 255; // Default from original code
-
-            // Normalize the input number to the range [-1, 1] for the ConstantSourceNode's offset
-            // This specific normalization logic ( (value / max) * 2 - 1 ) is from the original NativeNodeManager
-            let normalizedValue = maxExpected !== 0 ? (numberIn / maxExpected) * 2 - 1 : 0;
-            normalizedValue = Math.max(-1, Math.min(1, normalizedValue)); // Clamp to [-1, 1]
-
-            constSrcNode.offset.setTargetAtTime(normalizedValue, this.audioContext!.currentTime, 0.01);
+            constantSource.offset.setTargetAtTime(normalizedValue, this.context.currentTime, 0.01);
         }
     }
 
-    // connect and disconnect are inherited
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`NumberToConstantAudioNativeBlock.connect called directly. Connections handled by AudioGraphConnectorService.`);
+    }
+
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`NumberToConstantAudioNativeBlock.disconnect called directly. Connections handled by AudioGraphConnectorService/manager.`);
+    }
 }

@@ -1,6 +1,5 @@
-
-
 import type { WeightedPrompt as GenAIWeightedPrompt, LiveMusicGenerationConfig as GenAILiveMusicConfig } from '@google/genai';
+import { LiveMusicService } from '@services/LiveMusicService'; // Ensure this is the actual class
 
 // Re-export for easier usage within the app if needed directly
 export type WeightedPrompt = GenAIWeightedPrompt;
@@ -21,8 +20,6 @@ export interface BlockPort {
   name: string; 
   type: 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'any' | 'gate'; 
   description?: string;
-  // Optional field to explicitly map an audio input port to an AudioParam name
-  // This helps when port ID convention (e.g., 'freq_in' for AudioParam 'frequency') isn't direct
   audioParamTarget?: string; 
 }
 
@@ -34,19 +31,16 @@ interface BlockParameterBase {
   min?: number; 
   max?: number; 
   step?: number; 
-  defaultValue: any; // For 'step_sequencer_ui', this should be boolean[]
+  defaultValue: any;
   description?: string;
-  // Optional: For 'step_sequencer_ui', defines number of steps if not from defaultValue.length.
-  // If defaultValue is an array, steps should ideally match defaultValue.length.
-  // If defaultValue is not an array (e.g. error or initial setup), steps provides the explicit length.
   steps?: number; 
-  isFrequency?: boolean; // Optional hint for note parsing on number_inputs
+  isFrequency?: boolean;
 }
 
 export type BlockParameterDefinition = BlockParameterBase;
 
 export interface BlockParameter extends BlockParameterBase {
-  currentValue: any; // For 'step_sequencer_ui', this will be boolean[]
+  currentValue: any;
 }
 
 export interface BlockDefinition {
@@ -62,7 +56,7 @@ export interface BlockDefinition {
   audioWorkletProcessorName?: string; 
   audioWorkletCode?: string; 
   logicCodeTests?: string; 
-  isAiGenerated?: boolean; // Flag to identify AI-generated blocks
+  isAiGenerated?: boolean;
 }
 
 export interface BlockInstance {
@@ -83,7 +77,7 @@ export interface BlockInstance {
     configUpdateNeeded?: boolean;
     promptsUpdateNeeded?: boolean;
     trackMuteUpdateNeeded?: boolean;
-    lastScale?: any; // Consider more specific types if known
+    lastScale?: any;
     lastBrightness?: any;
     lastDensity?: any;
     lastSeed?: any;
@@ -98,17 +92,16 @@ export interface BlockInstance {
     lastMuteBass?: boolean;
     lastMuteDrums?: boolean;
     lastOnlyBassDrums?: boolean;
-    // New flags for logging
     loggedWorkletSystemNotReady?: boolean;
     loggedAudioSystemNotActive?: boolean;
-    [key: string]: any; // Allow other dynamic properties not explicitly typed
+    [key: string]: any;
   };
   lastRunOutputs: Record<string, any>; 
   modificationPrompts: string[]; 
   isRunning?: boolean; 
   error?: string | null; 
   audioWorkletNodeId?: string; 
-  lyriaServiceInstanceId?: string; // For Lyria Master block to reference its service
+  lyriaServiceInstanceId?: string;
 }
 
 export interface Connection {
@@ -130,14 +123,113 @@ export interface PendingConnection {
   fromInstanceId: string;
   fromPort: BlockPort;
   fromIsOutput: boolean;
-  startX: number; // Absolute X of the source port center, relative to SVG canvas
-  startY: number; // Absolute Y of the source port center, relative to SVG canvas
-  currentX: number; // Current mouse X, relative to SVG canvas
-  currentY: number; // Current mouse Y, relative to SVG canvas
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
 }
 
-// Standard AudioContextState type from DOM lib
 export type AudioContextState = "suspended" | "running" | "closed";
+
+export interface AudioDevice extends MediaDeviceInfo {
+  deviceId: string;
+  groupId: string;
+  kind: MediaDeviceKind;
+  label: string;
+  toJSON(): any;
+}
+
+export interface OutputDevice extends AudioDevice {
+  kind: 'audiooutput';
+}
+
+export interface AudioEngineState {
+  isAudioGloballyEnabled: boolean;
+  audioInitializationError: string | null;
+  availableOutputDevices: OutputDevice[];
+  selectedSinkId: string | null;
+  audioContextState: AudioContextState | null;
+  sampleRate: number | null;
+  status?: "initializing" | "running" | "suspended" | "closed" | "error";
+}
+
+export interface AudioNodeInfo {
+  id: string;
+  type: string;
+  inputs?: string[];
+  outputs?: string[];
+  params?: Record<string, any>;
+}
+
+export interface ManagedAudioWorkletNodeMessage {
+  type: string;
+  payload?: any;
+}
+
+export interface AudioWorkletNodeOptions {
+  numberOfInputs?: number;
+  numberOfOutputs?: number;
+  outputChannelCount?: number[];
+  parameterData?: Record<string, number>;
+  processorOptions?: any;
+}
+
+export interface EnvelopeParams {
+  attackTime: number;
+  decayTime?: number;
+  sustainLevel?: number;
+  releaseTime?: number;
+  peakLevel?: number;
+}
+
+export type ValueType = 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'gate' | 'any' | 'object' | 'array';
+
+export enum PlaybackState {
+  STOPPED = "STOPPED",
+  PLAYING = "PLAYING",
+  PAUSED = "PAUSED",
+  LOADING = "LOADING",
+  BUFFERING = "BUFFERING",
+  ERROR = "ERROR"
+}
+
+// Centralized Managed Node/Service Info Types
+export interface ManagedWorkletNodeInfo {
+  node: AudioWorkletNode;
+  inputGainNode?: GainNode | null;
+  definitionId?: string;
+  instanceId?: string;
+  definition: BlockDefinition;
+}
+
+export interface AllpassInternalNodes {
+    inputPassthroughNode: GainNode;
+    inputGain1: GainNode;
+    inputDelay: DelayNode;
+    feedbackGain: GainNode;
+    feedbackDelay: DelayNode;
+    summingNode: GainNode;
+}
+
+export interface ManagedNativeNodeInfo {
+    node: AudioNode;
+    nodeForInputConnections: AudioNode;
+    nodeForOutputConnections: AudioNode;
+    mainProcessingNode?: AudioNode;
+    internalGainNode?: GainNode;
+    allpassInternalNodes?: AllpassInternalNodes | null;
+    paramTargetsForCv?: Map<string, AudioParam>;
+    definition: BlockDefinition;
+    instanceId: string;
+    constantSourceValueNode?: ConstantSourceNode;
+}
+
+export interface ManagedLyriaServiceInfo {
+    instanceId: string;
+    service: LiveMusicService; // Now uses the actual imported class
+    outputNode: AudioNode;
+    definition?: BlockDefinition;
+}
 
 
 // Enums for Lyria Service Integration (matching those in LiveMusicService.ts)

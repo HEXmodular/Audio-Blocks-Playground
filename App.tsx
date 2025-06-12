@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BlockInstance, Connection, PendingConnection } from '@interfaces/common';
+import { BlockInstance, Connection, PendingConnection, BlockDefinition } from '@interfaces/common';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';
@@ -8,22 +8,19 @@ import {
     ALL_BLOCK_DEFINITIONS as CORE_BLOCK_DEFINITIONS_ARRAY,
 } from '@constants/constants';
 
-// import { getDefaultOutputValue } from './state/BlockStateManager'; // No longer used directly in App.tsx
 import { useBlockState } from '@context/BlockStateContext';
-import { audioEngineService } from '@services/AudioEngineService'; // Replaced useAudioEngine
-import { ConnectionDragHandler } from '@utils/ConnectionDragHandler'; // Changed import
-// import { useLogicExecutionEngine } from './hooks/useLogicExecutionEngine'; // Removed
-// import { LogicExecutionService } from '@services/LogicExecutionService'; // Removed as manager encapsulates it
+import { audioEngineService } from '@services/AudioEngineService';
+import { ConnectionDragHandler } from '@utils/ConnectionDragHandler';
 import { ConnectionState } from '@services/ConnectionState';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
 import { LogicExecutionEngineManager } from '@services/LogicExecutionEngineManager';
 import { GlobalAudioState, GlobalAudioStateSyncer } from '@services/GlobalAudioStateSyncer';
 import { AudioNodeManager } from '@services/AudioNodeManager';
 import { BlockInstanceController } from '@controllers/BlockInstanceController';
-// WorkspacePersistenceManager import removed
 
-const GRID_STEP = 20;
-const COMPACT_BLOCK_WIDTH = 120;
+// Unused variables commented out
+// const GRID_STEP = 20;
+// const COMPACT_BLOCK_WIDTH = 120;
 
 
 const App: React.FC = () => {
@@ -32,26 +29,23 @@ const App: React.FC = () => {
   const [isGeminiPanelOpen, setIsGeminiPanelOpen] = useState(false);
   const [isTestRunnerOpen, setIsTestRunnerOpen] = useState(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const [globalBpm, setGlobalBpm] = useState<number>(120);
 
   const {
     blockDefinitions: appBlockDefinitionsFromCtx,
     blockInstances: appBlockInstancesFromCtx,
     blockStateManager: ctxBlockStateManager,
-    updateBlockDefinition: ctxUpdateBlockDefinition,
-    getDefinitionById: ctxGetDefinitionById,
+    updateBlockDefinition: ctxUpdateBlockDefinition, // Keep for Gemini Panel
+    getDefinitionById: ctxGetDefinitionById, // Keep for Gemini Panel & Detail Panel (now from context)
   } = useBlockState();
 
-  // Instantiate GlobalAudioStateSyncer
   const globalAudioStateSyncer = useMemo(() => {
     return new GlobalAudioStateSyncer(audioEngineService);
-  }, [audioEngineService]); // Assuming audioEngineService is stable or memoized itself
+  }, []);
 
-  // Create new state in App.tsx to hold synced values
   const [syncedGlobalAudioState, setSyncedGlobalAudioState] = useState<GlobalAudioState>(globalAudioStateSyncer.currentState);
 
-  // Add a useEffect to subscribe to GlobalAudioStateSyncer
   useEffect(() => {
     const unsubscribe = globalAudioStateSyncer.subscribe(setSyncedGlobalAudioState);
     return () => {
@@ -59,14 +53,13 @@ const App: React.FC = () => {
     };
   }, [globalAudioStateSyncer]);
 
-  // Add a useEffect for cleanup of GlobalAudioStateSyncer
   useEffect(() => {
       return () => {
           globalAudioStateSyncer.dispose();
       };
   }, [globalAudioStateSyncer]);
 
-  const getDefinitionForBlock = useCallback((instance: BlockInstance) => {
+  const getDefinitionForBlock = useCallback((instance: BlockInstance): BlockDefinition | undefined => {
     return appBlockDefinitionsFromCtx.find(def => def.id === instance.definitionId);
   }, [appBlockDefinitionsFromCtx]);
 
@@ -80,14 +73,12 @@ const App: React.FC = () => {
 
   const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), []);
 
-  // New state variables for ConnectionDragHandler
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [draggedOverPort, setDraggedOverPort] = useState<{ instanceId: string; portId: string } | null>(null);
 
-  // Instantiate ConnectionDragHandler
   const connectionDragHandler = useMemo(() => {
     const handler = new ConnectionDragHandler({
-      svgRef,
+      svgRef: svgRef as React.RefObject<SVGSVGElement>,
       blockInstances: appBlockInstancesFromCtx,
       getDefinitionForBlock,
       updateConnections: connectionState.updateConnections,
@@ -97,18 +88,16 @@ const App: React.FC = () => {
       },
     });
     return handler;
-  }, [svgRef, appBlockInstancesFromCtx, getDefinitionForBlock, connectionState]);
+  }, [appBlockInstancesFromCtx, getDefinitionForBlock, connectionState]);
 
-  // Effect to dispose ConnectionDragHandler
   useEffect(() => {
     return () => {
       connectionDragHandler.dispose();
     };
   }, [connectionDragHandler]);
 
-  // Instantiate BlockInstanceController
   const blockInstanceController = useMemo(() => {
-    if (!ctxBlockStateManager || !audioEngineService || !connectionState) return null;
+    if (!ctxBlockStateManager || !connectionState) return null;
     return new BlockInstanceController(
       ctxBlockStateManager,
       audioEngineService,
@@ -117,19 +106,17 @@ const App: React.FC = () => {
       () => globalBpm,
       () => appBlockInstancesFromCtx
     );
-  }, [ctxBlockStateManager, audioEngineService, connectionState, globalBpm, appBlockInstancesFromCtx]);
-  // setSelectedInstanceId is stable from useState, so not strictly needed in deps unless its identity changes.
+  }, [ctxBlockStateManager, connectionState, globalBpm, appBlockInstancesFromCtx]);
 
   const logicExecutionEngineManager = useMemo(() => {
     if (ctxBlockStateManager) {
       return new LogicExecutionEngineManager(
         ctxBlockStateManager,
         getDefinitionForBlock
-        // audioEngineService removed as per new constructor
       );
     }
     return null;
-  }, [ctxBlockStateManager, getDefinitionForBlock]); // audioEngineService removed from deps if not used in constructor
+  }, [ctxBlockStateManager, getDefinitionForBlock]);
 
   useEffect(() => {
     if (logicExecutionEngineManager) {
@@ -137,8 +124,7 @@ const App: React.FC = () => {
         appBlockInstancesFromCtx,
         connections,
         globalBpm,
-        syncedGlobalAudioState.isAudioGloballyEnabled // Updated
-        // audioEngineService removed as per new method signature
+        syncedGlobalAudioState.isAudioGloballyEnabled
       );
     }
   }, [
@@ -146,17 +132,8 @@ const App: React.FC = () => {
     appBlockInstancesFromCtx,
     connections,
     globalBpm,
-    // audioEngineService, // No longer a direct dependency for this effect if not passed to updateCoreDependencies
-    syncedGlobalAudioState.isAudioGloballyEnabled // Specific state property
+    syncedGlobalAudioState.isAudioGloballyEnabled
   ]);
-// Note: audioEngineService might still be a dependency if logicExecutionEngineManager implicitly depends on it
-// through its own constructor or other methods not directly called here.
-// However, for the direct call to updateCoreDependencies, it's removed.
-// The useMemo for logicExecutionEngineManager *does* depend on audioEngineService if it uses it internally,
-// which it does, so audioEngineService should remain in *that* useMemo's dependency array if it's used by the manager's constructor.
-// The original change to LogicExecutionEngineManager was to use the *imported singleton* audioEngineService,
-// so it doesn't need it passed to its constructor anymore.
-// Thus, removing audioEngineService from the useMemo's dependency array for LogicExecutionEngineManager is correct.
 
   useEffect(() => {
     return () => {
@@ -166,41 +143,37 @@ const App: React.FC = () => {
     };
   }, [logicExecutionEngineManager]);
 
-  // Instantiate AudioNodeManager
   const audioNodeManager = useMemo(() => {
-    if (!ctxBlockStateManager || !ctxGetDefinitionById) return null; // Add null check for ctxGetDefinitionById
+    if (!ctxBlockStateManager || !ctxGetDefinitionById) return null;
     return new AudioNodeManager(audioEngineService, ctxBlockStateManager, ctxGetDefinitionById);
-  }, [audioEngineService, ctxBlockStateManager, ctxGetDefinitionById]); // Add ctxGetDefinitionById to dependency array
+  }, [ctxBlockStateManager, ctxGetDefinitionById]);
 
-  // Effect for audio node setup and teardown
   useEffect(() => {
-    if (!audioNodeManager) return;
+    if (!audioNodeManager || !audioEngineService.audioContext) return;
     const setupNodes = async () => {
       try {
         await audioNodeManager.processAudioNodeSetupAndTeardown(
           appBlockInstancesFromCtx,
           globalBpm,
           syncedGlobalAudioState.isAudioGloballyEnabled,
-          syncedGlobalAudioState.isWorkletSystemReady,
+          audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
           audioEngineService.audioContext
         );
       } catch (error) {
         console.error("Error during processAudioNodeSetupAndTeardown:", error);
-        // Optionally, you could set a global error state here if the app has one
-        // For example: setGlobalError("Failed to process audio nodes: " + (error as Error).message);
+        setGlobalError("Failed to process audio nodes: " + (error as Error).message);
       }
     };
     setupNodes();
   }, [
-    // audioNodeManager,
-    //appBlockInstancesFromCtx,
+    audioNodeManager,
+    appBlockInstancesFromCtx,
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
-    syncedGlobalAudioState.isWorkletSystemReady,
-    audioEngineService.audioContext, // Dependency for audio context state changes
+    audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+    audioEngineService.audioContext,
   ]);
 
-  // Effect for updating audio node parameters
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.updateAudioNodeParameters(
@@ -215,7 +188,6 @@ const App: React.FC = () => {
     globalBpm,
   ]);
 
-  // Effect for Lyria service updates
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.manageLyriaServiceUpdates(
@@ -230,7 +202,6 @@ const App: React.FC = () => {
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
 
-  // Effect for updating audio graph connections
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.updateAudioGraphConnections(
@@ -245,15 +216,10 @@ const App: React.FC = () => {
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
 
-  // WorkspacePersistenceManager instantiation moved to Toolbar.tsx
-  // handleImportWorkspaceTrigger removed from App.tsx (moved to Toolbar.tsx)
-
   const selectedBlockInstance = useMemo(() => {
     return appBlockInstancesFromCtx.find(b => b.instanceId === selectedInstanceId) || null;
   }, [appBlockInstancesFromCtx, selectedInstanceId]);
 
-  // Use syncedGlobalAudioState here, check for null initially before syncer hydrates.
-  // The syncer initializes state immediately, so audioContextState should be available after first render.
   if (!syncedGlobalAudioState.audioContextState && audioEngineService.audioContext === null) {
     return (
       <div className="flex flex-col h-screen bg-gray-900 text-gray-100 items-center justify-center">
@@ -274,23 +240,25 @@ const App: React.FC = () => {
         onToggleGeminiPanel={() => setIsGeminiPanelOpen(!isGeminiPanelOpen)}
         isGeminiPanelOpen={isGeminiPanelOpen}
         onToggleGlobalAudio={audioEngineService.toggleGlobalAudio}
-        isAudioGloballyEnabled={syncedGlobalAudioState.isAudioGloballyEnabled} // Updated
+        isAudioGloballyEnabled={syncedGlobalAudioState.isAudioGloballyEnabled}
         onToggleTestRunner={() => setIsTestRunnerOpen(!isTestRunnerOpen)}
-        // allBlockDefinitions prop removed as per previous subtask (managed by Toolbar's context)
-        // onExportWorkspace is now handled by Toolbar internally
-        // onImportWorkspace is now handled by Toolbar internally
         coreDefinitionIds={coreDefinitionIds}
-        // bpm prop renamed to globalBpm
-        // onBpmChange prop renamed to setGlobalBpm
-        availableOutputDevices={syncedGlobalAudioState.availableOutputDevices} // Updated
-        // selectedSinkId is passed directly
-        onSetOutputDevice={audioEngineService.setOutputDevice}
-        // Props for WorkspacePersistenceManager that Toolbar now needs:
+        availableOutputDevices={syncedGlobalAudioState.availableOutputDevices}
+        onSetOutputDevice={async (sinkId: string): Promise<boolean> => {
+          try {
+            await audioEngineService.setOutputDevice(sinkId);
+            return true;
+          } catch (error) {
+            console.error("Failed to set output device from Toolbar:", error);
+            setGlobalError(`Failed to set output device: ${(error as Error).message}`);
+            return false;
+          }
+        }}
         appBlockDefinitionsFromCtx={appBlockDefinitionsFromCtx}
         appBlockInstancesFromCtx={appBlockInstancesFromCtx}
         connections={connections}
         globalBpm={globalBpm}
-        selectedSinkId={syncedGlobalAudioState.selectedSinkId} // Pass selectedSinkId directly
+        selectedSinkId={syncedGlobalAudioState.selectedSinkId || ""}
         audioEngineService={audioEngineService}
         ctxBlockStateManager={ctxBlockStateManager}
         connectionState={connectionState}
@@ -300,7 +268,7 @@ const App: React.FC = () => {
       <main className="flex-grow pt-14 relative" id="main-workspace-area">
         <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">
           <ConnectionsRenderer
-            svgRef={svgRef}
+            svgRef={svgRef as React.RefObject<SVGSVGElement>}
             connections={connections}
             pendingConnection={pendingConnection}
             blockInstances={appBlockInstancesFromCtx}
@@ -315,9 +283,9 @@ const App: React.FC = () => {
             blockInstance={instance}
             isSelected={instance.instanceId === selectedInstanceId}
             getDefinitionForBlock={getDefinitionForBlock}
-            onSelect={setSelectedInstanceId}
+            onSelect={(id: string | null) => setSelectedInstanceId(id)}
             onUpdateInstancePosition={blockInstanceController?.updateInstance!}
-            onDeleteInstance={(instanceId) => blockInstanceController?.deleteInstance(instanceId, selectedInstanceId)}
+            onDeleteInstance={(instanceId: string) => blockInstanceController?.deleteInstance(instanceId, selectedInstanceId)}
             onStartConnectionDrag={connectionDragHandler.handleStartConnectionDrag}
             pendingConnectionSource={pendingConnection ? {instanceId: pendingConnection.fromInstanceId, portId: pendingConnection.fromPort.id} : null}
             draggedOverPort={draggedOverPort}
@@ -325,13 +293,10 @@ const App: React.FC = () => {
         ))}
       </main>
 
-      {selectedBlockInstance && (
+      {selectedBlockInstance && ctxBlockStateManager && (
         <BlockDetailPanel
           blockInstance={selectedBlockInstance}
-          getBlockDefinition={ctxGetDefinitionById}
-          onUpdateInstance={blockInstanceController?.updateInstance!}
-          onDeleteInstance={(instanceId) => blockInstanceController?.deleteInstance(instanceId, selectedInstanceId)}
-          allInstances={appBlockInstancesFromCtx}
+          // getBlockDefinition, onUpdateInstance, onDeleteInstance, allInstances are now sourced from context
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
            onUpdateConnections={connectionState.updateConnections}
@@ -343,14 +308,14 @@ const App: React.FC = () => {
         isOpen={isGeminiPanelOpen}
         onToggle={() => setIsGeminiPanelOpen(!isGeminiPanelOpen)}
         selectedBlockInstance={selectedBlockInstance}
-        getBlockDefinition={ctxGetDefinitionById}
+        // getBlockDefinition is now sourced from context
         onAddBlockFromGeneratedDefinition={(definition, instanceName) => {
           blockInstanceController?.addBlockFromDefinition(definition, instanceName);
           setIsGeminiPanelOpen(false);
         }}
-        onUpdateBlockLogicCode={(instanceId, newLogicCode, modificationPrompt) => {
+        onUpdateBlockLogicCode={(instanceId: string, newLogicCode: string, modificationPrompt: string) => {
           const instance = appBlockInstancesFromCtx.find(i => i.instanceId === instanceId);
-          if (instance && blockInstanceController) {
+          if (instance && blockInstanceController && ctxGetDefinitionById && ctxUpdateBlockDefinition) {
             const definition = ctxGetDefinitionById(instance.definitionId);
             if (definition) {
               ctxUpdateBlockDefinition(definition.id, { logicCode: newLogicCode });

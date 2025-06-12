@@ -94,8 +94,8 @@ describe('BlockStateManager Debouncing and Batching', () => {
     const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor
 
-    const newDef1: BlockDefinition = { id: 'test-def-1', name: 'Test Def 1', inputs: [], outputs: [], parameters: [], logicCode: '', category: 'custom', runsAtAudioRate: false, isAiGenerated: true };
-    const newDef2: BlockDefinition = { id: 'test-def-2', name: 'Test Def 2', inputs: [], outputs: [], parameters: [], logicCode: '', category: 'custom', runsAtAudioRate: false, isAiGenerated: true };
+    const newDef1: BlockDefinition = { id: 'test-def-1', name: 'Test Def 1', inputs: [], outputs: [], parameters: [], logicCode: '', runsAtAudioRate: false, isAiGenerated: true, initialPrompt: "Test prompt 1" };
+    const newDef2: BlockDefinition = { id: 'test-def-2', name: 'Test Def 2', inputs: [], outputs: [], parameters: [], logicCode: '', runsAtAudioRate: false, isAiGenerated: true, initialPrompt: "Test prompt 2" };
 
     bsm.addBlockDefinition(newDef1);
     bsm.addBlockDefinition(newDef2);

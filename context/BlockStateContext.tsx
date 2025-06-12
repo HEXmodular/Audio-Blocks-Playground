@@ -63,8 +63,10 @@ export const BlockStateProvider: React.FC<{ children: ReactNode }> = ({ children
     return blockStateManager.getDefinitionForBlock(definitionId);
   }, [blockStateManager]);
 
-  const addLogToBlockInstance = useCallback((instanceId: string, message: string, type?: 'info' | 'warning' | 'error') => {
-    blockStateManager.addLogToBlockInstance(instanceId, message, type);
+  const addLogToBlockInstance = useCallback((instanceId: string, message: string, _type?: 'info' | 'warning' | 'error') => {
+    // The 'type' parameter is not used by BlockStateManager.addLogToBlockInstance
+    // Pass only the required arguments. If type functionality is needed, BlockStateManager must be updated.
+    blockStateManager.addLogToBlockInstance(instanceId, message);
   }, [blockStateManager]);
 
   const value: BlockStateContextValues = {

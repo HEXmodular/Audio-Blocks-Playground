@@ -40,7 +40,7 @@ describe('AudioDeviceService', () => {
         };
         mockAudioContextInstance = {
             setSinkId: jest.fn().mockResolvedValue(undefined),
-            destination: { type: 'default-destination' } as AudioDestinationNode,
+            destination: { type: 'default-destination' } as unknown as AudioDestinationNode,
         };
     });
 

@@ -1,20 +1,38 @@
 import { AudioGraphConnectorService, ActiveWebAudioConnection } from '@services/AudioGraphConnectorService';
-import { Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
-import { ManagedWorkletNodeInfo } from '@hooks/useAudioWorkletManager';
-import { ManagedNativeNodeInfo } from '@hooks/useNativeNodeManager';
-import { ManagedLyriaServiceInfo } from '@hooks/hooks/useLyriaServiceManager';
+import {
+    Connection,
+    BlockInstance,
+    BlockDefinition,
+    ManagedWorkletNodeInfo, // Now from common
+    ManagedNativeNodeInfo,  // Now from common
+    ManagedLyriaServiceInfo // Now from common
+} from '@interfaces/common';
 import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION, AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 
 // Helper to create mock AudioNode
-const createMockAudioNode = (name: string = 'node') => ({
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    parameters: new Map<string, AudioParam>(),
-    gain: { value: 0, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
-    frequency: { value: 440, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
-    delayTime: { value: 0, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
-    _name: name,
-});
+const createMockAudioNode = (name: string = 'node') => {
+    const node = {
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+        parameters: new Map<string, AudioParam>(),
+        gain: { value: 0, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
+        frequency: { value: 440, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
+        delayTime: { value: 0, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } as unknown as AudioParam,
+        _name: name,
+        // Adding missing AudioNode properties
+        channelCount: 2,
+        channelCountMode: 'explicit' as ChannelCountMode,
+        channelInterpretation: 'speakers' as ChannelInterpretation,
+        context: null as any, // Should be set to a mock AudioContext if needed by tests
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        dispatchEvent: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+    };
+    // node.context = mockAudioContextInstance or similar if a global mock context is available
+    return node;
+};
 
 // Helper to create mock AudioParam
 const createMockAudioParam = (name: string = 'param') => ({
@@ -77,11 +95,11 @@ describe('AudioGraphConnectorService', () => {
             targetAudioNode.parameters.set('gain', targetAudioParam);
         }
 
-        const sourceDef: BlockDefinition = { id: 'sourceDef', name: 'Source', inputs: [], outputs: sourceDefOutputs, logicCode: '', audioWorkletProcessorName: sourceType === 'worklet' ? 'source-proc' : undefined };
-        const targetDef: BlockDefinition = { id: 'targetDef', name: 'Target', inputs: targetDefInputs, outputs: [], logicCode: '', audioWorkletProcessorName: targetType === 'worklet' ? 'target-proc' : undefined };
+        const sourceDef: BlockDefinition = { id: 'sourceDef', name: 'Source', inputs: [], outputs: sourceDefOutputs, parameters: [], logicCode: '', initialPrompt: '', audioWorkletProcessorName: sourceType === 'worklet' ? 'source-proc' : undefined };
+        const targetDef: BlockDefinition = { id: 'targetDef', name: 'Target', inputs: targetDefInputs, outputs: [], parameters: [], logicCode: '', initialPrompt: '', audioWorkletProcessorName: targetType === 'worklet' ? 'target-proc' : undefined };
 
-        const sourceInstance: BlockInstance = { instanceId: 'source1', definitionId: 'sourceDef', name: 'Source 1', x:0,y:0, parameters: [], internalState: {} };
-        const targetInstance: BlockInstance = { instanceId: 'target1', definitionId: 'targetDef', name: 'Target 1', x:100,y:0, parameters: [], internalState: {} };
+        const sourceInstance: BlockInstance = { instanceId: 'source1', definitionId: 'sourceDef', name: 'Source 1', position: { x:0, y:0 }, parameters: [], internalState: {}, logs: [], modificationPrompts: [], lastRunOutputs: {} };
+        const targetInstance: BlockInstance = { instanceId: 'target1', definitionId: 'targetDef', name: 'Target 1', position: { x:100, y:0 }, parameters: [], internalState: {}, logs: [], modificationPrompts: [], lastRunOutputs: {} };
 
         blockInstances.push(sourceInstance, targetInstance);
 
@@ -92,17 +110,17 @@ describe('AudioGraphConnectorService', () => {
         });
 
         if (sourceType === 'worklet') {
-            mockManagedWorkletNodes.set('source1', { node: sourceAudioNode as any, inputGainNode: null as any });
+            mockManagedWorkletNodes.set('source1', { node: sourceAudioNode as any, inputGainNode: null as any, definition: sourceDef, instanceId: 'source1' });
         } else if (sourceType === 'native') {
-            mockManagedNativeNodes.set('source1', { node: null as any, nodeForInputConnections: null as any, nodeForOutputConnections: sourceAudioNode as any, paramTargetsForCv: new Map(), allpassInternalNodes: null });
+            mockManagedNativeNodes.set('source1', { node: sourceAudioNode as any, nodeForInputConnections: sourceAudioNode as any, nodeForOutputConnections: sourceAudioNode as any, paramTargetsForCv: new Map(), allpassInternalNodes: null, definition: sourceDef, instanceId: 'source1' });
         } else { // lyria
-            mockManagedLyriaServices.set('source1', { outputNode: sourceAudioNode as any, service: null as any });
+            mockManagedLyriaServices.set('source1', { outputNode: sourceAudioNode as any, service: null as any, instanceId: 'source1', definition: sourceDef });
         }
 
         if (targetType === 'worklet') {
-            mockManagedWorkletNodes.set('target1', { node: targetAudioNode as any, inputGainNode: null as any });
+            mockManagedWorkletNodes.set('target1', { node: targetAudioNode as any, inputGainNode: null as any, definition: targetDef, instanceId: 'target1' });
         } else { // native
-            mockManagedNativeNodes.set('target1', { node: targetAudioNode as any, nodeForInputConnections: targetAudioNode as any, nodeForOutputConnections: null as any, paramTargetsForCv: targetIsParam ? new Map([['gain', targetAudioParam]]) : new Map(), allpassInternalNodes: null });
+            mockManagedNativeNodes.set('target1', { node: targetAudioNode as any, nodeForInputConnections: targetAudioNode as any, nodeForOutputConnections: targetAudioNode as any, paramTargetsForCv: targetIsParam ? new Map([['gain', targetAudioParam]]) : new Map(), allpassInternalNodes: null, definition: targetDef, instanceId: 'target1' });
         }
 
         return { sourceAudioNode, targetAudioNode, targetAudioParam, sourceInstance, targetInstance };
@@ -193,27 +211,33 @@ describe('AudioGraphConnectorService', () => {
             const allpassInternalInputGain1 = createMockAudioNode('allpassInputGain1');
             const allpassInternalPassthrough = createMockAudioNode('allpassPassthrough');
 
-            const sourceDef: BlockDefinition = { id: 'sourceDef', name: 'Source', inputs: [], outputs: [{id: 'out', name: 'Out', type: 'audio'}], logicCode: '' };
+            // Fix for TS2739 on line 200 (original)
+            const sourceDef: BlockDefinition = { id: 'sourceDef', name: 'Source', inputs: [], outputs: [{id: 'out', name: 'Out', type: 'audio'}], parameters: [], logicCode: '', initialPrompt: '' };
             const allpassDef: BlockDefinition = NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION; // Use actual definition
 
-            const sourceInstance: BlockInstance = { instanceId: 'sourceAllpass', definitionId: 'sourceDef', name: 'SA', x:0,y:0,parameters:[], internalState:{} };
-            const allpassInstance: BlockInstance = { instanceId: 'allpass1', definitionId: allpassDef.id, name: 'AP1', x:0,y:0,parameters:[], internalState:{} };
+            const sourceInstance: BlockInstance = { instanceId: 'sourceAllpass', definitionId: 'sourceDef', name: 'SA', position: {x:0,y:0}, parameters:[], internalState:{}, logs: [], modificationPrompts: [], lastRunOutputs: {} };
+            const allpassInstance: BlockInstance = { instanceId: 'allpass1', definitionId: allpassDef.id, name: 'AP1', position: {x:0,y:0}, parameters:[], internalState:{}, logs: [], modificationPrompts: [], lastRunOutputs: {} };
 
             blockInstances.push(sourceInstance, allpassInstance);
             getDefinitionForBlock.mockImplementation(inst => inst.definitionId === 'sourceDef' ? sourceDef : (inst.definitionId === allpassDef.id ? allpassDef : undefined));
 
-            mockManagedWorkletNodes.set(sourceInstance.instanceId, { node: sourceAudioNode as any, inputGainNode: null as any });
+            mockManagedWorkletNodes.set(sourceInstance.instanceId, { node: sourceAudioNode as any, inputGainNode: null as any, definition: sourceDef, instanceId: sourceInstance.instanceId });
             mockManagedNativeNodes.set(allpassInstance.instanceId, {
-                node: createMockAudioNode('allpassMain') as any, // Main node
-                nodeForInputConnections: null as any, // Not used in this path
+                node: createMockAudioNode('allpassMain') as any,
+                nodeForInputConnections: allpassInternalInputGain1 as any, // Corrected: Should be a specific input point
                 nodeForOutputConnections: createMockAudioNode('allpassOutput') as any,
+                mainProcessingNode: createMockAudioNode('allpassMain') as any,
                 paramTargetsForCv: new Map(),
                 allpassInternalNodes: {
                     inputGain1: allpassInternalInputGain1 as any,
                     inputPassthroughNode: allpassInternalPassthrough as any,
                     feedbackGain: createMockAudioNode('allpassFeedback') as any,
                     inputDelay: createMockAudioNode('allpassDelay') as any,
-                }
+                    feedbackDelay: createMockAudioNode('allpassFeedbackDelay') as any, // Added missing property
+                    summingNode: createMockAudioNode('allpassSumming') as any,       // Added missing property
+                },
+                definition: allpassDef,
+                instanceId: allpassInstance.instanceId,
             });
 
             connections.push({ id: 'c_allpass', fromInstanceId: sourceInstance.instanceId, fromOutputId: 'out', toInstanceId: allpassInstance.instanceId, toInputId: 'audio_in' });

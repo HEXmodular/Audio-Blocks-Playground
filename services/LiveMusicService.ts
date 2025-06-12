@@ -1,4 +1,3 @@
-
 /**
  * This service provides an interface to a real-time AI music generation backend, likely Google's Lyria model.
  * It manages the connection lifecycle to the `LiveMusicSession`, handling setup, message exchange, errors, and session closure.
@@ -10,6 +9,7 @@
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value
 import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig } from '@google/genai';
+import { PlaybackState } from '@interfaces/common'; // Import PlaybackState ENUM
 import { decode, decodeAudioData } from '@utils/utils';
 import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utility
 
@@ -41,11 +41,10 @@ export enum MusicGenerationMode {
   // Add other modes as needed
 }
 
-
-export type PlaybackState = 'stopped' | 'playing' | 'loading' | 'paused';
+// Removed local PlaybackState type alias, will use enum from common.ts
 
 export interface LiveMusicServiceCallbacks {
-  onPlaybackStateChange: (newState: PlaybackState) => void;
+  onPlaybackStateChange: (newState: PlaybackState) => void; // Uses imported enum
   onFilteredPrompt: (filteredPrompt: { text: string; filteredReason: string }) => void;
   onSetupComplete: () => void; // This is called when setup is complete from server message
   onError: (error: string) => void;
@@ -83,7 +82,7 @@ export class LiveMusicService {
   private nextStartTime = 0;
   private readonly bufferTime = 2; // Audio buffer in seconds for network latency
   private connectionError = false;
-  private currentPlaybackState: PlaybackState = 'stopped';
+  private currentPlaybackState: PlaybackState = PlaybackState.STOPPED; // Use enum
   private musicConfig: LiveMusicGenerationConfig; // This uses @google/genai type
   private localMusicMode: MusicGenerationMode = MusicGenerationMode.QUALITY; // Store mode locally if needed for custom logic
 
@@ -173,14 +172,14 @@ export class LiveMusicService {
         return this.setupCompletePromise;
     }
 
-    if (this.session && !this.connectionError && (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'playing')) {
+    if (this.session && !this.connectionError && (this.currentPlaybackState === PlaybackState.PAUSED || this.currentPlaybackState === PlaybackState.PLAYING)) {
         console.warn('[LiveMusicService connect] Already connected and in a stable state.');
         this.callbacks.onSetupComplete();
         return Promise.resolve();
     }
 
     console.log('[LiveMusicService connect] Starting new connection process.');
-    this.setPlaybackState('loading');
+    this.setPlaybackState(PlaybackState.LOADING);
     this.connectionError = false;
 
     this.setupCompletePromise = new Promise<void>((resolve, reject) => {
@@ -203,7 +202,7 @@ export class LiveMusicService {
     } catch (error: any) {
       console.error('[LiveMusicService connect] Failed to establish LiveMusicSession:', error);
       this.connectionError = true;
-      this.setPlaybackState('stopped');
+      this.setPlaybackState(PlaybackState.STOPPED);
       this.callbacks.onError(`Connection failed: ${error.message || 'Unknown error'}`);
       if (this.rejectSetupComplete) {
         this.rejectSetupComplete(error);
@@ -248,15 +247,15 @@ export class LiveMusicService {
     this.resolveSetupComplete = null;
     this.rejectSetupComplete = null;
 
-    if (this.currentPlaybackState === 'loading') {
-       this.setPlaybackState('paused');
+    if (this.currentPlaybackState === PlaybackState.LOADING) {
+       this.setPlaybackState(PlaybackState.PAUSED);
     }
   }
 
   private async _handleAudioChunksMessage(audioChunks: NonNullable<NonNullable<LiveMusicServerMessage['serverContent']>['audioChunks']>) {
     if (audioChunks.length > 0) {
       console.log(`[LiveMusicService _handleAudioChunksMessage] Received ${audioChunks.length} audio chunk(s). Current playback state: ${this.currentPlaybackState}`);
-      if (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'stopped') {
+      if (this.currentPlaybackState === PlaybackState.PAUSED || this.currentPlaybackState === PlaybackState.STOPPED) {
         console.log(`[LiveMusicService _handleAudioChunksMessage] Discarding audio chunk because playback state is ${this.currentPlaybackState}.`);
         return;
       }
@@ -292,15 +291,15 @@ export class LiveMusicService {
           console.log(`[LiveMusicService _handleAudioChunksMessage] First chunk. Scheduling to start at: ${this.nextStartTime.toFixed(3)} (current: ${currentTime.toFixed(3)})`);
         } else if (this.nextStartTime < currentTime) {
           console.warn(`[LiveMusicService _handleAudioChunksMessage] Buffer underrun. NextStartTime: ${this.nextStartTime.toFixed(3)}, CurrentTime: ${currentTime.toFixed(3)}. Re-buffering.`);
-          this.setPlaybackState('loading'); // Indicate re-buffering
+          this.setPlaybackState(PlaybackState.LOADING); // Indicate re-buffering
           this.nextStartTime = currentTime + this.bufferTime;
           this.callbacks.onError('Audio buffer underrun, re-buffering.');
         }
 
         source.start(this.nextStartTime);
 
-        if (this.currentPlaybackState === 'loading') {
-            this.setPlaybackState('playing');
+        if (this.currentPlaybackState === PlaybackState.LOADING) {
+            this.setPlaybackState(PlaybackState.PLAYING);
         }
         console.log(`[LiveMusicService _handleAudioChunksMessage] Scheduled audio chunk to play at ${this.nextStartTime.toFixed(3)}. Next chunk will start at ${ (this.nextStartTime + audioBuffer.duration).toFixed(3)}.`);
         this.nextStartTime += audioBuffer.duration;
@@ -334,7 +333,7 @@ export class LiveMusicService {
   private handleError(e: ErrorEvent) {
     console.error('[LiveMusicService handleError]', e);
     this.connectionError = true;
-    this.setPlaybackState('stopped');
+    this.setPlaybackState(PlaybackState.STOPPED);
     this.callbacks.onError(`Session error: ${e.message || 'Unknown error from session'}`);
 
     if (this.rejectSetupComplete) {
@@ -351,9 +350,9 @@ export class LiveMusicService {
         return;
     }
 
-    const isConnectingOrActiveDuringOldClose = this.currentPlaybackState === 'loading' ||
-                                               this.currentPlaybackState === 'paused' ||
-                                               this.currentPlaybackState === 'playing';
+    const isConnectingOrActiveDuringOldClose = this.currentPlaybackState === PlaybackState.LOADING ||
+                                               this.currentPlaybackState === PlaybackState.PAUSED ||
+                                               this.currentPlaybackState === PlaybackState.PLAYING;
 
     if (e.wasClean && e.code === 0 && this.session !== null && isConnectingOrActiveDuringOldClose && !this.isReconnecting) {
       // Clean close of an old session, minimal action needed
@@ -373,7 +372,7 @@ export class LiveMusicService {
         this.callbacks.onClose(`Session closed. Code: ${e.code}, Reason: ${e.reason || 'OK'}`);
     }
 
-    if (this.currentPlaybackState === 'loading' && isUnexpectedClose && this.rejectSetupComplete) {
+    if (this.currentPlaybackState === PlaybackState.LOADING && isUnexpectedClose && this.rejectSetupComplete) {
         this.rejectSetupComplete(new Error(`Session closed unexpectedly during connection: ${e.code} ${e.reason}`));
     }
     this.resolveSetupComplete = null;
@@ -389,7 +388,7 @@ export class LiveMusicService {
       }
       return;
     }
-    if (this.currentPlaybackState === 'loading' && !this.isReconnecting) {
+    if (this.currentPlaybackState === PlaybackState.LOADING && !this.isReconnecting) {
         console.warn(`[LiveMusicService setWeightedPrompts] Called while state is ${this.currentPlaybackState}. Prompts might not apply immediately if still connecting.`);
     }
 
@@ -432,7 +431,7 @@ export class LiveMusicService {
     console.log('[LiveMusicService setMusicGenerationConfig] Effective config to send:', configToSendToService);
 
 
-    if (this.session && !this.connectionError && (this.currentPlaybackState === 'playing' || this.currentPlaybackState === 'paused' || this.isReconnecting)) {
+    if (this.session && !this.connectionError && (this.currentPlaybackState === PlaybackState.PLAYING || this.currentPlaybackState === PlaybackState.PAUSED || this.isReconnecting)) {
       try {
         await this.session.setMusicGenerationConfig({ musicGenerationConfig: configToSendToService });
         console.log('[LiveMusicService setMusicGenerationConfig] Config sent successfully.');
@@ -459,8 +458,8 @@ export class LiveMusicService {
     } catch (err: any) {
         console.error("[LiveMusicService play] AudioContext resume failed:", err);
         this.callbacks.onError(`Could not resume audio context: ${err.message}`);
-        if (this.currentPlaybackState !== 'stopped') {
-            this.setPlaybackState('stopped');
+        if (this.currentPlaybackState !== PlaybackState.STOPPED) {
+            this.setPlaybackState(PlaybackState.STOPPED);
         }
         return;
     }
@@ -468,7 +467,7 @@ export class LiveMusicService {
     let justConnected = false;
     if (!this.isConnected()) {
         console.log('[LiveMusicService play] Not connected. Attempting to connect...');
-        this.setPlaybackState('loading');
+        this.setPlaybackState(PlaybackState.LOADING);
         try {
             await this.connect();
             if (!this.isConnected()) {
@@ -488,8 +487,8 @@ export class LiveMusicService {
     if (!this.session || this.connectionError) {
         console.warn('[LiveMusicService play] Cannot play, session unavailable or connection error.');
         this.callbacks.onError('Cannot play: session not available or in error state.');
-        if (this.currentPlaybackState !== 'stopped') {
-            this.setPlaybackState('stopped');
+        if (this.currentPlaybackState !== PlaybackState.STOPPED) {
+            this.setPlaybackState(PlaybackState.STOPPED);
         }
         return;
     }
@@ -508,17 +507,17 @@ export class LiveMusicService {
     }
 
 
-    if (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'stopped') {
+    if (this.currentPlaybackState === PlaybackState.PAUSED || this.currentPlaybackState === PlaybackState.STOPPED) {
         console.log(`[LiveMusicService play] Calling session.play(). Current state before session.play(): ${this.currentPlaybackState}`);
         this.session.play();
-        this.setPlaybackState('loading'); // Now waiting for audio chunks
+        this.setPlaybackState(PlaybackState.LOADING); // Now waiting for audio chunks
         this.nextStartTime = 0; // Reset for buffering
         this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
         this.outputNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Start from 0 for fade-in
         this.outputNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.2);
-    } else if (this.currentPlaybackState === 'playing') {
+    } else if (this.currentPlaybackState === PlaybackState.PLAYING) {
         console.warn(`[LiveMusicService play] Already playing. Command ignored.`);
-    } else if (this.currentPlaybackState === 'loading' && !justConnected) {
+    } else if (this.currentPlaybackState === PlaybackState.LOADING && !justConnected) {
         console.warn(`[LiveMusicService play] Already loading (and not just connected). Play command potentially redundant.`);
     } else {
          console.warn(`[LiveMusicService play] Not initiating playback due to unexpected state. State: ${this.currentPlaybackState}, justConnected: ${justConnected}.`);
@@ -542,8 +541,8 @@ export class LiveMusicService {
 
   pause() {
     console.log(`[LiveMusicService pause] Pause called. Current state: ${this.currentPlaybackState}`);
-    if (this.currentPlaybackState !== 'playing' && this.currentPlaybackState !== 'loading') {
-        if (this.currentPlaybackState === 'paused' || this.currentPlaybackState === 'stopped') {
+    if (this.currentPlaybackState !== PlaybackState.PLAYING && this.currentPlaybackState !== PlaybackState.LOADING) {
+        if (this.currentPlaybackState === PlaybackState.PAUSED || this.currentPlaybackState === PlaybackState.STOPPED) {
             console.log(`[LiveMusicService pause] Already ${this.currentPlaybackState}. No action.`);
             return;
         }
@@ -557,7 +556,7 @@ export class LiveMusicService {
         console.warn("[LiveMusicService pause] Error calling session.pause():", e.message);
       }
     }
-    this.setPlaybackState('paused');
+    this.setPlaybackState(PlaybackState.PAUSED);
     if (this.outputNode) {
         try {
             this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
@@ -572,7 +571,7 @@ export class LiveMusicService {
 
   private stopInternally(shouldStopSession: boolean) {
     console.log(`[LiveMusicService stopInternally] Called. shouldStopSession: ${shouldStopSession}, Current state: ${this.currentPlaybackState}, IsReconnecting: ${this.isReconnecting}`);
-    const wasPlayingOrLoading = this.currentPlaybackState === 'playing' || this.currentPlaybackState === 'loading';
+    const wasPlayingOrLoading = this.currentPlaybackState === PlaybackState.PLAYING || this.currentPlaybackState === PlaybackState.LOADING;
 
     if (shouldStopSession && this.session) {
         try {
@@ -582,7 +581,7 @@ export class LiveMusicService {
             console.warn("[LiveMusicService stopInternally] Error stopping session:", e.message);
         }
     }
-    this.setPlaybackState('stopped');
+    this.setPlaybackState(PlaybackState.STOPPED);
      if (this.outputNode) {
         try {
             this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
@@ -637,7 +636,7 @@ export class LiveMusicService {
         this.session = null;
     }
     
-    this.setPlaybackState('stopped'); 
+    this.setPlaybackState(PlaybackState.STOPPED);
     if (this.outputNode) {
         try {
             this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);

@@ -235,7 +235,7 @@ Please analyze the failures and provide a corrected logicCode that passes the te
                     systemInstruction: GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_LOGIC_CODE,
                 },
             });
-            const parsedJson = parseJsonFromGeminiResponse(response.text);
+            const parsedJson = parseJsonFromGeminiResponse(response.text || "");
             if (!parsedJson || typeof parsedJson.fixedLogicCode !== 'string') {
                 throw new Error("Generated JSON for code fix is missing 'fixedLogicCode'.");
             }
@@ -297,7 +297,7 @@ Please analyze the logicCode, the original prompt, and the test issues. Provide 
                     systemInstruction: GEMINI_SYSTEM_PROMPT_FOR_TEST_FIXING_TEST_CODE,
                 },
             });
-            const parsedJson = parseJsonFromGeminiResponse(response.text);
+            const parsedJson = parseJsonFromGeminiResponse(response.text || "");
             if (!parsedJson || typeof parsedJson.fixedLogicCodeTests !== 'string') {
                 throw new Error("Generated JSON for test fix is missing 'fixedLogicCodeTests'.");
             }
@@ -338,7 +338,7 @@ export async function generateBlockDefinitionWithTesting(
           systemInstruction: GEMINI_SYSTEM_PROMPT_FOR_BLOCK_DEFINITION,
         },
       });
-      initialDefinitionJson = parseJsonFromGeminiResponse(response.text);
+      initialDefinitionJson = parseJsonFromGeminiResponse(response.text || "");
       console.log("[DEBUG] Gemini generated initial BlockDefinition JSON:", JSON.stringify(initialDefinitionJson, null, 2));
       break; 
     } catch (error) {
@@ -565,10 +565,10 @@ User request for modification: "${userPromptForModification}"
         }
       });
       
-      const parsedJson = parseJsonFromGeminiResponse(response.text);
+      const parsedJson = parseJsonFromGeminiResponse(response.text || "");
       
       if (!parsedJson || typeof parsedJson.modifiedLogicCode !== 'string') {
-        console.error("Generated JSON for code modification missing 'modifiedLogicCode' string field:", parsedJson, "Raw response text:", response.text);
+        console.error("Generated JSON for code modification missing 'modifiedLogicCode' string field:", parsedJson, "Raw response text:", response.text || "");
         throw new Error("Generated JSON for code modification is missing or has an invalid 'modifiedLogicCode' field.");
       }
       

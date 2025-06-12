@@ -8,7 +8,7 @@
  */
 // services/AudioNodeManager.ts
 import { AudioEngineService } from './AudioEngineService';
-import { BlockInstance, BlockDefinition, Connection, ValueType } from '@interfaces/common';
+import { BlockInstance, BlockDefinition, Connection, ValueType, PlaybackState } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // Adjust path
 import {
     LYRIA_MASTER_BLOCK_DEFINITION,
@@ -34,8 +34,9 @@ export class AudioNodeManager {
     private updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
         this.blockStateManager.updateBlockInstance(instanceId, updates);
     }
-    private addLog(instanceId: string, message: string, type: 'info' | 'warn' | 'error' = 'info') {
-        this.blockStateManager.addLogToBlockInstance(instanceId, message, type);
+    private addLog(instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info') {
+        // _type is not used by BlockStateManager.addLogToBlockInstance
+        this.blockStateManager.addLogToBlockInstance(instanceId, message);
     }
     private getDefinition(instance: BlockInstance): BlockDefinition | undefined {
         return this.getDefinitionByIdCallback(instance.definitionId);
@@ -230,9 +231,9 @@ export class AudioNodeManager {
                         const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
                         if (conn) {
                             const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
-                            currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                            currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
                         } else {
-                             currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                             currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(inputPort.type);
                         }
                     }
                 }
@@ -259,7 +260,7 @@ export class AudioNodeManager {
 
             const service = this.audioEngineService.lyriaServiceManager.getLyriaServiceInstance(instance.instanceId);
             const servicePlaybackState = service?.getPlaybackState();
-            const isServiceEffectivelyPlaying = servicePlaybackState === 'playing' || servicePlaybackState === 'loading';
+            const isServiceEffectivelyPlaying = servicePlaybackState === PlaybackState.PLAYING || servicePlaybackState === PlaybackState.LOADING;
 
             // Auto-play logic
             if (instance.internalState.lyriaServiceReady &&
@@ -302,9 +303,9 @@ export class AudioNodeManager {
                     const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
                     if (conn) {
                         const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
-                        blockInputs[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                        blockInputs[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
                     } else {
-                        blockInputs[inputPort.id] = getDefaultOutputValue(this.blockStateManager, inputPort.type as ValueType);
+                        blockInputs[inputPort.id] = getDefaultOutputValue(inputPort.type);
                     }
                 });
 

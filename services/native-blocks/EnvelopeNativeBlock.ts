@@ -1,85 +1,63 @@
-import { BlockDefinition, BlockParameter } from '@interfaces/common';
-import { ManagedNativeNodeInfo } from '@services/NativeNodeManager';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { CreatableNode } from './CreatableNode';
-// NATIVE_AD_ENVELOPE_BLOCK_DEFINITION and NATIVE_AR_ENVELOPE_BLOCK_DEFINITION
-// are used for registration in NativeNodeManager, not directly in this file usually.
 
-export class EnvelopeNativeBlock extends CreatableNode {
-    constructor(audioContext: AudioContext | null) {
-        super(audioContext);
+export class EnvelopeNativeBlock implements CreatableNode {
+    private context: AudioContext;
+
+    constructor(context: AudioContext) {
+        this.context = context;
+    }
+
+    setAudioContext(context: AudioContext | null): void {
+        this.context = context!;
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[]
-        // currentBpm is not used by ConstantSourceNode for envelopes
+        initialParams: BlockParameter[] // initialParams might be used if envelope has initial settings not covered by ADSR values
     ): ManagedNativeNodeInfo {
-        if (!this.audioContext) {
-            throw new Error("AudioContext is not initialized for EnvelopeNativeBlock.");
-        }
+        if (!this.context) throw new Error("AudioContext not initialized");
+        const constSourceNode = this.context.createConstantSource();
+        constSourceNode.offset.value = 0; // Envelopes typically start at 0
+        constSourceNode.start(); // Start the source so it can be ramped
 
-        const constSource = this.audioContext.createConstantSource();
-        constSource.offset.value = 0; // Initial value for an envelope is typically 0
-        constSource.start();
-
-        // Envelopes (AD/AR) typically don't expose AudioParams like 'frequency' or 'gain' for direct CV control.
-        // Their parameters (attack, decay, release, level) are used by the trigger methods.
-        const paramTargets = new Map<string, AudioParam>();
-        // We could potentially expose constSource.offset if direct CV control of the envelope's output level is desired,
-        // but standard envelope usage implies triggers manipulate this. For now, keeping it simple.
-        // paramTargets.set('offset', constSource.offset);
-
+        // No direct AudioParam targets for CV for typical AD/AR envelopes via ConstantSourceNode offset automation.
+        // CV inputs would typically go into the 'trigger_in' or 'gate_in' of the block's logic.
+        const paramTargetsForCv = new Map<string, AudioParam>();
 
         return {
-            nodeForInputConnections: constSource, // Envelopes are sources, typically don't have audio inputs. Control inputs are via parameters.
-            nodeForOutputConnections: constSource, // Outputs the envelope signal.
-            mainProcessingNode: constSource,
-            paramTargetsForCv: paramTargets,
-            definition: definition,
-            instanceId: instanceId,
+            node: constSourceNode, // The ConstantSourceNode is the output and what gets parameters automated
+            nodeForInputConnections: constSourceNode, // Not typical for an envelope source, but for consistency
+            nodeForOutputConnections: constSourceNode,
+            mainProcessingNode: constSourceNode,
+            paramTargetsForCv,
+            definition,
+            instanceId,
+            constantSourceValueNode: constSourceNode, // Specific for NativeNodeManager to control
         };
     }
 
     updateNodeParams(
-        info: ManagedNativeNodeInfo,
-        parameters: BlockParameter[]
-        // currentInputs and currentBpm are not used
+        nodeInfo: ManagedNativeNodeInfo,
+        parameters: BlockParameter[],
+        currentInputs?: Record<string, any>,
+        currentBpm?: number
     ): void {
-        if (!this.audioContext || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) {
-            console.warn(`[EnvelopeNativeBlock Update] AudioContext not ready or node not a ConstantSourceNode for instance ${info.instanceId}.`);
-            return;
-        }
-
-        // const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
-
-        // Parameters for AD/AR envelopes (like attackTime, decayTime, peakLevel, releaseTime, sustainLevel)
-        // are typically not used to directly set AudioParam values on the ConstantSourceNode here.
-        // Instead, these parameter values are read by NativeNodeManager's trigger methods
-        // (triggerNativeNodeEnvelope, triggerNativeNodeAttackHold, triggerNativeNodeRelease)
-        // which then schedule changes on the ConstantSourceNode's offset.
-
-        // If there were any parameters of the envelope block itself that needed to be updated on the node directly,
-        // this is where it would happen. For example, if 'peakLevel' was meant to be a direct scaling factor
-        // settable at any time (though that's not typical for AD/AR).
-
-        // For now, this method might be empty or handle very generic cases if any.
-        parameters.forEach(param => {
-            const targetAudioParam = info.paramTargetsForCv?.get(param.id);
-            if (targetAudioParam) {
-                if (typeof param.currentValue === 'number') {
-                    // If we decided to expose `offset` via paramTargetsForCv, this would handle it.
-                    // targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01);
-                }
-            }
-            // Example: if envelope had a 'mode' parameter that changed behavior not related to triggers.
-            // if (param.id === 'some_envelope_property' && typeof param.currentValue === 'string') {
-            //    // ... update some internal state or node property if applicable
-            // }
-        });
+        // For AD/AR envelopes driven by ConstantSourceNode, parameter changes (like attackTime, decayTime)
+        // don't directly set AudioParams here. Instead, the block's logicCode interprets these
+        // parameters and then calls specific methods on AudioEngineService/NativeNodeManager
+        // (e.g., triggerNativeNodeEnvelope) which then perform the AudioParam automations.
+        // So, this updateNodeParams might be a no-op for pure envelope parameters.
+        // If there were other continuous AudioParams (e.g. a 'depth' control on the envelope output), they'd be handled here.
+        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${nodeInfo.instanceId}, but typically no direct AudioParam automation here.`);
     }
 
-    // connect and disconnect are inherited
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): void {
+        console.warn(`EnvelopeNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
+    }
+
+    disconnect(destination?: AudioNode | AudioParam | number, output?: number, input?: number): void {
+        console.warn(`EnvelopeNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+    }
 }
