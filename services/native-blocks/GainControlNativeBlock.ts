@@ -11,9 +11,9 @@ export class GainControlNativeBlock extends NativeBlock {
 
   /**
    * Creates a new GainControlNativeBlock.
-   * @param audioContext The audio context.
+   * @param audioContext The audio context, can be null.
    */
-  constructor(audioContext: AudioContext) {
+  constructor(audioContext: AudioContext | null) { // Allow null for context
     super(audioContext); // Calls NativeBlock constructor
   }
 

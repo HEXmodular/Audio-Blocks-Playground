@@ -69,9 +69,8 @@ export class NativeNodeManager implements INativeNodeManager {
         this.audioContext = audioContext;
         this.onStateChangeForReRender = onStateChangeForReRender;
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
-        if (audioContext) { // Initialize only if context is present
-            this.gainControlNativeBlock = new GainControlNativeBlock(audioContext);
-        }
+        // Initialize gainControlNativeBlock with the manager's audioContext
+        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
     }
 
     /**
@@ -85,9 +84,8 @@ export class NativeNodeManager implements INativeNodeManager {
                 this.removeAllManagedNativeNodes(); // Clears the map and disconnects nodes
             }
             this.audioContext = newContext;
-            if (this.audioContext) { // Re-initialize with new context if available
-                this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-            }
+            // Re-initialize gainControlNativeBlock with the new context (which might be null)
+            this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
             // No specific re-registration needed here like worklets, native nodes are created on demand.
             // However, if there was any context-dependent state, it should be reset.
             this.onStateChangeForReRender(); // If any manager state depended on context presence
@@ -133,23 +131,25 @@ export class NativeNodeManager implements INativeNodeManager {
                     paramTargets.set('gain', internalGain.gain);
                     break;
                 case GAIN_BLOCK_DEFINITION.id:
-                    if (!this.gainControlNativeBlock && this.audioContext) { // Ensure it's initialized
-                        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
-                    }
-                    if (this.gainControlNativeBlock) {
-                        const gainNodeInfo = this.gainControlNativeBlock.createNode(instanceId, initialParams);
-                        mainNode = gainNodeInfo.mainProcessingNode;
-                        inputConnectNode = gainNodeInfo.nodeForInputConnections;
-                        outputNode = gainNodeInfo.nodeForOutputConnections;
-                        // paramTargetsForCv from createNode result should be used for the nodeInfo
-                        // Copy paramTargets from gainNodeInfo.paramTargetsForCv to the local paramTargets map
-                        gainNodeInfo.paramTargetsForCv?.forEach((value, key) => {
-                            paramTargets.set(key, value);
-                        });
-                    } else {
-                        console.error("[NativeManager Setup] GainControlNativeBlock not initialized.");
+                    if (!this.audioContext) {
+                        console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for Gain block setup.");
                         return false;
                     }
+                    // Ensure gainControlNativeBlock is initialized with the current, valid audioContext.
+                    // This handles cases where it might not have been initialized in constructor (if context was null)
+                    // or in _setAudioContext (if it was called with null).
+                    if (!this.gainControlNativeBlock || !this.gainControlNativeBlock.isContextInitialized()) {
+                        this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+                    }
+
+                    // createNode in GainControlNativeBlock will throw if its own context is null.
+                    const gainNodeInfo = this.gainControlNativeBlock.createNode(instanceId, initialParams);
+                    mainNode = gainNodeInfo.mainProcessingNode;
+                    inputConnectNode = gainNodeInfo.nodeForInputConnections;
+                    outputNode = gainNodeInfo.nodeForOutputConnections;
+                    gainNodeInfo.paramTargetsForCv?.forEach((value, key) => {
+                        paramTargets.set(key, value);
+                    });
                     break;
                 case NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id:
                     const biquad = this.audioContext.createBiquadFilter();
@@ -245,10 +245,21 @@ export class NativeNodeManager implements INativeNodeManager {
 
         // Handle GainControlNativeBlock separately
         if (definition.id === GAIN_BLOCK_DEFINITION.id) {
-            if (this.gainControlNativeBlock) {
-                this.gainControlNativeBlock.updateNodeParams(info, parameters); // Removed currentInputs, not used by GainControlNativeBlock's updateNodeParams
+            if (this.gainControlNativeBlock && this.gainControlNativeBlock.isContextInitialized()) {
+                this.gainControlNativeBlock.updateNodeParams(info, parameters);
             } else {
-                console.error("[NativeManager Update] GainControlNativeBlock not initialized.");
+                // Attempt to re-initialize if manager's context is valid, then update
+                if (this.audioContext) {
+                    console.warn("[NativeManager Update] GainControlNativeBlock was not ready. Re-initializing and attempting update.");
+                    this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+                    if (this.gainControlNativeBlock.isContextInitialized()) {
+                        this.gainControlNativeBlock.updateNodeParams(info, parameters);
+                    } else {
+                        console.error("[NativeManager Update] Failed to update GainControlNativeBlock: Context still invalid after re-initialization.");
+                    }
+                } else {
+                    console.error("[NativeManager Update] Failed to update GainControlNativeBlock: Manager's AudioContext is null.");
+                }
             }
             return; // Parameters for this block are fully handled by its own class
         }
