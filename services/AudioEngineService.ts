@@ -336,43 +336,56 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         this._notifySubscribers(); // If UI depends on node list
     };
 
-    public updateAudioGraphConnections = (connections: Connection[], blockInstances: BlockInstance[], getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined): void => {
-        this.audioGraphConnectorService.updateConnections(
-            this._audioContext,
-            this._isAudioGloballyEnabled,
-            connections,
-            blockInstances,
-            getDefinitionForBlock,
-            this.audioWorkletManager.getManagedNodesMap(),
-            this.nativeNodeManager.getManagedNodesMap(),
-            this.lyriaServiceManager.getManagedInstancesMap()
-        );
-    // --- BEGIN MODIFICATION: Connect AUDIO_OUTPUT_BLOCK_DEFINITION worklets to masterGainNode ---
+  public updateAudioGraphConnections = (connections: Connection[], blockInstances: BlockInstance[], getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined): void => {
+    this.audioGraphConnectorService.updateConnections(
+      this._audioContext,
+      this._isAudioGloballyEnabled,
+      connections,
+      blockInstances,
+      getDefinitionForBlock,
+      this.audioWorkletManager.getManagedNodesMap(),
+      this.nativeNodeManager.getManagedNodesMap(),
+      this.lyriaServiceManager.getManagedInstancesMap()
+    );
+
+    // --- BEGIN GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
     if (this._audioContext && this._masterGainNode) {
+      console.log(`[AudioEngineService] updateAudioGraphConnections: Processing ${blockInstances.length} instances for potential master output connection.`); // New Log: Count
+
       blockInstances.forEach(instance => {
+        console.log(`[AudioEngineService] Processing instance: ${instance.instanceId}, Def ID from instance: ${instance.definitionId}`); // New Log 1
+
         const definition = getDefinitionForBlock(instance);
-        if (definition && definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+        if (!definition) {
+          console.log(`[AudioEngineService] No definition found by getDefinitionForBlock for instance ${instance.instanceId}`); // New Log 2
+          return; // continue to next instance
+        }
+        // New Log 3 (Combined with check for AUDIO_OUTPUT_BLOCK_DEFINITION.id for context)
+        console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
+
+        if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
+
+          console.log(`[AudioOutputDebug] Instance: ${instance.instanceId} IS an AUDIO_OUTPUT_BLOCK.`); // Moved from previous [AudioOutputDebug] set
+
           if (workletInfo && workletInfo.node) {
             const workletNode = workletInfo.node;
             const isTrackedAsConnected = this._outputWorkletConnections.has(instance.instanceId);
 
-            // --- BEGIN DETAILED LOGGING ---
-            console.log(`[AudioOutputDebug] Instance: ${instance.instanceId}`);
-            console.log(`[AudioOutputDebug] _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
-            console.log(`[AudioOutputDebug] _audioContext.state: ${this._audioContext?.state}`);
-            console.log(`[AudioOutputDebug] _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
+            // Previous [AudioOutputDebug] logs for states and gain values:
+            console.log(`[AudioOutputDebug]   _isAudioGloballyEnabled: ${this._isAudioGloballyEnabled}`);
+            console.log(`[AudioOutputDebug]   _audioContext.state: ${this._audioContext?.state}`);
+            console.log(`[AudioOutputDebug]   _masterGainNode.gain.value: ${this._masterGainNode?.gain.value}`);
             if (workletInfo.inputGainNode) {
-              console.log(`[AudioOutputDebug] AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
+              console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode.gain.value: ${workletInfo.inputGainNode.gain.value}`);
             } else {
-              console.log(`[AudioOutputDebug] AudioOutput block's internal inputGainNode: NOT FOUND`);
+              console.log(`[AudioOutputDebug]   AudioOutput block's internal inputGainNode: NOT FOUND`);
             }
-            console.log(`[AudioOutputDebug] Is worklet already tracked as connected: ${isTrackedAsConnected}`);
-            // --- END DETAILED LOGGING ---
+            console.log(`[AudioOutputDebug]   Is worklet already tracked as connected: ${isTrackedAsConnected}`);
 
             if (this._isAudioGloballyEnabled && this._audioContext && this._audioContext.state === 'running') {
               if (!isTrackedAsConnected) {
-                console.log(`[AudioOutputDebug] Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
+                console.log(`[AudioOutputDebug]   Attempting to connect workletNode to _masterGainNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.connect(this._masterGainNode!);
                   this._outputWorkletConnections.set(instance.instanceId, workletNode);
@@ -381,13 +394,11 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                   console.error(`AudioEngineService: Error connecting AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode:`, e);
                 }
               } else {
-                console.log(`[AudioOutputDebug] Worklet node ${instance.instanceId} already tracked as connected. Ensuring connection (no action if already connected).`);
-                // Optional: Could add a check here to ensure it's *actually* connected if paranoia is high,
-                // but Web Audio API handles duplicate connections gracefully (no-op).
+                // console.log(`[AudioOutputDebug]   Worklet node ${instance.instanceId} already tracked as connected. Ensuring connection.`); // Optional: can be noisy
               }
             } else {
               if (isTrackedAsConnected) {
-                console.log(`[AudioOutputDebug] Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
+                console.log(`[AudioOutputDebug]   Audio not enabled or context not running. Attempting to disconnect workletNode for instance ${instance.instanceId}.`);
                 try {
                   workletNode.disconnect(this._masterGainNode!);
                   this._outputWorkletConnections.delete(instance.instanceId);
@@ -396,14 +407,18 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
                   console.error(`AudioEngineService: Error disconnecting AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode:`, e);
                 }
               } else {
-                console.log(`[AudioOutputDebug] Audio not enabled OR worklet ${instance.instanceId} not tracked as connected. No disconnection action needed.`);
+                // console.log(`[AudioOutputDebug]   Audio not enabled OR worklet ${instance.instanceId} not tracked. No disconnection needed.`); // Optional: can be noisy
               }
             }
+          } else {
+            console.log(`[AudioOutputDebug] WorkletInfo or WorkletInfo.node NOT FOUND for AUDIO_OUTPUT_BLOCK instance ${instance.instanceId}`);
           }
-        }
-      });
+        } // End of: if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id)
+      }); // End of: blockInstances.forEach
 
-      // Cleanup stale connections from _outputWorkletConnections if the instance no longer exists
+      console.log(`[AudioEngineService] Finished processing blockInstances for master output connection. Processed ${blockInstances.length} instances this call.`); // New Log 4
+
+      // Cleanup stale connections from _outputWorkletConnections (existing logic)
       const currentOutputInstanceIds = new Set(
         blockInstances
           .filter(instance => {
@@ -412,7 +427,6 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           })
           .map(instance => instance.instanceId)
       );
-
       this._outputWorkletConnections.forEach((node, instanceId) => {
         if (!currentOutputInstanceIds.has(instanceId)) {
           try {
@@ -424,10 +438,13 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           }
         }
       });
+    } else {
+      console.log(`[AudioEngineService] updateAudioGraphConnections: Master output connection logic skipped: _audioContext or _masterGainNode is null/invalid. Context state: ${this._audioContext?.state}, MasterGain valid: ${!!this._masterGainNode}`); // New Log 5
     }
-    // --- END MODIFICATION ---
-        this._notifySubscribers(); // If graph changes affect UI
-    };
+    // --- END GENERAL LOGGING & AUDIO_OUTPUT_BLOCK_DEFINITION SPECIFIC LOGIC ---
+
+    this._notifySubscribers();
+  };
 
     // Exposing manager methods (examples)
     public addManagedAudioWorkletNode = (name: string, options?: AudioWorkletNodeOptions): AudioWorkletNode | undefined => {
