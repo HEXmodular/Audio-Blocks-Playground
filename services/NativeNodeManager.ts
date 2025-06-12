@@ -7,9 +7,10 @@
  */
 import { BlockDefinition, BlockParameter } from '../types';
 import { GAIN_BLOCK_DEFINITION, GainControlNativeBlock } from './native-blocks/GainControlNativeBlock'; // Added GainControlNativeBlock
+import { LFONativeBlock, LFO_BLOCK_DEFINITION } from '../services/native-blocks/LFONativeBlock'; // Added LFO Native Block
 import {
     NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-    NATIVE_LFO_BLOCK_DEFINITION,
+    // NATIVE_LFO_BLOCK_DEFINITION, // Replaced by LFONativeBlock
     NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
     // GAIN_BLOCK_DEFINITION, // Removed
     NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
@@ -40,6 +41,7 @@ export type ManagedNativeNodeInfo = {
     definition: BlockDefinition;
     instanceId: string;
     constantSourceValueNode?: ConstantSourceNode;
+    auxiliaryNodes?: { [key: string]: AudioNode }; // Added for LFO and potentially others
 };
 
 export interface INativeNodeManager {
@@ -57,6 +59,7 @@ export interface INativeNodeManager {
 export class NativeNodeManager implements INativeNodeManager {
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
     private gainControlNativeBlock: GainControlNativeBlock; // Added
+    private lfoNativeBlock: LFONativeBlock; // Added for LFO
 
     // Make audioContext mutable
     private audioContext: AudioContext | null;
@@ -71,6 +74,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
         // Initialize gainControlNativeBlock with the manager's audioContext
         this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+        this.lfoNativeBlock = new LFONativeBlock(this.audioContext); // Initialize LFO block
     }
 
     /**
@@ -86,6 +90,7 @@ export class NativeNodeManager implements INativeNodeManager {
             this.audioContext = newContext;
             // Re-initialize gainControlNativeBlock with the new context (which might be null)
             this.gainControlNativeBlock = new GainControlNativeBlock(this.audioContext);
+            this.lfoNativeBlock = new LFONativeBlock(this.audioContext); // Re-initialize LFO block with new context
             // No specific re-registration needed here like worklets, native nodes are created on demand.
             // However, if there was any context-dependent state, it should be reset.
             this.onStateChangeForReRender(); // If any manager state depended on context presence
@@ -114,12 +119,13 @@ export class NativeNodeManager implements INativeNodeManager {
         let allpassNodes: AllpassInternalNodes | undefined;
         let constSrcNodeForNumToAudio: ConstantSourceNode | undefined;
         const paramTargets = new Map<string, AudioParam>();
+        let auxiliaryNodes: { [key: string]: AudioNode } | undefined = {}; // Initialize auxiliaryNodes
 
         try {
             switch (definition.id) {
                 case NATIVE_OSCILLATOR_BLOCK_DEFINITION.id:
-                case NATIVE_LFO_BLOCK_DEFINITION.id:
-                case NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id:
+                // case NATIVE_LFO_BLOCK_DEFINITION.id: // This case will be handled by the new LFO_BLOCK_DEFINITION.id
+                case NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id: // Assuming this is a different LFO type for now
                     const osc = this.audioContext.createOscillator();
                     internalGain = this.audioContext.createGain();
                     osc.connect(internalGain);
@@ -129,6 +135,28 @@ export class NativeNodeManager implements INativeNodeManager {
                     outputNode = internalGain;
                     paramTargets.set('frequency', osc.frequency);
                     paramTargets.set('gain', internalGain.gain);
+                    break;
+                case LFO_BLOCK_DEFINITION.id:
+                    if (!this.audioContext) {
+                        console.error("[NativeManager Setup] NativeNodeManager's AudioContext is not available for LFO block setup.");
+                        return false;
+                    }
+                    if (!this.lfoNativeBlock || !this.lfoNativeBlock.isContextInitialized()) {
+                        this.lfoNativeBlock = new LFONativeBlock(this.audioContext);
+                    }
+                    const lfoNodeInfo = this.lfoNativeBlock.createNode(instanceId, initialParams);
+                    mainNode = lfoNodeInfo.mainProcessingNode;
+                    inputConnectNode = lfoNodeInfo.nodeForInputConnections;
+                    outputNode = lfoNodeInfo.nodeForOutputConnections;
+                    if (lfoNodeInfo.auxiliaryNodes && lfoNodeInfo.auxiliaryNodes.amplitudeGain) {
+                        internalGain = lfoNodeInfo.auxiliaryNodes.amplitudeGain as GainNode;
+                    }
+                    lfoNodeInfo.paramTargetsForCv?.forEach((value, key) => {
+                        paramTargets.set(key, value);
+                    });
+                    if (lfoNodeInfo.auxiliaryNodes) {
+                        auxiliaryNodes = { ...auxiliaryNodes, ...lfoNodeInfo.auxiliaryNodes };
+                    }
                     break;
                 case GAIN_BLOCK_DEFINITION.id:
                     if (!this.audioContext) {
@@ -217,7 +245,7 @@ export class NativeNodeManager implements INativeNodeManager {
                     return false;
             }
 
-            const nodeInfo: ManagedNativeNodeInfo = { nodeForInputConnections: inputConnectNode, nodeForOutputConnections: outputNode, mainProcessingNode: mainNode, internalGainNode: internalGain, allpassInternalNodes: allpassNodes, paramTargetsForCv: paramTargets, definition: definition, instanceId: instanceId, constantSourceValueNode: constSrcNodeForNumToAudio };
+            const nodeInfo: ManagedNativeNodeInfo = { nodeForInputConnections: inputConnectNode, nodeForOutputConnections: outputNode, mainProcessingNode: mainNode, internalGainNode: internalGain, allpassInternalNodes: allpassNodes, paramTargetsForCv: paramTargets, definition: definition, instanceId: instanceId, constantSourceValueNode: constSrcNodeForNumToAudio, auxiliaryNodes: auxiliaryNodes && Object.keys(auxiliaryNodes).length > 0 ? auxiliaryNodes : undefined };
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
             this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); // Call to the (currently empty) class method
             console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created.`, true);
@@ -262,6 +290,23 @@ export class NativeNodeManager implements INativeNodeManager {
                 }
             }
             return; // Parameters for this block are fully handled by its own class
+        } else if (definition.id === LFO_BLOCK_DEFINITION.id) {
+            if (this.lfoNativeBlock && this.lfoNativeBlock.isContextInitialized()) {
+                this.lfoNativeBlock.updateNodeParams(info, parameters);
+            } else {
+                if (this.audioContext) {
+                    console.warn("[NativeManager Update] LFONativeBlock was not ready. Re-initializing and attempting update.");
+                    this.lfoNativeBlock = new LFONativeBlock(this.audioContext);
+                    if (this.lfoNativeBlock.isContextInitialized()) {
+                        this.lfoNativeBlock.updateNodeParams(info, parameters);
+                    } else {
+                        console.error("[NativeManager Update] Failed to update LFONativeBlock: Context still invalid after re-initialization.");
+                    }
+                } else {
+                    console.error("[NativeManager Update] Failed to update LFONativeBlock: Manager's AudioContext is null.");
+                }
+            }
+            return; // Parameters for this block are fully handled by its own class
         }
 
         parameters.forEach(param => {
@@ -271,8 +316,8 @@ export class NativeNodeManager implements INativeNodeManager {
                     targetAudioParam.setTargetAtTime(param.currentValue, this.audioContext.currentTime, 0.01);
                 }
             } else if (mainProcessingNode) {
-                // Ensure this part does not conflict with GAIN_BLOCK_DEFINITION logic handled above
-                if (definition.id === NATIVE_OSCILLATOR_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) {
+                // Ensure this part does not conflict with GAIN_BLOCK_DEFINITION or LFO_BLOCK_DEFINITION logic handled above
+                if (definition.id === NATIVE_OSCILLATOR_BLOCK_DEFINITION.id || definition.id === NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id) { // Removed NATIVE_LFO_BLOCK_DEFINITION.id
                     const oscNode = mainProcessingNode as OscillatorNode;
                     if (param.id === 'waveform' && typeof param.currentValue === 'string') {
                         oscNode.type = param.currentValue as OscillatorType;
