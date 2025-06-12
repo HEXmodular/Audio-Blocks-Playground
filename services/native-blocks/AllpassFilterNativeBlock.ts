@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter } from '../../../types';
+import { BlockDefinition, BlockParameter } from '../types';
 import { ManagedNativeNodeInfo, AllpassInternalNodes } from '../../NativeNodeManager'; // AllpassInternalNodes is crucial here
 import { CreatableNode } from './CreatableNode';
 

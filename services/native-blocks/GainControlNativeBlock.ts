@@ -1,5 +1,5 @@
 import { CreatableNode } from './CreatableNode';
-import type { BlockDefinition, BlockParameter } from '../../../types';
+import type { BlockDefinition, BlockParameter } from '../types';
 import { createParameterDefinitions } from '../../constants';
 import type { ManagedNativeNodeInfo } from '../NativeNodeManager';
 
