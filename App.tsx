@@ -20,7 +20,7 @@ import { LogicExecutionEngineManager } from './services/LogicExecutionEngineMana
 import { GlobalAudioState, GlobalAudioStateSyncer } from './services/GlobalAudioStateSyncer';
 import { AudioNodeManager } from './services/AudioNodeManager';
 import { BlockInstanceController } from './controllers/BlockInstanceController';
-import { WorkspacePersistenceManager } from './services/WorkspacePersistenceManager';
+// WorkspacePersistenceManager import removed
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
@@ -245,40 +245,8 @@ const App: React.FC = () => {
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
 
-  // Instantiate WorkspacePersistenceManager
-  const workspacePersistenceManager = useMemo(() => {
-    if (!ctxBlockStateManager || !audioEngineService || !connectionState || !syncedGlobalAudioState) return null;
-    return new WorkspacePersistenceManager(
-      () => appBlockDefinitionsFromCtx,
-      () => appBlockInstancesFromCtx,
-      () => connections,
-      () => globalBpm,
-      () => syncedGlobalAudioState.selectedSinkId,
-      audioEngineService,
-      ctxBlockStateManager,
-      connectionState,
-      setGlobalBpm,
-      setSelectedInstanceId
-    );
-  }, [
-    appBlockDefinitionsFromCtx,
-    appBlockInstancesFromCtx,
-    connections,
-    globalBpm,
-    syncedGlobalAudioState,
-    audioEngineService,
-    ctxBlockStateManager,
-    connectionState,
-    setGlobalBpm,
-    setSelectedInstanceId
-  ]);
-
-  const handleImportWorkspaceTrigger = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0] && workspacePersistenceManager) {
-      workspacePersistenceManager.importWorkspace(event.target.files[0]);
-      event.target.value = ""; // Reset file input
-    }
-  }, [workspacePersistenceManager]);
+  // WorkspacePersistenceManager instantiation moved to Toolbar.tsx
+  // handleImportWorkspaceTrigger removed from App.tsx (moved to Toolbar.tsx)
 
   const selectedBlockInstance = useMemo(() => {
     return appBlockInstancesFromCtx.find(b => b.instanceId === selectedInstanceId) || null;
@@ -308,15 +276,26 @@ const App: React.FC = () => {
         onToggleGlobalAudio={audioEngineService.toggleGlobalAudio}
         isAudioGloballyEnabled={syncedGlobalAudioState.isAudioGloballyEnabled} // Updated
         onToggleTestRunner={() => setIsTestRunnerOpen(!isTestRunnerOpen)}
-        allBlockDefinitions={appBlockDefinitionsFromCtx}
-        onExportWorkspace={workspacePersistenceManager?.exportWorkspace}
-        onImportWorkspace={handleImportWorkspaceTrigger}
+        // allBlockDefinitions prop removed as per previous subtask (managed by Toolbar's context)
+        // onExportWorkspace is now handled by Toolbar internally
+        // onImportWorkspace is now handled by Toolbar internally
         coreDefinitionIds={coreDefinitionIds}
-        bpm={globalBpm}
-        onBpmChange={setGlobalBpm}
+        // bpm prop renamed to globalBpm
+        // onBpmChange prop renamed to setGlobalBpm
         availableOutputDevices={syncedGlobalAudioState.availableOutputDevices} // Updated
-        selectedSinkId={syncedGlobalAudioState.selectedSinkId} // Updated
+        // selectedSinkId is passed directly
         onSetOutputDevice={audioEngineService.setOutputDevice}
+        // Props for WorkspacePersistenceManager that Toolbar now needs:
+        appBlockDefinitionsFromCtx={appBlockDefinitionsFromCtx}
+        appBlockInstancesFromCtx={appBlockInstancesFromCtx}
+        connections={connections}
+        globalBpm={globalBpm}
+        selectedSinkId={syncedGlobalAudioState.selectedSinkId} // Pass selectedSinkId directly
+        audioEngineService={audioEngineService}
+        ctxBlockStateManager={ctxBlockStateManager}
+        connectionState={connectionState}
+        setGlobalBpm={setGlobalBpm}
+        setSelectedInstanceId={setSelectedInstanceId}
       />
       <main className="flex-grow pt-14 relative" id="main-workspace-area">
         <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">

@@ -1,11 +1,25 @@
 
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from './icons'; 
-import { BlockDefinition } from '../types';
+import { BlockDefinition, BlockInstance, Connection } from '../types';
+import { WorkspacePersistenceManager } from '../services/WorkspacePersistenceManager';
+import { AudioEngineService } from '../services/AudioEngineService';
+import { BlockStateManager } from '../state/BlockStateManager';
+import { ConnectionState } from '../services/ConnectionState';
 import { useBlockState } from '../context/BlockStateContext'; // Import useBlockState
 
 interface ToolbarProps {
+  appBlockDefinitionsFromCtx: BlockDefinition[];
+  appBlockInstancesFromCtx: BlockInstance[];
+  connections: Connection[];
+  globalBpm: number;
+  selectedSinkId: string;
+  audioEngineService: AudioEngineService;
+  ctxBlockStateManager: BlockStateManager;
+  connectionState: ConnectionState;
+  setGlobalBpm: (bpm: number) => void;
+  setSelectedInstanceId: (id: string | null) => void;
   onAddBlockFromDefinition: (definition: BlockDefinition) => void;
   onToggleGeminiPanel: () => void;
   isGeminiPanelOpen: boolean;
@@ -13,42 +27,81 @@ interface ToolbarProps {
   isAudioGloballyEnabled: boolean;
   onToggleTestRunner: () => void;
   // allBlockDefinitions and onDeleteBlockDefinition removed from props
-  onExportWorkspace: () => void;
-  onImportWorkspace: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  // onExportWorkspace and onImportWorkspace are now fully internal
   coreDefinitionIds: Set<string>;
-  bpm: number;
-  onBpmChange: (newBpm: number) => void;
   availableOutputDevices: MediaDeviceInfo[];
-  selectedSinkId: string;
+  // selectedSinkId is already listed in the new props
   onSetOutputDevice: (sinkId: string) => Promise<boolean>;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
+  appBlockDefinitionsFromCtx,
+  appBlockInstancesFromCtx,
+  connections,
+  globalBpm,
+  selectedSinkId,
+  audioEngineService,
+  ctxBlockStateManager,
+  connectionState,
+  setGlobalBpm,
+  setSelectedInstanceId,
   onAddBlockFromDefinition,
   onToggleGeminiPanel,
   isGeminiPanelOpen,
   onToggleGlobalAudio,
   isAudioGloballyEnabled,
   onToggleTestRunner,
-  // allBlockDefinitions, // Removed from destructuring
-  onExportWorkspace,
-  onImportWorkspace,
-  // onDeleteBlockDefinition, // Removed from destructuring
+  // onExportWorkspaceProp, // Removed
+  // onImportWorkspaceProp, // Removed
   coreDefinitionIds,
-  bpm,
-  onBpmChange,
   availableOutputDevices,
-  selectedSinkId,
   onSetOutputDevice,
 }) => {
   const { blockDefinitions, deleteBlockDefinition } = useBlockState(); // Consume context
 
+  const workspacePersistenceManager = useMemo(() => {
+    if (!ctxBlockStateManager || !audioEngineService || !connectionState || !selectedSinkId) return null;
+    return new WorkspacePersistenceManager(
+      () => appBlockDefinitionsFromCtx,
+      () => appBlockInstancesFromCtx,
+      () => connections,
+      () => globalBpm,
+      () => selectedSinkId, // Changed from syncedGlobalAudioState.selectedSinkId
+      audioEngineService,
+      ctxBlockStateManager,
+      connectionState,
+      setGlobalBpm, // Prop directly
+      setSelectedInstanceId // Prop directly
+    );
+  }, [
+    appBlockDefinitionsFromCtx,
+    appBlockInstancesFromCtx,
+    connections,
+    globalBpm,
+    selectedSinkId, // Changed from syncedGlobalAudioState
+    audioEngineService,
+    ctxBlockStateManager,
+    connectionState,
+    setGlobalBpm,
+    setSelectedInstanceId
+  ]);
+
   const [isAddBlockMenuOpen, setIsAddBlockMenuOpen] = React.useState(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Import function now internal to Toolbar
+  const handleImportWorkspaceTrigger = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0] && workspacePersistenceManager) {
+      workspacePersistenceManager.importWorkspace(event.target.files[0]);
+      event.target.value = ""; // Reset file input
+    }
+  }, [workspacePersistenceManager]);
 
   const handleImportClick = () => {
     importFileInputRef.current?.click();
   };
+
+  // handleExportClick is removed, logic inlined in button onClick
 
   const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => {
     e.stopPropagation(); // Prevent block add
@@ -62,9 +115,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const handleBpmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseInt(e.target.value, 10);
     if (!isNaN(newBpm) && newBpm > 0 && newBpm <= 999) {
-      onBpmChange(newBpm);
+      setGlobalBpm(newBpm); // Use setGlobalBpm
     } else if (e.target.value === "") {
-        onBpmChange(120); 
+        setGlobalBpm(120);  // Use setGlobalBpm
     }
   };
 
@@ -145,7 +198,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <input
           type="number"
           id="bpm-input"
-          value={bpm.toString()}
+          value={globalBpm.toString()} // Use globalBpm
           onChange={handleBpmInputChange}
           min="1"
           max="999"
@@ -160,7 +213,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <label htmlFor="output-device-select" className="text-xs text-gray-400 mr-1.5">Output:</label>
           <select
             id="output-device-select"
-            value={selectedSinkId}
+            value={selectedSinkId} // selectedSinkId is directly from props
             onChange={handleOutputDeviceChange}
             className="bg-gray-700 text-white text-xs px-2 py-1 rounded-md border border-gray-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 max-w-[150px] truncate"
             title={selectedSinkId === 'default' ? 'Default Output Device' : availableOutputDevices.find(d => d.deviceId === selectedSinkId)?.label || selectedSinkId}
@@ -187,23 +240,29 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Workspace Management Buttons */}
       <button
-        onClick={onExportWorkspace}
+        onClick={() => {
+          if (workspacePersistenceManager) {
+            workspacePersistenceManager.exportWorkspace();
+          }
+        }}
         title="Export Workspace"
         className="flex items-center bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
+        disabled={!workspacePersistenceManager}
       >
         Export
       </button>
       <button
-        onClick={handleImportClick}
+        onClick={handleImportClick} // This just clicks the hidden input
         title="Import Workspace"
         className="flex items-center bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
+        disabled={!workspacePersistenceManager}
       >
         Import
       </button>
       <input
         type="file"
         ref={importFileInputRef}
-        onChange={onImportWorkspace}
+        onChange={handleImportWorkspaceTrigger} // Use the new handler
         accept=".json"
         className="hidden"
         aria-hidden="true"
