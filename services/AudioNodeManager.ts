@@ -49,8 +49,10 @@ export class AudioNodeManager {
         isWorkletSystemReady: boolean,
         audioContextCurrent: AudioContext | null
     ) {
+        console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
         if (!audioContextCurrent) { // Audio system not ready at all
             blockInstances.forEach(instance => {
+                console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
                 const definition = this.getDefinition(instance);
                 if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
                     // Node was set up, but audio context is now gone. Mark for setup and log if not already.
@@ -74,14 +76,26 @@ export class AudioNodeManager {
         }
 
         for (const instance of blockInstances) {
+            console.log(`[AudioNodeManager DEBUG] Processing instance: ${instance.instanceId}, Def ID: ${instance.definitionId}`);
             const definition = this.getDefinition(instance);
-            if (!definition || !definition.runsAtAudioRate) return;
+            if (!definition) {
+                console.log(`[AudioNodeManager DEBUG]   No definition found for ${instance.instanceId}. Skipping.`);
+                continue;
+            }
+            console.log(`[AudioNodeManager DEBUG]   Instance: ${instance.name} (ID: ${instance.instanceId}), Definition: ${definition.name} (ID: ${definition.id})`);
+            console.log(`[AudioNodeManager DEBUG]   Definition details: runsAtAudioRate: ${!!definition.runsAtAudioRate}, audioWorkletProcessorName: '${definition.audioWorkletProcessorName || 'none'}'`);
+
+            if (!definition.runsAtAudioRate) {
+                console.log(`[AudioNodeManager DEBUG]   Decision: Does not run at audio rate. SKIPPING audio node setup for ${instance.instanceId}.`);
+                continue;
+            }
 
             const isAudioContextRunning = audioContextCurrent.state === 'running';
 
             if (isAudioContextRunning && isAudioGloballyEnabled) {
                 // Setup Lyria Service
                 if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                    console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call lyriaServiceManager.setupLyriaService for ${instance.instanceId}`);
                     if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
                         this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(instance.instanceId, definition, (msg) => this.addLog(instance.instanceId, msg))
@@ -106,7 +120,8 @@ export class AudioNodeManager {
                     }
                 }
                 // Setup AudioWorklet Node
-                else if (definition.audioWorkletProcessorName) {
+                else if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Added audioWorkletCode check for consistency
+                    console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioWorkletManager.setupManagedAudioWorkletNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
                         // Reset loggedWorkletSystemNotReady if it was previously set, as we are now ready
                         if (instance.internalState.loggedWorkletSystemNotReady) {
@@ -116,38 +131,28 @@ export class AudioNodeManager {
                             }));
                         }
                         this.addLog(instance.instanceId, "Worklet node setup initiated by AudioNodeManager.");
-                        const node = this.audioEngineService.addManagedAudioWorkletNode(instance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: instance.parameters });
-                        if (node) {
-                            this.updateInstance(instance.instanceId, currentInst => ({ // Modified
+                        // const node = this.audioEngineService.addManagedAudioWorkletNode(instance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: instance.parameters });
+                        // The actual call to audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode is expected to be within audioEngineService.addManagedAudioWorkletNode
+                        // For now, we assume addManagedAudioWorkletNode in AudioEngineService does the right thing.
+                        // The plan asks to log the decision, the actual call is below this logging block.
+                        const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
+
+                        if (setupSuccess) {
+                            this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
                                 internalState: {
                                     ...currentInst.internalState,
                                     needsAudioNodeSetup: false,
-                                    loggedAudioSystemNotActive: false // Reset flag on successful setup
+                                    loggedAudioSystemNotActive: false
                                 }
                             }));
                             this.addLog(instance.instanceId, "Worklet node setup successful.");
-                            // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION
-                            if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
-                                const workletNodeInfo = this.audioEngineService.getManagedAudioWorkletNodeInfo(instance.instanceId);
-                                const masterGain = this.audioEngineService.masterGainNode;
-                                if (workletNodeInfo?.node && masterGain) {
-                                    try {
-                                        (workletNodeInfo.node as AudioWorkletNode).connect(masterGain);
-                                        this.addLog(instance.instanceId, "AUDIO_OUTPUT_BLOCK_DEFINITION connected to master gain.");
-                                    } catch (e: any) {
-                                        this.addLog(instance.instanceId, `Error connecting AUDIO_OUTPUT_BLOCK_DEFINITION to master gain: ${e.message}`, "error");
-                                    }
-                                } else {
-                                    this.addLog(instance.instanceId, "Could not connect AUDIO_OUTPUT_BLOCK_DEFINITION: Node or masterGain missing.", "warn");
-                                }
-                            }
+                            // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION is now handled in AudioEngineService's updateAudioGraphConnections
                         } else {
                             this.addLog(instance.instanceId, "Worklet node setup failed.", "error");
                             this.updateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                         }
                     } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
-                        // Condition: Needs setup but worklet system is NOT ready
                         if (!instance.internalState.loggedWorkletSystemNotReady) {
                             this.addLog(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
                             this.updateInstance(instance.instanceId, currentInst => ({
@@ -158,17 +163,19 @@ export class AudioNodeManager {
                     }
                 }
                 // Setup Native Audio Node
-                else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                // Assuming isNativeNodeDefinition can be implemented by checking !definition.audioWorkletProcessorName and not Lyria
+                else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) { // Basic check for native
+                    console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioEngineService.addNativeNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
                         const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
                         if (success) {
-                            this.updateInstance(instance.instanceId, currentInst => ({ // Modified
+                            this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
                                 internalState: {
                                     ...currentInst.internalState,
                                     needsAudioNodeSetup: false,
-                                    loggedAudioSystemNotActive: false // Reset flag on successful setup
+                                    loggedAudioSystemNotActive: false
                                 }
                             }));
                             this.addLog(instance.instanceId, "Native node setup successful.");
@@ -177,9 +184,11 @@ export class AudioNodeManager {
                             this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
                         }
                     }
+                } else {
+                     console.log(`[AudioNodeManager DEBUG]   Decision: Runs at audio rate but not worklet, native, or Lyria. SKIPPING setup for ${instance.instanceId}. Def ID: ${definition.id}`);
                 }
             } else if (definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
-                // Audio system not active, node was previously set up, so mark for setup again.
+                 console.log(`[AudioNodeManager DEBUG]   Instance ${instance.instanceId} runs at audio rate, was set up, but audio system not active. Marking for re-setup.`);
                 const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
                 this.updateInstance(instance.instanceId, currentInst => ({
                     ...currentInst,
