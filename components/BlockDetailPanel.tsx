@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-React, { useState, useEffect, useRef } from 'react'; // Duplicate import removed by keeping one
-import { BlockInstance, BlockDefinition, BlockView, BlockPort, BlockParameter, Connection, BlockParameterDefinition } from '../types';
+import { BlockInstance, BlockView, BlockPort, BlockParameter, Connection } from '../types';
 import CodeLogToggle from './CodeLogToggle';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from './icons';
 import { OSCILLOSCOPE_BLOCK_DEFINITION, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '../constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
