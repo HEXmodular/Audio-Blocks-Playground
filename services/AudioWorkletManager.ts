@@ -9,16 +9,12 @@ import {
     BlockDefinition,
     BlockParameter,
     AudioContextState,
-    ManagedWorkletNodeInfo, // Import from common
-    AudioWorkletNodeOptions, // Import from common
-    ManagedAudioWorkletNodeMessage // Import from common
+    ManagedWorkletNodeInfo, 
+    AudioWorkletNodeOptions, 
+    ManagedAudioWorkletNodeMessage 
 } from '@interfaces/common';
-import {
-    OSCILLATOR_BLOCK_DEFINITION,
-    // AUDIO_OUTPUT_BLOCK_DEFINITION, // Removed
-    RULE_110_OSCILLATOR_BLOCK_DEFINITION,
-} from '@constants/constants';
-// import { AudioEngineService } from './AudioEngineService'; // Removed
+import { OSCILLATOR_BLOCK_DEFINITION} from '@constants/constants';
+import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
 const SYSTEM_AUDIO_OUTPUT_ID = 'system-audio-output-v1'; // Added constant
 

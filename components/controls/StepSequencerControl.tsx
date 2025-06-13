@@ -1,7 +1,7 @@
 // components/controls/StepSequencerControl.tsx
 import React from 'react';
 import { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/common'; // Adjust path as needed
-import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/constants'; // Adjust path
+import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata'; // Adjust path
 
 interface StepSequencerControlProps {
   parameter: BlockParameter;

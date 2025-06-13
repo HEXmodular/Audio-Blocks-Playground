@@ -1,17 +1,11 @@
 // controllers/BlockInstanceController.ts
-import { BlockDefinition, BlockInstance } from '@interfaces/common'; // Adjust path
-import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
-import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
-import { ConnectionState } from '@services/ConnectionState'; // Adjust path
-import {
-    // AUDIO_OUTPUT_BLOCK_DEFINITION, // Removed
-    // GAIN_BLOCK_DEFINITION, // Removed
-    LYRIA_MASTER_BLOCK_DEFINITION,
-    // OSCILLOSCOPE_BLOCK_DEFINITION // Removed
-} from '@constants/constants'; // Adjust path
-// import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Removed
-import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock'; // Added
-import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock'; // Added
+import { BlockDefinition, BlockInstance } from '@interfaces/common';
+import { BlockStateManager } from '@state/BlockStateManager';
+import { AudioEngineService } from '@services/AudioEngineService';
+import { ConnectionState } from '@services/ConnectionState';
+import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
+import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
 
 
 export class BlockInstanceController {

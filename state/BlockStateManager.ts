@@ -1,10 +1,11 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/common';
-import { ALL_BLOCK_DEFINITIONS, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants';
+import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
+import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
 
 // --- Helper Functions (co-located with the class) ---
-
 export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameterDefinition[]): BlockInstance['parameters'] => {
   return definitionParams.map(paramDef => {
     const typedDefaultValue = paramDef.defaultValue;

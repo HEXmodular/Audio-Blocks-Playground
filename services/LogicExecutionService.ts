@@ -5,16 +5,12 @@
  * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
-import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; // Removed unused PlaybackState
+import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; 
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
-import {
-    // NATIVE_AD_ENVELOPE_BLOCK_DEFINITION, // Removed
-    // NATIVE_AR_ENVELOPE_BLOCK_DEFINITION, // Removed
-    NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-    LYRIA_MASTER_BLOCK_DEFINITION,
-} from '@constants/constants';
-import { EnvelopeNativeBlock } from './native-blocks/EnvelopeNativeBlock'; // Added
+import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock'; 
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 
 // Helper function, can be static or outside the class
 function determineExecutionOrder(instances: BlockInstance[], connections: Connection[]): string[] {
@@ -142,10 +138,10 @@ export class LogicExecutionService {
     this.audioEngine = audioEngine;
 
     if (isAudioGloballyEnabled && !this.runIntervalId) {
-        this.startProcessingLoop();
+      this.startProcessingLoop();
     }
     else if (!isAudioGloballyEnabled && this.runIntervalId !== null) {
-        this.stopProcessingLoop();
+      this.stopProcessingLoop();
     }
   }
 
@@ -154,14 +150,14 @@ export class LogicExecutionService {
       return this.logicFunctionCache.get(instanceId)!;
     }
     const compiledFunction = new Function(
-        'inputs',
-        'params',
-        'internalState',
-        'setOutput',
-        '__custom_block_logger__',
-        'audioContextInfo',
-        'postMessageToWorklet'
-    , logicCode);
+      'inputs',
+      'params',
+      'internalState',
+      'setOutput',
+      '__custom_block_logger__',
+      'audioContextInfo',
+      'postMessageToWorklet'
+      , logicCode);
     this.logicFunctionCache.set(instanceId, compiledFunction);
     return compiledFunction;
   }
@@ -180,7 +176,7 @@ export class LogicExecutionService {
     }
 
     if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
-        return null;
+      return null;
     }
 
     const inputValuesForLogic: Record<string, any> = {};
@@ -209,8 +205,8 @@ export class LogicExecutionService {
         this.blockStateManager.addLogToBlockInstance(instance.instanceId, message);
       };
       const postMessageToWorkletInLogic = this.audioEngine
-          ? (message: any) => this.audioEngine?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message)
-          : () => console.warn(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`);
+        ? (message: any) => this.audioEngine?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message)
+        : () => console.warn(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`);
 
       const nextInternalStateOpaque = mainLogicFunction(
         inputValuesForLogic, parameterValuesForLogic,
@@ -246,9 +242,9 @@ export class LogicExecutionService {
             const sustainLevelParam = instance.parameters.find(p => p.id === 'sustainLevel');
             if (attackParam && sustainLevelParam) {
               this.audioEngine.nativeNodeManager.triggerNativeNodeAttackHold?.(
-                  instance.instanceId,
-                  Number(attackParam.currentValue),
-                  Number(sustainLevelParam.currentValue)
+                instance.instanceId,
+                Number(attackParam.currentValue),
+                Number(sustainLevelParam.currentValue)
               );
             }
             newInternalState.gateStateChangedToHigh = false;
@@ -261,100 +257,100 @@ export class LogicExecutionService {
           }
         }
         if (definition.id.startsWith('native-') && !instance.internalState.needsAudioNodeSetup && this.audioEngine.audioContext) {
-             if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
-                 this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(
-                    instance.instanceId,
-                    instance.parameters,
-                    inputValuesForLogic,
-                    this.currentGlobalBpm
-                );
-            }
+          if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
+            this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(
+              instance.instanceId,
+              instance.parameters,
+              inputValuesForLogic,
+              this.currentGlobalBpm
+            );
+          }
         }
       }
 
-          return {
-            instanceId: instance.instanceId,
-            updates: {
-        internalState: newInternalState,
-        lastRunOutputs: finalOutputsForTick,
-        error: null,
-            }
-          };
-        } catch (e: any) {
-          const errorMsg = `Runtime error in '${instance.name}': ${e.message}`;
-          this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg);
-          return {
-            instanceId: instance.instanceId,
-            updates: { error: errorMsg, lastRunOutputs: {} }
-          };
-  }
-      }
-
-      private runInstancesLoop(): void {
-        if (!this.audioEngine || !this.currentIsAudioGloballyEnabled) {
-          this.stopProcessingLoop();
-          return;
+      return {
+        instanceId: instance.instanceId,
+        updates: {
+          internalState: newInternalState,
+          lastRunOutputs: finalOutputsForTick,
+          error: null,
         }
-
-        const orderedInstanceIds = determineExecutionOrder(this.currentBlockInstances, this.currentConnections);
-        const sampleRate = this.audioEngine.getSampleRate();
-        const audioContextInfo = {
-          sampleRate: sampleRate || 44100,
-          bpm: this.currentGlobalBpm,
-        };
-
-        const validInstanceIds = new Set(this.currentBlockInstances.map(b => b.instanceId));
-        for (const instId in this.currentTickOutputs) {
-            if (!validInstanceIds.has(instId)) {
-                delete this.currentTickOutputs[instId];
-            }
-        }
-
-        this.currentBlockInstances.forEach(instance => {
-            if (!this.currentTickOutputs[instance.instanceId]) {
-                this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
-            }
-        });
-
-        const instanceUpdates: Array<{ instanceId: string; updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance) }> = [];
-
-        for (const instanceId of orderedInstanceIds) {
-          const instance = this.currentBlockInstances.find(b => b.instanceId === instanceId);
-          if (instance) {
-            if (!this.currentTickOutputs[instance.instanceId]) {
-                this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
-            }
-
-            const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo);
-            if (updatePayload) {
-                let significantChange = false;
-                if ((instance.error || null) !== (updatePayload.updates.error || null)) {
-                    significantChange = true;
-                }
-                if (!significantChange) {
-                    if (this.areOutputsDifferent(instance.lastRunOutputs, updatePayload.updates.lastRunOutputs)) {
-                        significantChange = true;
-                    }
-                }
-                if (!significantChange) {
-                    if (this.areInternalStatesDifferent(instance.internalState, updatePayload.updates.internalState)) {
-                        significantChange = true;
-                    }
-                }
-                if (significantChange) {
-                    instanceUpdates.push(updatePayload);
-                }
-      }
-          } else {
-            console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
+      };
+    } catch (e: any) {
+      const errorMsg = `Runtime error in '${instance.name}': ${e.message}`;
+      this.blockStateManager.addLogToBlockInstance(instance.instanceId, errorMsg);
+      return {
+        instanceId: instance.instanceId,
+        updates: { error: errorMsg, lastRunOutputs: {} }
+      };
     }
   }
-        if (instanceUpdates.length > 0) {
-          this.blockStateManager.updateMultipleBlockInstances(instanceUpdates);
-        }
-      }
 
-      public startProcessingLoop(): void {
+  private runInstancesLoop(): void {
+    if (!this.audioEngine || !this.currentIsAudioGloballyEnabled) {
+      this.stopProcessingLoop();
+      return;
+    }
+
+    const orderedInstanceIds = determineExecutionOrder(this.currentBlockInstances, this.currentConnections);
+    const sampleRate = this.audioEngine.getSampleRate();
+    const audioContextInfo = {
+      sampleRate: sampleRate || 44100,
+      bpm: this.currentGlobalBpm,
+    };
+
+    const validInstanceIds = new Set(this.currentBlockInstances.map(b => b.instanceId));
+    for (const instId in this.currentTickOutputs) {
+      if (!validInstanceIds.has(instId)) {
+        delete this.currentTickOutputs[instId];
+      }
+    }
+
+    this.currentBlockInstances.forEach(instance => {
+      if (!this.currentTickOutputs[instance.instanceId]) {
+        this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
+      }
+    });
+
+    const instanceUpdates: Array<{ instanceId: string; updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance) }> = [];
+
+    for (const instanceId of orderedInstanceIds) {
+      const instance = this.currentBlockInstances.find(b => b.instanceId === instanceId);
+      if (instance) {
+        if (!this.currentTickOutputs[instance.instanceId]) {
+          this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
+        }
+
+        const updatePayload = this.prepareInstanceUpdate(instance, audioContextInfo);
+        if (updatePayload) {
+          let significantChange = false;
+          if ((instance.error || null) !== (updatePayload.updates.error || null)) {
+            significantChange = true;
+          }
+          if (!significantChange) {
+            if (this.areOutputsDifferent(instance.lastRunOutputs, updatePayload.updates.lastRunOutputs)) {
+              significantChange = true;
+            }
+          }
+          if (!significantChange) {
+            if (this.areInternalStatesDifferent(instance.internalState, updatePayload.updates.internalState)) {
+              significantChange = true;
+            }
+          }
+          if (significantChange) {
+            instanceUpdates.push(updatePayload);
+          }
+        }
+      } else {
+        console.warn(`[LogicExecutionService] Instance ${instanceId} not found during execution loop.`);
+      }
+    }
+    if (instanceUpdates.length > 0) {
+      this.blockStateManager.updateMultipleBlockInstances(instanceUpdates);
+    }
+  }
+
+  public startProcessingLoop(): void {
     if (this.runIntervalId === null && this.currentIsAudioGloballyEnabled) {
       this.currentTickOutputs = {};
       this.currentBlockInstances.forEach(instance => {
@@ -363,7 +359,7 @@ export class LogicExecutionService {
       this.runIntervalId = window.setInterval(() => this.runInstancesLoop(), 10);
       console.log('[LogicExecutionService] Logic processing loop STARTED.');
     } else if (!this.currentIsAudioGloballyEnabled) {
-        console.log('[LogicExecutionService] Did not start logic processing loop because audio is not globally enabled.');
+      console.log('[LogicExecutionService] Did not start logic processing loop because audio is not globally enabled.');
     }
   }
 
@@ -382,8 +378,8 @@ export class LogicExecutionService {
 
   public clearBlockFromCache(instanceId: string): void {
     if (this.logicFunctionCache.has(instanceId)) {
-        this.logicFunctionCache.delete(instanceId);
-        console.log(`[LogicExecutionService] Cleared logic function for instance ${instanceId} from cache.`);
+      this.logicFunctionCache.delete(instanceId);
+      console.log(`[LogicExecutionService] Cleared logic function for instance ${instanceId} from cache.`);
     }
   }
 }

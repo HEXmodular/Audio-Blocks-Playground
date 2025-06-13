@@ -8,12 +8,11 @@
  */
 // services/AudioNodeManager.ts
 import { AudioEngineService } from './AudioEngineService';
-import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common'; // Removed unused ValueType
-import { BlockStateManager, getDefaultOutputValue } from '../state/BlockStateManager'; // Adjust path
-import {
-    LYRIA_MASTER_BLOCK_DEFINITION,
-    NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '@constants/constants'; // Adjust path
+import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common';
+import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; 
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+
 
 export class AudioNodeManager {
     private audioEngineService: AudioEngineService;

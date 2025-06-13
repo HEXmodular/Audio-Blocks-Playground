@@ -2,13 +2,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { BlockInstance, BlockPort, BlockParameter, Connection } from '@interfaces/common';
 import { BlockView } from '@interfaces/common';
-import CodeLogToggle from './CodeLogToggle';
+import CodeLogToggle from '@components/CodeLogToggle';
+import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
-import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
+import {  NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
+import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
+import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
-import OscilloscopeDisplay from './OscilloscopeDisplay';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+
 
 interface BlockDetailPanelProps {
   blockInstance: BlockInstance | null;

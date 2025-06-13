@@ -5,14 +5,14 @@ import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';
 import BlockDetailPanel from '@components/BlockDetailPanel';
 import {
-    ALL_BLOCK_DEFINITIONS as NON_NATIVE_DEFINITIONS, // Aliased original import
+  ALL_BLOCK_DEFINITIONS as NON_NATIVE_DEFINITIONS, // Aliased original import
 } from '@constants/constants';
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added import
 
 // Now, create the final CORE_BLOCK_DEFINITIONS_ARRAY
 const CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
-    ...NON_NATIVE_DEFINITIONS,
-    ...ALL_NATIVE_BLOCK_DEFINITIONS
+  ...NON_NATIVE_DEFINITIONS,
+  ...ALL_NATIVE_BLOCK_DEFINITIONS
 ];
 
 import { useBlockState } from '@context/BlockStateContext';
@@ -24,11 +24,6 @@ import { LogicExecutionEngineManager } from '@services/LogicExecutionEngineManag
 import { GlobalAudioState, GlobalAudioStateSyncer } from '@services/GlobalAudioStateSyncer';
 import { AudioNodeManager } from '@services/AudioNodeManager';
 import { BlockInstanceController } from '@controllers/BlockInstanceController';
-
-// Unused variables commented out
-// const GRID_STEP = 20;
-// const COMPACT_BLOCK_WIDTH = 120;
-
 
 const App: React.FC = () => {
   const geminiChatPanelRef = useRef<GeminiChatPanelRef>(null);
@@ -61,9 +56,9 @@ const App: React.FC = () => {
   }, [globalAudioStateSyncer]);
 
   useEffect(() => {
-      return () => {
-          globalAudioStateSyncer.dispose();
-      };
+    return () => {
+      globalAudioStateSyncer.dispose();
+    };
   }, [globalAudioStateSyncer]);
 
   const getDefinitionForBlock = useCallback((instance: BlockInstance): BlockDefinition | undefined => {
@@ -181,6 +176,25 @@ const App: React.FC = () => {
     audioEngineService.audioContext,
   ]);
 
+  // useEffect(() => {
+  //   console.log("audioNodeManager changed");
+  // },[audioNodeManager])
+  // useEffect(() => {
+  //   console.log("appBlockInstancesFromCtx changed");
+  // }, [appBlockInstancesFromCtx])
+  // useEffect(() => {
+  //   console.log("globalBpm changed");
+  // },[globalBpm])
+  // useEffect(() => {
+  //   console.log("syncedGlobalAudioState.isAudioGloballyEnabled changed");
+  // },[syncedGlobalAudioState.isAudioGloballyEnabled])
+  // useEffect(() => {
+  //   console.log("syncedGlobalAudioState.isAudioGloballyEnabled changed");
+  // },[audioEngineService.audioWorkletManager.isAudioWorkletSystemReady])
+  // useEffect(() => {
+  //   console.log("audioEngineService.audioContext changed");
+  // },[audioEngineService.audioContext])
+
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.updateAudioNodeParameters(
@@ -294,7 +308,7 @@ const App: React.FC = () => {
             onUpdateInstancePosition={blockInstanceController?.updateInstance!}
             onDeleteInstance={(instanceId: string) => blockInstanceController?.deleteInstance(instanceId, selectedInstanceId)}
             onStartConnectionDrag={connectionDragHandler.handleStartConnectionDrag}
-            pendingConnectionSource={pendingConnection ? {instanceId: pendingConnection.fromInstanceId, portId: pendingConnection.fromPort.id} : null}
+            pendingConnectionSource={pendingConnection ? { instanceId: pendingConnection.fromInstanceId, portId: pendingConnection.fromPort.id } : null}
             draggedOverPort={draggedOverPort}
           />
         ))}
@@ -306,7 +320,7 @@ const App: React.FC = () => {
           // getBlockDefinition, onUpdateInstance, onDeleteInstance, allInstances are now sourced from context
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
-           onUpdateConnections={connectionState.updateConnections}
+          onUpdateConnections={connectionState.updateConnections}
           getAnalyserNodeForInstance={audioEngineService.nativeNodeManager.getAnalyserNodeForInstance}
         />
       )}
