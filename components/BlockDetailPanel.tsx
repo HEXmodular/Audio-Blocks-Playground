@@ -4,7 +4,8 @@ import type { BlockInstance, BlockPort, BlockParameter, Connection } from '@inte
 import { BlockView } from '@interfaces/common';
 import CodeLogToggle from './CodeLogToggle';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
-import { OSCILLOSCOPE_BLOCK_DEFINITION, RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
+import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION, NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION, LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
+import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import OscilloscopeDisplay from './OscilloscopeDisplay';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
@@ -374,7 +375,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
       });
 
     let oscilloscopeUI = null;
-    if (blockDefinition.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
+    if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
       const analyserNode = getAnalyserNodeForInstance(blockInstance.instanceId);
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;

@@ -1,6 +1,7 @@
-import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
 import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
+// OscillatorType is a global type from Web Audio API
 
 // Define BPM_FRACTIONS here as it's used by NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION
 const BPM_FRACTIONS = [

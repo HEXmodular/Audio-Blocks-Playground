@@ -4,12 +4,15 @@ import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
 import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
 import { ConnectionState } from '@services/ConnectionState'; // Adjust path
 import {
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
-    // GAIN_BLOCK_DEFINITION, // Removed from here
+    // AUDIO_OUTPUT_BLOCK_DEFINITION, // Removed
+    // GAIN_BLOCK_DEFINITION, // Removed
     LYRIA_MASTER_BLOCK_DEFINITION,
-    OSCILLOSCOPE_BLOCK_DEFINITION
+    // OSCILLOSCOPE_BLOCK_DEFINITION // Removed
 } from '@constants/constants'; // Adjust path
-import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Added here
+// import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Removed
+import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock'; // Added
+import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock'; // Added
+
 
 export class BlockInstanceController {
     private blockStateManager: BlockStateManager;
@@ -98,7 +101,12 @@ export class BlockInstanceController {
                 this.audioEngineService.lyriaServiceManager.removeLyriaServiceForInstance?.(instanceId);
             } else if (definition?.audioWorkletProcessorName) {
                 this.audioEngineService.removeManagedAudioWorkletNode(instanceId);
-            } else if (definition?.id.startsWith('native-') || definition?.id === GAIN_BLOCK_DEFINITION.id || definition?.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id || definition?.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
+            } else if (
+                definition?.id.startsWith('native-') ||
+                definition?.id === GainControlNativeBlock.getDefinition().id ||
+                definition?.id === AudioEngineService.getAudioOutputDefinition().id ||
+                definition?.id === OscilloscopeNativeBlock.getDefinition().id
+            ) {
                 this.audioEngineService.removeNativeNode(instanceId);
             }
         }

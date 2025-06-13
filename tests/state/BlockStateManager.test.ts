@@ -1,10 +1,11 @@
 import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager';
 import { BlockDefinition } from '@interfaces/common'; // Removed unused BlockInstance
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking
+// import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking - Removed
+import { AudioEngineService } from '../../services/AudioEngineService'; // Added
 
 // Minimal mock for CORE_BLOCK_DEFINITIONS_ARRAY to avoid import issues in test
 const MOCK_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
-  AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition,
+  AudioEngineService.getAudioOutputDefinition(), // Changed
   // Add any other essential definitions if their structure is specifically needed by BSM constructor logic beyond just being an array.
   // For these tests, primarily focusing on save/load mechanics, a simple array with one item should suffice.
 ];
@@ -79,8 +80,8 @@ describe('BlockStateManager Debouncing and Batching', () => {
     const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor
 
-    bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
-    bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
+    bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
+    bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
 
     expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
 
@@ -110,7 +111,7 @@ describe('BlockStateManager Debouncing and Batching', () => {
 
   test('updateMultipleBlockInstances should call _onInstancesChangeCallback once and trigger debounced save', () => {
     const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
-    const initialInstance = bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
+    const initialInstance = bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor & addBlockInstance's initial save
     onInstancesChangeCallback.mockClear();
 

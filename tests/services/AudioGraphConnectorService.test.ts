@@ -7,7 +7,8 @@ import {
     ManagedNativeNodeInfo,  // Now from common
     ManagedLyriaServiceInfo // Now from common
 } from '@interfaces/common';
-import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants'; // Removed AUDIO_OUTPUT_BLOCK_DEFINITION
+// import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants'; // Removed AUDIO_OUTPUT_BLOCK_DEFINITION
+import { AllpassFilterNativeBlock } from '../../services/native-blocks/AllpassFilterNativeBlock'; // Added
 
 // Helper to create mock AudioNode
 const createMockAudioNode = (name: string = 'node') => {
@@ -213,7 +214,7 @@ describe('AudioGraphConnectorService', () => {
 
             // Fix for TS2739 on line 200 (original)
             const sourceDef: BlockDefinition = { id: 'sourceDef', name: 'Source', inputs: [], outputs: [{id: 'out', name: 'Out', type: 'audio'}], parameters: [], logicCode: '', initialPrompt: '' };
-            const allpassDef: BlockDefinition = NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION; // Use actual definition
+            const allpassDef: BlockDefinition = AllpassFilterNativeBlock.getDefinition(); // Use actual definition
 
             const sourceInstance: BlockInstance = { instanceId: 'sourceAllpass', definitionId: 'sourceDef', name: 'SA', position: {x:0,y:0}, parameters:[], internalState:{}, logs: [], modificationPrompts: [], lastRunOutputs: {} };
             const allpassInstance: BlockInstance = { instanceId: 'allpass1', definitionId: allpassDef.id, name: 'AP1', position: {x:0,y:0}, parameters:[], internalState:{}, logs: [], modificationPrompts: [], lastRunOutputs: {} };

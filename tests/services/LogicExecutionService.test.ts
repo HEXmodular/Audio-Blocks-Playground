@@ -2,7 +2,8 @@ import { LogicExecutionService } from '@services/LogicExecutionService';
 import { BlockInstance, BlockDefinition, Connection, BlockParameter } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue as actualGetDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
-import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '@constants/constants';
+// import { NATIVE_AD_ENVELOPE_BLOCK_DEFINITION } from '@constants/constants'; // Removed
+import { EnvelopeNativeBlock } from '../../services/native-blocks/EnvelopeNativeBlock'; // Added
 
 
 // Mock BlockStateManager
@@ -327,7 +328,7 @@ describe('LogicExecutionService', () => {
         });
 
         test('handles NATIVE_AD_ENVELOPE_BLOCK_DEFINITION trigger via batch', () => {
-            const def = NATIVE_AD_ENVELOPE_BLOCK_DEFINITION;
+            const def = EnvelopeNativeBlock.getADEnvelopeDefinition();
             const inst: BlockInstance = {
                 instanceId: 'envAd', definitionId: def.id, name:'EnvAD', position:{x:0,y:0},
                 parameters: [

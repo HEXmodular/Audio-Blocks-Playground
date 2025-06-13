@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
 

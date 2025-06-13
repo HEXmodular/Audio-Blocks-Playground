@@ -9,11 +9,12 @@ import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import {
-    NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
-    NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
+    // NATIVE_AD_ENVELOPE_BLOCK_DEFINITION, // Removed
+    // NATIVE_AR_ENVELOPE_BLOCK_DEFINITION, // Removed
     NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
     LYRIA_MASTER_BLOCK_DEFINITION,
 } from '@constants/constants';
+import { EnvelopeNativeBlock } from './native-blocks/EnvelopeNativeBlock'; // Added
 
 // Helper function, can be static or outside the class
 function determineExecutionOrder(instances: BlockInstance[], connections: Connection[]): string[] {
@@ -226,7 +227,7 @@ export class LogicExecutionService {
       let newInternalState = { ...(instance.internalState || {}), ...nextInternalStateOpaque };
 
       if (this.audioEngine && this.audioEngine.nativeNodeManager) { // Ensure nativeNodeManager exists
-        if (definition.id === NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id && newInternalState.envelopeNeedsTriggering) {
+        if (definition.id === EnvelopeNativeBlock.getADEnvelopeDefinition().id && newInternalState.envelopeNeedsTriggering) {
           const attackParam = instance.parameters.find(p => p.id === 'attackTime');
           const decayParam = instance.parameters.find(p => p.id === 'decayTime');
           const peakLevelParam = instance.parameters.find(p => p.id === 'peakLevel');
@@ -239,7 +240,7 @@ export class LogicExecutionService {
             );
           }
           newInternalState.envelopeNeedsTriggering = false;
-        } else if (definition.id === NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id) {
+        } else if (definition.id === EnvelopeNativeBlock.getAREnvelopeDefinition().id) {
           if (newInternalState.gateStateChangedToHigh) {
             const attackParam = instance.parameters.find(p => p.id === 'attackTime');
             const sustainLevelParam = instance.parameters.find(p => p.id === 'sustainLevel');

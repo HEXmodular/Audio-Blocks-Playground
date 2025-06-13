@@ -27,7 +27,7 @@ import {
     Connection,
     BlockInstance,
     BlockDefinition,
-    BlockParameterDefinition, // Added
+    // BlockParameterDefinition, // Added
     BlockParameter,
     ManagedWorkletNodeInfo, // Import from common
     ManagedNativeNodeInfo,  // Import from common
