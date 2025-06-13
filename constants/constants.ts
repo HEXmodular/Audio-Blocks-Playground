@@ -174,236 +174,7 @@ return internalState;
   audioWorkletCode: OSCILLATOR_WORKLET_CODE,
 };
 
-const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
-const SAMPLE_BUFFER_WORKLET_CODE = `
-class SampleBufferProcessor extends AudioWorkletProcessor {
-  static get parameterDescriptors() {
-    return [];
-  }
-
-  constructor(options) {
-    super(options);
-    this.instanceId = options?.processorOptions?.instanceId || 'UnknownSampleBufferWorklet';
-    this.recentSamples = new Float32Array(1024); // Store last 1024 samples
-    this.recentSamplesWritePtr = 0;
-
-    this.port.onmessage = (event) => {
-      if (event.data?.type === 'GET_RECENT_SAMPLES') {
-        // To return samples in chronological order (oldest to newest)
-        // we create a new array and fill it by reading from the circular buffer.
-        const orderedSamples = new Float32Array(this.recentSamples.length);
-        let readPtr = this.recentSamplesWritePtr;
-        for (let i = 0; i < this.recentSamples.length; i++) {
-          orderedSamples[i] = this.recentSamples[readPtr];
-          readPtr = (readPtr + 1) % this.recentSamples.length;
-        }
-        this.port.postMessage({ type: 'RECENT_SAMPLES_DATA', samples: orderedSamples });
-      }
-      // Example of a previous message type, can be kept or removed if not used.
-      // if (event.data?.type === 'clearBuffer') {
-      //   // console.log(\`\${this.instanceId}: Clear buffer message received\`);
-      // }
-    };
-  }
-
-  process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    const output = outputs[0];
-
-    if (input && input.length > 0 && output && output.length > 0) {
-      const inputChannel = input[0];
-      const outputChannel = output[0];
-      if (inputChannel && outputChannel) {
-        for (let i = 0; i < outputChannel.length; ++i) {
-          const sample = inputChannel[i] !== undefined ? inputChannel[i] : 0;
-          outputChannel[i] = sample;
-
-          // Store in circular buffer
-          this.recentSamples[this.recentSamplesWritePtr] = sample;
-          this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
-        }
-      }
-    } else if (output && output.length > 0) {
-      const outputChannel = output[0];
-      if (outputChannel) {
-        for (let i = 0; i < outputChannel.length; ++i) {
-          outputChannel[i] = 0;
-           // Store silence in circular buffer if no input
-          this.recentSamples[this.recentSamplesWritePtr] = 0;
-          this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
-        }
-      }
-    }
-    return true;
-  }
-}
-// IMPORTANT: The registerProcessor call will be done by the host environment (useAudioEngine)
-`;
-
-export const AUDIO_OUTPUT_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'system-audio-output-v1',
-  name: 'Audio Output',
-  description: 'Plays the incoming audio signal. Contains an internal GainNode for volume control which then feeds a SampleBufferProcessor AudioWorklet (acting as a sink). The input port connects to this internal GainNode.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume GainNode.' }
-  ],
-  outputs: [],
-  parameters: createParameterDefinitions([ // Use new helper
-    { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal GainNode AudioParam)' }
-  ]),
-  logicCode: "// This block's audio processing is handled by a native GainNode and a SampleBufferProcessor AudioWorklet. The GainNode's volume parameter is controlled by the host based on this block's 'volume' parameter. The SampleBufferProcessor is used for potential audio analysis/visualization features.",
-  initialPrompt: "This block represents the main audio output, typically connecting to the system's speakers. It includes a volume control.",
-  audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME, // This still uses a worklet for sampling
-  audioWorkletCode: SAMPLE_BUFFER_WORKLET_CODE,
-};
-
 // NATIVE_LOGIC_CODE_PLACEHOLDER has been removed as it's no longer used by the refactored native block definitions.
-
-export const NATIVE_OSCILLATOR_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-oscillator-v1',
-  name: 'Oscillator (Native)',
-  description: 'Generates a basic waveform using a native Web Audio API OscillatorNode and an internal GainNode for amplitude.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'freq_in', name: 'Frequency CV', type: 'audio', description: 'Modulates OscillatorNode.frequency AudioParam directly.', audioParamTarget: 'frequency' },
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The generated audio signal (from internal GainNode).' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'frequency', name: 'Frequency', type: 'slider', min: 20, max: 5000, step: 1, defaultValue: 440, description: 'Base frequency in Hz (OscillatorNode.frequency).', isFrequency: true },
-    { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'Shape of the waveform (OscillatorNode.type).' },
-    { id: 'gain', name: 'Gain/CV Depth', type: 'slider', min: 0, max: 200, step: 0.1, defaultValue: 0.5, description: 'Output amplitude or CV modulation depth. Controls an internal GainNode.' }
-  ]),
-  logicCode: "// Native OscillatorNode is managed by the audio engine.",
-  initialPrompt: "This block is a native Web Audio OscillatorNode.",
-};
-
-
-export const NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-biquad-filter-v1',
-  name: 'Biquad Filter (Native)',
-  description: 'A standard Web Audio API BiquadFilterNode. Parameters control the underlying native node. Audio path is managed by Web Audio graph connections.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to native BiquadFilterNode input in Web Audio graph.' },
-    { id: 'freq_cv_in', name: 'Freq CV', type: 'audio', description: 'Modulates frequency AudioParam directly in Web Audio graph.', audioParamTarget: 'frequency'},
-    { id: 'q_cv_in', name: 'Q CV', type: 'audio', description: 'Modulates Q AudioParam directly in Web Audio graph.', audioParamTarget: 'Q'}
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from native BiquadFilterNode in Web Audio graph.' }
-  ],
-  parameters: createParameterDefinitions([ // Use new helper
-    { id: 'frequency', name: 'Frequency', type: 'slider', min: 20, max: 20000, step: 1, defaultValue: 350, description: 'Filter cutoff/center frequency in Hz (AudioParam).', isFrequency: true },
-    { id: 'q', name: 'Q Factor', type: 'slider', min: 0.0001, max: 1000, step: 0.0001, defaultValue: 1, description: 'Quality factor, controlling bandwidth (AudioParam).' },
-    { id: 'gain', name: 'Gain (dB)', type: 'slider', min: -40, max: 40, step: 0.1, defaultValue: 0, description: 'Gain in decibels, for Peaking, Lowshelf, Highshelf (AudioParam).' },
-    {
-      id: 'type',
-      name: 'Filter Type',
-      type: 'select',
-      options: [
-        {value: "lowpass", label: "Lowpass"}, {value: "highpass", label: "Highpass"},
-        {value: "bandpass", label: "Bandpass"}, {value: "notch", label: "Notch"},
-        {value: "allpass", label: "Allpass"}, {value: "peaking", label: "Peaking"},
-        {value: "lowshelf", label: "Lowshelf"}, {value: "highshelf", label: "Highshelf"}
-      ],
-      defaultValue: "lowpass",
-      description: 'The type of filtering algorithm (native node property).'
-    },
-  ]),
-  logicCode: "// Native BiquadFilterNode is managed by the audio engine.",
-  initialPrompt: "This block is a native Web Audio BiquadFilterNode.",
-};
-
-export const NATIVE_DELAY_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-delay-v1',
-  name: 'Delay (Native)',
-  description: 'A standard Web Audio API DelayNode. Audio path is managed by Web Audio graph connections.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to native DelayNode input in Web Audio graph.' },
-    { id: 'delay_cv_in', name: 'Delay CV', type: 'audio', description: 'Modulates delayTime AudioParam directly in Web Audio graph.', audioParamTarget: 'delayTime'}
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from native DelayNode in Web Audio graph.' }
-  ],
-  parameters: createParameterDefinitions([ // Use new helper
-    { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0, max: 5, step: 0.001, defaultValue: 0.5, description: 'Delay in seconds (AudioParam). Max effective delay fixed at node creation (e.g. 5s by default in engine).' },
-  ]),
-  logicCode: "// Native DelayNode is managed by the audio engine.",
-  initialPrompt: "This block is a native Web Audio DelayNode.",
-};
-
-export const NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-allpass-filter-v1',
-  name: 'Allpass Filter (Native)',
-  description: 'A native allpass filter. Implements y[n] = -g*x[n] + x[n-M] + g*y[n-M] using DelayNodes and GainNodes.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to process.' },
-    { id: 'delay_cv_in', name: 'Delay CV', type: 'audio', description: 'Modulates the delay time of the main input delay path.', audioParamTarget: 'delayTime' },
-    { id: 'coeff_cv_in', name: 'Coeff CV', type: 'audio', description: 'Modulates the \'g\' coefficient of the feedback path.', audioParamTarget: 'coefficient' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Processed audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0.0001, max: 1.0, step: 0.0001, defaultValue: 0.05, description: 'Delay length M in seconds. Affects both input and feedback delay paths.' },
-    { id: 'coefficient', name: 'Coefficient (g)', type: 'slider', min: -0.99, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback/feedforward coefficient g.' }
-  ]),
-  logicCode: "// Native AllpassFilter custom implementation using DelayNodes and GainNodes is managed by the audio engine.",
-  initialPrompt: "This block is a native Allpass Filter.",
-};
-
-
-export const OSCILLOSCOPE_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'analyser-oscilloscope-v1',
-  name: 'Oscilloscope (Analyser)',
-  description: 'Visualizes an audio signal waveform using a native AnalyserNode. The UI is shown in the block detail panel.',
-  runsAtAudioRate: true, // It processes audio via the AnalyserNode
-  inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to visualize.' }
-  ],
-  outputs: [], // No audio output
-  parameters: createParameterDefinitions([
-    {
-      id: 'fftSize',
-      name: 'FFT Size',
-      type: 'select',
-      options: [
-        { value: 32, label: '32' }, { value: 64, label: '64' }, { value: 128, label: '128' },
-        { value: 256, label: '256' }, { value: 512, label: '512' }, { value: 1024, label: '1024' },
-        { value: 2048, label: '2048' }, { value: 4096, label: '4096' }, { value: 8192, label: '8192' },
-        { value: 16384, label: '16384' }, { value: 32768, label: '32768' }
-      ],
-      defaultValue: 2048,
-      description: 'Size of the FFT window. This influences the detail in the time domain data for the oscilloscope.'
-    }
-  ]),
-  logicCode: "// Native AnalyserNode is managed by the audio engine for oscilloscope display.",
-  initialPrompt: "This block uses a native Web Audio AnalyserNode to display waveforms.",
-};
-
-export const NATIVE_LFO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-lfo-v1',
-  name: 'LFO (Native)',
-  description: 'Low-Frequency Oscillator using a native OscillatorNode. Max frequency 200Hz. Outputs an audio-rate signal, typically used for modulation.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'freq_cv_in', name: 'Frequency CV', type: 'audio', description: 'Modulates LFO frequency.', audioParamTarget: 'frequency' },
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'LFO Output', type: 'audio', description: 'The LFO signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'frequency', name: 'Frequency (Hz)', type: 'slider', min: 0.01, max: 200, step: 0.01, defaultValue: 1, description: 'LFO frequency in Hz.', isFrequency: true },
-    { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
-    { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
-  ]),
-  logicCode: "// Native LFO (OscillatorNode) is managed by the audio engine.",
-  initialPrompt: "This block is a native Web Audio OscillatorNode configured as an LFO.",
-};
 
 const BPM_FRACTIONS = [
   {value: 4, label: '1 Bar (4/4)'}, {value: 2, label: '1/2 Note'}, {value: 1, label: '1/4 Note (Beat)'},
@@ -412,109 +183,6 @@ const BPM_FRACTIONS = [
   {value: 0.75, label: 'Dotted 1/8 Note'}, {value: 1.5, label: 'Dotted 1/4 Note'}
 ];
 BPM_FRACTIONS.sort((a, b) => b.value - a.value); // Sort from longest to shortest duration for UI
-
-export const NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-lfo-bpm-sync-v1',
-  name: 'LFO (BPM Sync)',
-  description: 'LFO synchronized to global BPM, using a native OscillatorNode. Frequency is derived from BPM and selected fraction.',
-  runsAtAudioRate: true,
-  inputs: [
-    // No direct frequency CV, as it's BPM derived. Could add CV for fraction selection if complex.
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'LFO Output', type: 'audio', description: 'The BPM-synced LFO signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'bpm_fraction', name: 'BPM Fraction', type: 'select', options: BPM_FRACTIONS, defaultValue: 1, description: 'LFO rate as a fraction of the global BPM.' },
-    { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
-    { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
-  ]),
-  logicCode: "// Native LFO (OscillatorNode) with BPM sync is managed by the audio engine.",
-  initialPrompt: "This block is a native Web Audio OscillatorNode configured as an LFO, synchronized to global BPM.",
-  // Host (NativeNodeManager or a dedicated LFO BPM Sync class) will calculate frequency from BPM & fraction and set on OscillatorNode
-};
-
-export const NATIVE_AD_ENVELOPE_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-ad-envelope-v1',
-  name: 'AD Envelope (Native)',
-  description: 'Attack-Decay envelope generator using a native ConstantSourceNode and AudioParam automation. Triggered by input signal.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'trigger_in', name: 'Trigger', type: 'trigger', description: 'Triggers the envelope.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Peak Level).' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
-    { id: 'decayTime', name: 'Decay Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.3, description: 'Envelope decay time in seconds.' },
-    { id: 'peakLevel', name: 'Peak Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Peak level of the envelope.' }
-  ]),
-  logicCode: `
-// This logic code detects a rising edge on 'trigger_in' and manages envelopeNeedsTriggering.
-// The actual envelope generation is handled by useAudioEngine using ConstantSourceNode and AudioParam ramps.
-
-const triggerInputVal = inputs.trigger_in;
-let newInternalState = { ...internalState }; // Make a mutable copy
-
-if (triggerInputVal === true && (internalState.prevTriggerState === false || internalState.prevTriggerState === undefined || internalState.prevTriggerState === null)) {
-  newInternalState.envelopeNeedsTriggering = true;
-  __custom_block_logger__('AD Envelope trigger detected. Setting envelopeNeedsTriggering to true.');
-}
-
-newInternalState.prevTriggerState = triggerInputVal;
-
-return newInternalState;
-  `.trim(),
-  initialPrompt: 'Create a native AD (Attack-Decay) envelope generator. It should use a ConstantSourceNode and AudioParam automation (linearRampToValueAtTime). Parameters: attackTime (s), decayTime (s), peakLevel. Input: trigger_in. Output: envelope audio signal. The main-thread logicCode should detect the trigger and inform the host audio engine to start the ramps.',
-};
-
-export const NATIVE_AR_ENVELOPE_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'native-ar-envelope-v1',
-  name: 'AR Envelope (Native)',
-  description: 'Attack-Release envelope generator using a native ConstantSourceNode and AudioParam automation. Controlled by a gate input.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'gate_in', name: 'Gate', type: 'gate', description: 'Controls the envelope state (high for attack/sustain, low for release).' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Sustain Level).' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
-    { id: 'releaseTime', name: 'Release Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.5, description: 'Envelope release time in seconds.' },
-    { id: 'sustainLevel', name: 'Sustain Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 0.7, description: 'Sustain level of the envelope (when gate is high).' }
-  ]),
-  logicCode: `
-// This logic code detects changes in 'gate_in' and sets flags for the host audio engine.
-// The actual envelope generation is handled by useAudioEngine.
-
-const gateInputVal = !!inputs.gate_in; // Ensure boolean
-let newInternalState = { ...internalState };
-
-// Detect rising edge (gate becomes true)
-if (gateInputVal === true && (internalState.prevGateState === false || internalState.prevGateState === undefined)) {
-  newInternalState.gateStateChangedToHigh = true;
-  newInternalState.gateStateChangedToLow = false; // Ensure only one state change per tick
-  __custom_block_logger__('AR Envelope gate became HIGH. Setting gateStateChangedToHigh.');
-}
-// Detect falling edge (gate becomes false)
-else if (gateInputVal === false && internalState.prevGateState === true) {
-  newInternalState.gateStateChangedToLow = true;
-  newInternalState.gateStateChangedToHigh = false; // Ensure only one state change per tick
-  __custom_block_logger__('AR Envelope gate became LOW. Setting gateStateChangedToLow.');
-} else {
-  // No change, or consecutive same states, clear flags
-  newInternalState.gateStateChangedToHigh = false;
-  newInternalState.gateStateChangedToLow = false;
-}
-
-newInternalState.prevGateState = gateInputVal;
-
-return newInternalState;
-  `.trim(),
-  initialPrompt: 'Create a native AR (Attack-Release) envelope generator. It should use a ConstantSourceNode and AudioParam automation. Parameters: attackTime (s), releaseTime (s), sustainLevel. Input: gate_in (boolean type, high for attack/sustain, low for release). Output: envelope audio signal. The main-thread logicCode should detect gate changes and inform the host audio engine.',
-};
 
 export const MANUAL_GATE_BLOCK_DEFINITION: BlockDefinition = {
   id: 'manual-gate-v1',
@@ -538,6 +206,24 @@ return {};
 };
 
 const SEQUENCER_BPM_FRACTIONS = BPM_FRACTIONS.filter(f => f.value <=4 && f.value >= 1/32); // Sensible range for sequencers
+
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
+};
 
 export const STEP_SEQUENCER_BLOCK_DEFINITION: BlockDefinition = {
   id: 'step-sequencer-v1',
@@ -612,6 +298,24 @@ setOutput('gate_out', gateHigh);
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Step Sequencer block. Parameters: "Steps Pattern" (step_sequencer_ui, default 8 steps), "Run Mode" (select: Internal BPM, External Trigger), "Rate (BPM Fraction)" (select: musical divisions for BPM sync), "Number of Steps" (slider 1-16). Inputs: "External Trigger". Outputs: "Trigger Output", "Gate Output". Logic should handle step advancement based on mode and timing.',
+};
+
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
 };
 
 export const PROBABILITY_SEQUENCER_BLOCK_DEFINITION: BlockDefinition = {
@@ -695,6 +399,24 @@ setOutput('gate_out', gateHigh);
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Probability Sequencer block. Parameters: "Steps Pattern (Activation)" (step_sequencer_ui), "Probabilities (0-100%)" (text_input, comma-separated), "Run Mode", "Rate (BPM Fraction)", "Number of Steps". Inputs: "External Trigger". Outputs: "Trigger Output", "Gate Output". Logic should consider step activation and its probability.',
+};
+
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
 };
 
 export const RULE_110_BLOCK_DEFINITION: BlockDefinition = {
@@ -804,6 +526,24 @@ internalState.prevExtTriggerState = externalTrigger;
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Rule 110 cellular automaton block. Parameters: "Core Length" (slider 1-16), "Pattern + Boundaries" (step_sequencer_ui, 18 steps for L-Bnd, N core, R-Bnd), "Run Mode" (select: Internal Trigger, External Trigger, LFO), "Internal Freq (Hz)" (number_input 0.01-8000), "LFO BPM Sync Rate" (select), "LFO Sync to BPM" (toggle). Inputs: "Trigger", "Numeric State In". Output: "Numeric State Out". Logic must implement Rule 110, handle timing for different modes, and convert core pattern to/from number. Max 16 core cells + 2 boundaries = 18 UI steps.',
+};
+
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
 };
 
 const RULE_110_OSCILLATOR_WORKLET_PROCESSOR_NAME = 'rule-110-oscillator-processor';
@@ -988,6 +728,24 @@ return internalState;
   audioWorkletCode: RULE_110_OSCILLATOR_WORKLET_CODE,
 };
 
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
+};
+
 export const RULE_110_JOIN_BLOCK_DEFINITION: BlockDefinition = {
   id: 'rule-110-join-v1',
   name: 'Rule 110 Join',
@@ -1095,6 +853,24 @@ return internalState;
   initialPrompt: 'Create a Rule 110 Join block. Parameters: "Core Length 1 (N1)" (slider 1-8), "Core Length 2 (N2)" (slider 1-8), "Boundary Bits" (select: Zeros, Ones, Wrap). Inputs: "Numeric State In 1", "Numeric State In 2", "Trigger". Outputs: "Numeric State Out 1", "Numeric State Out 2". Logic combines N1 and N2 bits, applies Rule 110 with chosen boundaries, then splits the result.',
 };
 
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
+};
+
 export const RULE_110_BYTE_READER_BLOCK_DEFINITION: BlockDefinition = {
   id: 'rule-110-byte-reader-v1',
   name: 'Rule 110 Byte Reader',
@@ -1158,6 +934,24 @@ return internalState;
   initialPrompt: 'Create a Rule 110 Byte Reader. Parameters: "Input Core Length" (slider 1-16), "Bit to Read (0-indexed from MSB)" (slider 0-15), "Bits to Collect (N)" (slider 1-8 for byte). Inputs: "Numeric State In", "Trigger". Outputs: "Byte Out" (number, after N bits), "Selected Bit Out" (boolean). Logic samples the chosen bit from input on trigger, accumulates N bits, then outputs byte.',
 };
 
+export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+  id: 'number-to-constant-audio-v1',
+  name: 'Number to Constant Audio',
+  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+  runsAtAudioRate: true,
+  inputs: [
+    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+  ],
+  outputs: [
+    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+  ],
+  parameters: createParameterDefinitions([
+    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+  ]),
+  logicCode: "",
+};
+
 export const BYTE_REVERSE_BLOCK_DEFINITION: BlockDefinition = {
   id: 'byte-reverse-v1',
   name: 'Byte Reverse',
@@ -1191,25 +985,6 @@ if (numberIn !== null && typeof numberIn === 'number' && isFinite(numberIn)) {
 return {};
   `.trim(),
   initialPrompt: 'Create a Byte Reverse block. Parameter: "Number of Bits (N)" (slider 1-16, default 8). Input: "Number In". Output: "Reversed Number Out". Logic reverses the order of the N least significant bits of the input number.',
-};
-
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "// Native ConstantSourceNode with gain control is managed by the audio engine.",
-  initialPrompt: "This block converts a number to a constant audio signal using a native ConstantSourceNode.",
 };
 
 const LYRIA_SCALE_OPTIONS = Object.entries(AppScale).map(([label, value]) => ({
@@ -1432,7 +1207,6 @@ return {};
   initialPrompt: 'Create a Lyria Realtime Prompt block. Inputs: text_in (string), weight_in (number 0-1). Outputs: prompt_out (any, for {text, weight} object). Parameters: "Prompt Text" (text_input), "Prompt Weight" (slider 0-1). Logic forms the output object from inputs or parameters.',
 };
 
-
 export const GEMINI_SYSTEM_PROMPT_FOR_BLOCK_DEFINITION = `
 You are an expert in Web Audio API and creative audio programming.
 You will be given a user prompt to create an audio processing block.
@@ -1534,15 +1308,6 @@ Ensure 'fixedLogicCodeTests' is a string containing the test code. Only provide 
 
 export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   OSCILLATOR_BLOCK_DEFINITION,
-  NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-  NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
-  NATIVE_DELAY_BLOCK_DEFINITION,
-  NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
-  OSCILLOSCOPE_BLOCK_DEFINITION,
-  NATIVE_LFO_BLOCK_DEFINITION,
-  NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
-  NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
-  NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
   MANUAL_GATE_BLOCK_DEFINITION,
   STEP_SEQUENCER_BLOCK_DEFINITION,
   PROBABILITY_SEQUENCER_BLOCK_DEFINITION,
@@ -1551,8 +1316,6 @@ export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   RULE_110_JOIN_BLOCK_DEFINITION,
   RULE_110_BYTE_READER_BLOCK_DEFINITION,
   BYTE_REVERSE_BLOCK_DEFINITION,
-  NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
   LYRIA_MASTER_BLOCK_DEFINITION,
   LYRIA_PROMPT_BLOCK_DEFINITION,
-  AUDIO_OUTPUT_BLOCK_DEFINITION, // Should usually be last or handled specially in UI lists
 ];

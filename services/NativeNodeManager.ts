@@ -12,20 +12,8 @@ import {
     // AllpassInternalNodes, // Removed unused import - implicitly used by ManagedNativeNodeInfo
     EnvelopeParams // Import EnvelopeParams
 } from '@interfaces/common';
-import {
-    NATIVE_OSCILLATOR_BLOCK_DEFINITION,
-    NATIVE_LFO_BLOCK_DEFINITION,
-    NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION,
-    NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION,
-    NATIVE_DELAY_BLOCK_DEFINITION,
-    OSCILLOSCOPE_BLOCK_DEFINITION,
-    NATIVE_AD_ENVELOPE_BLOCK_DEFINITION,
-    NATIVE_AR_ENVELOPE_BLOCK_DEFINITION,
-    NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION,
-    NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
-} from '@constants/constants';
 
-import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock';
+// Removed direct imports of BlockDefinition constants
 
 import { CreatableNode } from '@services/native-blocks/CreatableNode';
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
@@ -75,17 +63,17 @@ export class NativeNodeManager implements INativeNodeManager {
     }
 
     private initializeBlockHandlers(context: AudioContext): void {
-        this.blockHandlers.set(GAIN_BLOCK_DEFINITION.id, new GainControlNativeBlock(context));
-        this.blockHandlers.set(NATIVE_OSCILLATOR_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(NATIVE_LFO_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION.id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(NATIVE_BIQUAD_FILTER_BLOCK_DEFINITION.id, new BiquadFilterNativeBlock(context));
-        this.blockHandlers.set(NATIVE_DELAY_BLOCK_DEFINITION.id, new DelayNativeBlock(context));
-        this.blockHandlers.set(OSCILLOSCOPE_BLOCK_DEFINITION.id, new OscilloscopeNativeBlock(context));
-        this.blockHandlers.set(NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id, new EnvelopeNativeBlock(context));
-        this.blockHandlers.set(NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id, new EnvelopeNativeBlock(context));
-        this.blockHandlers.set(NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id, new AllpassFilterNativeBlock(context));
-        this.blockHandlers.set(NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id, new NumberToConstantAudioNativeBlock(context));
+        this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock(context));
+        this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock(context));
+        this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock(context));
+        this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock(context));
+        this.blockHandlers.set(OscilloscopeNativeBlock.getDefinition().id, new OscilloscopeNativeBlock(context));
+        this.blockHandlers.set(EnvelopeNativeBlock.getADEnvelopeDefinition().id, new EnvelopeNativeBlock(context));
+        this.blockHandlers.set(EnvelopeNativeBlock.getAREnvelopeDefinition().id, new EnvelopeNativeBlock(context));
+        this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock(context));
+        this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock(context));
     }
 
     public _setAudioContext(newContext: AudioContext | null): void {
@@ -236,7 +224,7 @@ export class NativeNodeManager implements INativeNodeManager {
 
     public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
         const nativeInfo = this.managedNativeNodesRef.get(instanceId);
-        if (nativeInfo && nativeInfo.definition.id === OSCILLOSCOPE_BLOCK_DEFINITION.id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
+        if (nativeInfo && nativeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
             return nativeInfo.mainProcessingNode;
         }
         return null;
@@ -263,9 +251,9 @@ export class NativeNodeManager implements INativeNodeManager {
         // This is a simplification and might need specific block definition check.
         const info = this.managedNativeNodesRef.get(nodeId);
         if (info && info.definition) {
-            if (info.definition.id === NATIVE_AD_ENVELOPE_BLOCK_DEFINITION.id && params.decayTime !== undefined && params.peakLevel !== undefined) {
+            if (info.definition.id === EnvelopeNativeBlock.getADEnvelopeDefinition().id && params.decayTime !== undefined && params.peakLevel !== undefined) {
                 this.triggerNativeNodeEnvelope(nodeId, params.attackTime, params.decayTime, params.peakLevel);
-            } else if (info.definition.id === NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id && params.releaseTime !== undefined && params.sustainLevel !== undefined) {
+            } else if (info.definition.id === EnvelopeNativeBlock.getAREnvelopeDefinition().id && params.releaseTime !== undefined && params.sustainLevel !== undefined) {
                 // AR logic is more gate-driven, not a simple one-shot trigger with these params.
                 // This mapping is imperfect. LogicExecutionService should call specific AD/AR methods.
                 console.warn(`triggerEnvelope called for AR block '${nodeId}', but AR is gate-driven. Use specific attack/release methods if applicable.`);

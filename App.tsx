@@ -5,8 +5,15 @@ import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';
 import BlockDetailPanel from '@components/BlockDetailPanel';
 import {
-    ALL_BLOCK_DEFINITIONS as CORE_BLOCK_DEFINITIONS_ARRAY,
+    ALL_BLOCK_DEFINITIONS as NON_NATIVE_DEFINITIONS, // Aliased original import
 } from '@constants/constants';
+import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added import
+
+// Now, create the final CORE_BLOCK_DEFINITIONS_ARRAY
+const CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
+    ...NON_NATIVE_DEFINITIONS,
+    ...ALL_NATIVE_BLOCK_DEFINITIONS
+];
 
 import { useBlockState } from '@context/BlockStateContext';
 import { audioEngineService } from '@services/AudioEngineService';

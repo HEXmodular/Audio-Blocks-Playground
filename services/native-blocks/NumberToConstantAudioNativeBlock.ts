@@ -1,8 +1,25 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
 
 export class NumberToConstantAudioNativeBlock implements CreatableNode {
     private context: AudioContext;
+
+    static getDefinition(): BlockDefinition {
+      return {
+        id: 'number-to-constant-audio-v1',
+        name: 'Number to Constant Audio',
+        description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+        runsAtAudioRate: true,
+        inputs: [ { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' } ],
+        outputs: [ { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' } ],
+        parameters: createParameterDefinitions([
+          { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+          { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
+        ]),
+        logicCode: "",
+      };
+    }
 
     constructor(context: AudioContext) {
         this.context = context;

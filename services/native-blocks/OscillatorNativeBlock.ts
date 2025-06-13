@@ -1,8 +1,79 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
+
+// Define BPM_FRACTIONS here as it's used by NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION
+const BPM_FRACTIONS = [
+  {value: 4, label: '1 Bar (4/4)'}, {value: 2, label: '1/2 Note'}, {value: 1, label: '1/4 Note (Beat)'},
+  {value: 0.5, label: '1/8 Note'}, {value: 0.25, label: '1/16 Note'}, {value: 0.125, label: '1/32 Note'},
+  {value: 1/3, label: '1/4 Triplet'}, {value: 1/6, label: '1/8 Triplet'}, {value: 1/12, label: '1/16 Triplet'},
+  {value: 0.75, label: 'Dotted 1/8 Note'}, {value: 1.5, label: 'Dotted 1/4 Note'}
+].sort((a, b) => b.value - a.value); // Sort from longest to shortest duration for UI
+
 
 export class OscillatorNativeBlock implements CreatableNode {
     private context: AudioContext;
+
+    static getOscillatorDefinition(): BlockDefinition {
+      return {
+        id: 'native-oscillator-v1',
+        name: 'Oscillator (Native)',
+        description: 'Generates a basic waveform using a native Web Audio API OscillatorNode and an internal GainNode for amplitude.',
+        runsAtAudioRate: true,
+        inputs: [
+          { id: 'freq_in', name: 'Frequency CV', type: 'audio', description: 'Modulates OscillatorNode.frequency AudioParam directly.', audioParamTarget: 'frequency' },
+        ],
+        outputs: [
+          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The generated audio signal (from internal GainNode).' }
+        ],
+        parameters: createParameterDefinitions([
+          { id: 'frequency', name: 'Frequency', type: 'slider', min: 20, max: 5000, step: 1, defaultValue: 440, description: 'Base frequency in Hz (OscillatorNode.frequency).', isFrequency: true },
+          { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'Shape of the waveform (OscillatorNode.type).' },
+          { id: 'gain', name: 'Gain/CV Depth', type: 'slider', min: 0, max: 200, step: 0.1, defaultValue: 0.5, description: 'Output amplitude or CV modulation depth. Controls an internal GainNode.' }
+        ]),
+        logicCode: "",
+      };
+    }
+
+    static getLfoDefinition(): BlockDefinition {
+      return {
+        id: 'native-lfo-v1',
+        name: 'LFO (Native)',
+        description: 'Low-Frequency Oscillator using a native OscillatorNode. Max frequency 200Hz. Outputs an audio-rate signal, typically used for modulation.',
+        runsAtAudioRate: true,
+        inputs: [
+          { id: 'freq_cv_in', name: 'Frequency CV', type: 'audio', description: 'Modulates LFO frequency.', audioParamTarget: 'frequency' },
+        ],
+        outputs: [
+          { id: 'audio_out', name: 'LFO Output', type: 'audio', description: 'The LFO signal.' }
+        ],
+        parameters: createParameterDefinitions([
+          { id: 'frequency', name: 'Frequency (Hz)', type: 'slider', min: 0.01, max: 200, step: 0.01, defaultValue: 1, description: 'LFO frequency in Hz.', isFrequency: true },
+          { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
+          { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
+        ]),
+        logicCode: "",
+      };
+    }
+
+    static getLfoBpmSyncDefinition(): BlockDefinition {
+      return {
+        id: 'native-lfo-bpm-sync-v1',
+        name: 'LFO (BPM Sync)',
+        description: 'LFO synchronized to global BPM, using a native OscillatorNode. Frequency is derived from BPM and selected fraction.',
+        runsAtAudioRate: true,
+        inputs: [],
+        outputs: [
+          { id: 'audio_out', name: 'LFO Output', type: 'audio', description: 'The BPM-synced LFO signal.' }
+        ],
+        parameters: createParameterDefinitions([
+          { id: 'bpm_fraction', name: 'BPM Fraction', type: 'select', options: BPM_FRACTIONS, defaultValue: 1, description: 'LFO rate as a fraction of the global BPM.' },
+          { id: 'waveform', name: 'Waveform', type: 'select', options: [{value: 'sine', label: 'Sine'}, {value: 'square', label: 'Square'}, {value: 'sawtooth', label: 'Sawtooth'}, {value: 'triangle', label: 'Triangle'}], defaultValue: 'sine', description: 'LFO waveform shape.' },
+          { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
+        ]),
+        logicCode: "",
+      };
+    }
 
     constructor(context: AudioContext) {
         this.context = context;

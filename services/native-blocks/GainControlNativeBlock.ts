@@ -1,29 +1,29 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
 import { CreatableNode } from './CreatableNode';
 import { createParameterDefinitions } from '@constants/constants';
 
-export const GAIN_BLOCK_DEFINITION: BlockDefinition = {
-    id: 'native-gain-v1',
-    name: 'Gain Control (Native)',
-    description: 'A native Web Audio API GainNode. Controls signal amplitude. Audio path is managed by Web Audio graph connections.',
-    runsAtAudioRate: true,
-    inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to native GainNode input in Web Audio graph.' },
-        { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain AudioParam directly in Web Audio graph.', audioParamTarget: 'gain' }
-    ],
-    outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from native GainNode in Web Audio graph.' }
-    ],
-    parameters: createParameterDefinitions([
-        { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (AudioParam).' }
-    ]),
-    logicCode: "// Native GainNode is managed by the audio engine.", // Re-added
-    initialPrompt: "This block is a native Web Audio GainNode.",    // Re-added
-};
-
-
 export class GainControlNativeBlock implements CreatableNode {
     private context: AudioContext | null;
+
+    public static getDefinition(): BlockDefinition {
+      return {
+        id: 'native-gain-v1',
+        name: 'Gain Control (Native)',
+        description: 'A native Web Audio API GainNode. Controls signal amplitude. Audio path is managed by Web Audio graph connections.',
+        runsAtAudioRate: true,
+        inputs: [
+          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to native GainNode input in Web Audio graph.' },
+          { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain AudioParam directly in Web Audio graph.', audioParamTarget: 'gain' }
+        ],
+        outputs: [
+          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from native GainNode in Web Audio graph.' }
+        ],
+        parameters: createParameterDefinitions([
+          { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (AudioParam).' }
+        ]),
+        logicCode: "", // Ensure this is an empty string
+      };
+    }
 
     constructor(context: AudioContext | null) {
         this.context = context;

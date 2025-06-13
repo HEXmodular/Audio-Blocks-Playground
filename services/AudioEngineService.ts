@@ -10,7 +10,8 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
+// import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Removed
+import { createParameterDefinitions } from '@constants/constants'; // Added
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager } from './AudioWorkletManager';
@@ -26,11 +27,69 @@ import {
     Connection,
     BlockInstance,
     BlockDefinition,
+    BlockParameterDefinition, // Added
     BlockParameter,
     ManagedWorkletNodeInfo, // Import from common
     ManagedNativeNodeInfo,  // Import from common
     // ManagedLyriaServiceInfo // Removed unused import
 } from '@interfaces/common';
+
+const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
+const SAMPLE_BUFFER_WORKLET_CODE = `
+    class SampleBufferProcessor extends AudioWorkletProcessor {
+      static get parameterDescriptors() {
+        return [];
+      }
+
+      constructor(options) {
+        super(options);
+        this.instanceId = options?.processorOptions?.instanceId || 'UnknownSampleBufferWorklet';
+        this.recentSamples = new Float32Array(1024); // Store last 1024 samples
+        this.recentSamplesWritePtr = 0;
+
+        this.port.onmessage = (event) => {
+          if (event.data?.type === 'GET_RECENT_SAMPLES') {
+            const orderedSamples = new Float32Array(this.recentSamples.length);
+            let readPtr = this.recentSamplesWritePtr;
+            for (let i = 0; i < this.recentSamples.length; i++) {
+              orderedSamples[i] = this.recentSamples[readPtr];
+              readPtr = (readPtr + 1) % this.recentSamples.length;
+            }
+            this.port.postMessage({ type: 'RECENT_SAMPLES_DATA', samples: orderedSamples });
+          }
+        };
+      }
+
+      process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+
+        if (input && input.length > 0 && output && output.length > 0) {
+          const inputChannel = input[0];
+          const outputChannel = output[0];
+          if (inputChannel && outputChannel) {
+            for (let i = 0; i < outputChannel.length; ++i) {
+              const sample = inputChannel[i] !== undefined ? inputChannel[i] : 0;
+              outputChannel[i] = sample;
+              this.recentSamples[this.recentSamplesWritePtr] = sample;
+              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
+            }
+          }
+        } else if (output && output.length > 0) {
+          const outputChannel = output[0];
+          if (outputChannel) {
+            for (let i = 0; i < outputChannel.length; ++i) {
+              outputChannel[i] = 0;
+              this.recentSamples[this.recentSamplesWritePtr] = 0;
+              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
+            }
+          }
+        }
+        return true;
+      }
+    }
+    // IMPORTANT: The registerProcessor call will be done by the host environment (useAudioEngine)
+    `;
 
 export class AudioEngineService {
     private _audioContext: AudioContext | null = null;
@@ -44,6 +103,27 @@ export class AudioEngineService {
     private _subscribers: (() => void)[] = [];
     private _audioContextService: AudioContextService;
     private _outputWorkletConnections: Map<string, AudioWorkletNode> = new Map();
+
+    public static getAudioOutputDefinition(): BlockDefinition {
+        const parameters = createParameterDefinitions([
+            { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal GainNode AudioParam)' }
+        ]);
+
+        return {
+            id: 'system-audio-output-v1',
+            name: 'Audio Output',
+            description: 'Plays the incoming audio signal. Contains an internal GainNode for volume control which then feeds a SampleBufferProcessor AudioWorklet (acting as a sink). The input port connects to this internal GainNode.',
+            runsAtAudioRate: true,
+            inputs: [
+                { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume GainNode.' }
+            ],
+            outputs: [],
+            parameters: parameters,
+            logicCode: "",
+            audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME,
+            audioWorkletCode: SAMPLE_BUFFER_WORKLET_CODE,
+        };
+    }
 
     public audioWorkletManager: AudioWorkletManager;
     public nativeNodeManager: NativeNodeManager;
@@ -370,7 +450,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         if (!definition) {
           return;
         }
-        if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+        if (definition.id === AudioEngineService.getAudioOutputDefinition().id) {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
           if (workletInfo && workletInfo.node) {
             const workletNode = workletInfo.node;
@@ -403,7 +483,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         blockInstances
           .filter(instance => {
             const def = getDefinitionForBlock(instance);
-            return def && def.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id;
+            return def && def.id === AudioEngineService.getAudioOutputDefinition().id;
           })
           .map(instance => instance.instanceId)
       );

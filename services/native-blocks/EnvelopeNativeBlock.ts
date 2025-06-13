@@ -1,8 +1,69 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
 
 export class EnvelopeNativeBlock implements CreatableNode {
     private context: AudioContext;
+
+    static getADEnvelopeDefinition(): BlockDefinition {
+      return {
+        id: 'native-ad-envelope-v1',
+        name: 'AD Envelope (Native)',
+        description: 'Attack-Decay envelope generator using a native ConstantSourceNode and AudioParam automation. Triggered by input signal.',
+        runsAtAudioRate: true,
+        inputs: [ { id: 'trigger_in', name: 'Trigger', type: 'trigger', description: 'Triggers the envelope.' } ],
+        outputs: [ { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Peak Level).' } ],
+        parameters: createParameterDefinitions([
+          { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
+          { id: 'decayTime', name: 'Decay Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.3, description: 'Envelope decay time in seconds.' },
+          { id: 'peakLevel', name: 'Peak Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Peak level of the envelope.' }
+        ]),
+        logicCode: `
+const triggerInputVal = inputs.trigger_in;
+let newInternalState = { ...internalState };
+if (triggerInputVal === true && (internalState.prevTriggerState === false || internalState.prevTriggerState === undefined || internalState.prevTriggerState === null)) {
+  newInternalState.envelopeNeedsTriggering = true;
+  __custom_block_logger__('AD Envelope trigger detected. Setting envelopeNeedsTriggering to true.');
+}
+newInternalState.prevTriggerState = triggerInputVal;
+return newInternalState;
+        `.trim(),
+      };
+    }
+
+    static getAREnvelopeDefinition(): BlockDefinition {
+      return {
+        id: 'native-ar-envelope-v1',
+        name: 'AR Envelope (Native)',
+        description: 'Attack-Release envelope generator using a native ConstantSourceNode and AudioParam automation. Controlled by a gate input.',
+        runsAtAudioRate: true,
+        inputs: [ { id: 'gate_in', name: 'Gate', type: 'gate', description: 'Controls the envelope state (high for attack/sustain, low for release).' } ],
+        outputs: [ { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Sustain Level).' } ],
+        parameters: createParameterDefinitions([
+          { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
+          { id: 'releaseTime', name: 'Release Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.5, description: 'Envelope release time in seconds.' },
+          { id: 'sustainLevel', name: 'Sustain Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 0.7, description: 'Sustain level of the envelope (when gate is high).' }
+        ]),
+        logicCode: `
+const gateInputVal = !!inputs.gate_in;
+let newInternalState = { ...internalState };
+if (gateInputVal === true && (internalState.prevGateState === false || internalState.prevGateState === undefined)) {
+  newInternalState.gateStateChangedToHigh = true;
+  newInternalState.gateStateChangedToLow = false;
+  __custom_block_logger__('AR Envelope gate became HIGH. Setting gateStateChangedToHigh.');
+} else if (gateInputVal === false && internalState.prevGateState === true) {
+  newInternalState.gateStateChangedToLow = true;
+  newInternalState.gateStateChangedToHigh = false;
+  __custom_block_logger__('AR Envelope gate became LOW. Setting gateStateChangedToLow.');
+} else {
+  newInternalState.gateStateChangedToHigh = false;
+  newInternalState.gateStateChangedToLow = false;
+}
+newInternalState.prevGateState = gateInputVal;
+return newInternalState;
+        `.trim(),
+      };
+    }
 
     constructor(context: AudioContext) {
         this.context = context;
