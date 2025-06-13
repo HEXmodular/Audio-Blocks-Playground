@@ -107,11 +107,11 @@ export class NativeNodeManager implements INativeNodeManager {
         currentBpm: number = 120
     ): Promise<boolean> {
         if (!this.audioContext || this.audioContext.state !== 'running') {
-            console.log(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`, false);
+            console.warn(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`);
             return false;
         }
         if (this.managedNativeNodesRef.has(instanceId)) {
-            console.log(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
+            console.warn(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
             return true;
         }
         try {
@@ -120,11 +120,11 @@ export class NativeNodeManager implements INativeNodeManager {
                 const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
                 this.managedNativeNodesRef.set(instanceId, nodeInfo);
                 this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
-                console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created via handler.`, true);
+                console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created via handler.`);
                 this.onStateChangeForReRender();
                 return true;
             } else {
-                console.log(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, true);
+                console.warn(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, definition);
                 return false;
             }
         } catch (e) {
@@ -223,6 +223,9 @@ export class NativeNodeManager implements INativeNodeManager {
     }
 
     public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
+        if (!this?.managedNativeNodesRef) {
+            return null;
+        }
         const nativeInfo = this.managedNativeNodesRef.get(instanceId);
         if (nativeInfo && nativeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
             return nativeInfo.mainProcessingNode;

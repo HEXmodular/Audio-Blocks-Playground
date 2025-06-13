@@ -144,7 +144,7 @@ export class AudioNodeManager {
                         // The actual call to audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode is expected to be within audioEngineService.addManagedAudioWorkletNode
                         // For now, we assume addManagedAudioWorkletNode in AudioEngineService does the right thing.
                         // The plan asks to log the decision, the actual call is below this logging block.
-                        const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
+                        const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition);
 
                         if (setupSuccess) {
                             this.updateInstance(instance.instanceId, currentInst => ({
@@ -159,8 +159,8 @@ export class AudioNodeManager {
                             console.log(instance.instanceId, "Worklet node setup successful.");
                             // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION is now handled in AudioEngineService's updateAudioGraphConnections
                         } else {
+                            console.error("Worklet node setup failed.", "error", instance);
                             this.addLog(instance.instanceId, "Worklet node setup failed.", "error");
-                            console.error(instance.instanceId, "Worklet node setup failed.", "error");
                             this.updateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                         }
                     } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
@@ -194,8 +194,8 @@ export class AudioNodeManager {
                             this.addLog(instance.instanceId, "Native node setup successful.");
                             console.log(instance.instanceId, "Native node setup successful.")
                         } else {
-                            this.addLog(instance.instanceId, "Native node setup failed.", "error");
                             console.error(instance.instanceId, "Native node setup failed.", "error");
+                            this.addLog(instance.instanceId, "Native node setup failed.", "error");
                             this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
                         }
                     }

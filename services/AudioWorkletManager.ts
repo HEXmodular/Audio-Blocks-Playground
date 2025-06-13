@@ -10,16 +10,15 @@ import {
     BlockParameter,
     AudioContextState,
     ManagedWorkletNodeInfo, 
-    AudioWorkletNodeOptions, 
+    // AudioWorkletNodeOptions, 
     ManagedAudioWorkletNodeMessage 
 } from '@interfaces/common';
-import { OSCILLATOR_BLOCK_DEFINITION} from '@constants/constants';
 import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
 const SYSTEM_AUDIO_OUTPUT_ID = 'system-audio-output-v1'; // Added constant
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
-    OSCILLATOR_BLOCK_DEFINITION,
+    // OSCILLATOR_BLOCK_DEFINITION,
     // AudioEngineService.getAudioOutputDefinition(), // Removed
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
 ];
@@ -82,7 +81,7 @@ export class AudioWorkletManager implements IAudioWorkletManager {
   private setAudioInitializationError(error: string | null): void {
     if (this.audioInitializationErrorLocal !== error) {
       this.audioInitializationErrorLocal = error;
-      if (error) console.error(`[WorkletManager Error] ${error}`);
+      if (error) console.error(`[WorkletManager Error] ${error}`, error);
       this.onStateChangeForReRender();
     }
   }
@@ -130,7 +129,7 @@ export class AudioWorkletManager implements IAudioWorkletManager {
 try {
   registerProcessor('${processorName}', ${actualClassName});
 } catch(e) {
-  const err = e as Error; // Cast to Error
+  const err = e; // Cast to Error
   if (err.name !== 'NotSupportedError' || (err.message && !err.message.includes('already registered'))) {
     console.error("Error in registerProcessor call for ${processorName} ('${actualClassName}') within worklet script:", err);
     throw err;
@@ -150,6 +149,7 @@ try {
         this.registeredWorkletNamesRef.add(processorName);
         return true;
       }
+      // console.error(`RegFail ('${processorName}'):`, finalCode)
       this.setAudioInitializationError(`RegFail ('${processorName}'): ${error.message.substring(0, 100)}`);
       this.registeredWorkletNamesRef.delete(processorName);
       return false;
@@ -210,9 +210,14 @@ try {
   public async setupManagedAudioWorkletNode(
     instanceId: string,
     definition: BlockDefinition,
-    initialParams: BlockParameter[]
+    // initialParams: BlockParameter[]
   ): Promise<boolean> {
     if (!this.audioContext || this.audioContext.state !== 'running' || !this.isAudioWorkletSystemReady) {
+      console.warn(`[AudioWorkletManager] setupManagedAudioWorkletNode called for ${instanceId}`, {
+        audioContext: !this.audioContext,
+        audioContextState: this.audioContext && this.audioContext.state !== 'running',
+        isAudioWorkletSystemRead: !this.isAudioWorkletSystemReady,
+      });
       return false;
     }
     // Guard to ensure processorName and code are present; if not, setup cannot proceed.
@@ -231,54 +236,54 @@ try {
     }
 
     // Using definition.audioWorkletProcessorName directly. The guard above should make it safe.
-    if (!this.registeredWorkletNamesRef.has(definition.audioWorkletProcessorName)) {
-      // The guard for definition.audioWorkletCode is also above.
-      const regSuccess = await this.registerWorkletProcessor(definition.audioWorkletProcessorName, definition.audioWorkletCode);
-      if (!regSuccess) {
-        this.setAudioInitializationError(`WorkletNode RegFail: ${definition.audioWorkletProcessorName}`);
-        return false;
-      }
-    }
+    // if (!this.registeredWorkletNamesRef.has(definition.audioWorkletProcessorName)) {
+    //   // The guard for definition.audioWorkletCode is also above.
+    //   const regSuccess = await this.registerWorkletProcessor(definition.audioWorkletProcessorName, definition.audioWorkletCode);
+    //   if (!regSuccess) {
+    //     this.setAudioInitializationError(`WorkletNode RegFail: ${definition.audioWorkletProcessorName}`);
+    //     return false;
+    //   }
+    // }
 
     // Final explicit check for processorName type before use - removed as per instruction to use definition.audioWorkletProcessorName directly in constructor
     // if (typeof processorName !== 'string') { ... }
 
-    try {
-      const paramDescriptors: Record<string, any> = {};
-      definition.parameters.forEach(p => {
-          if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
-              const initialVal = initialParams.find(ip => ip.id === p.id)?.currentValue;
-              let valueToSet = 0;
-              if (typeof initialVal === 'number') {
-                  valueToSet = initialVal;
-              } else if (typeof p.defaultValue === 'number') {
-                  valueToSet = p.defaultValue;
-              }
-              paramDescriptors[p.id] = valueToSet;
-          }
-      });
+    // try {
+    //   const paramDescriptors: Record<string, any> = {};
+    //   definition.parameters.forEach(p => {
+    //       if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
+    //           const initialVal = initialParams.find(ip => ip.id === p.id)?.currentValue;
+    //           let valueToSet = 0;
+    //           if (typeof initialVal === 'number') {
+    //               valueToSet = initialVal;
+    //           } else if (typeof p.defaultValue === 'number') {
+    //               valueToSet = p.defaultValue;
+    //           }
+    //           paramDescriptors[p.id] = valueToSet;
+    //       }
+    //   });
 
       // Find initial parameter values or use definition defaults, with final fallbacks
-      const waveformParam = initialParams.find(p => p.id === 'waveform');
-      const coreLengthParam = initialParams.find(p => p.id === 'core_length');
-      const initialPatternParam = initialParams.find(p => p.id === 'initial_pattern_plus_boundaries');
-      const outputModeParam = initialParams.find(p => p.id === 'output_mode');
+      // const waveformParam = initialParams.find(p => p.id === 'waveform');
+      // const coreLengthParam = initialParams.find(p => p.id === 'core_length');
+      // const initialPatternParam = initialParams.find(p => p.id === 'initial_pattern_plus_boundaries');
+      // const outputModeParam = initialParams.find(p => p.id === 'output_mode');
 
-      const workletNodeOptions: AudioWorkletNodeOptions = {
-          processorOptions: {
-              instanceId: instanceId,
-              sampleRate: this.audioContext!.sampleRate,
-              ...(definition.id === OSCILLATOR_BLOCK_DEFINITION.id && {
-                  waveform: waveformParam?.currentValue ?? OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform')?.defaultValue ?? 'sine'
-              }),
-              ...(definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id && {
-                  coreLength: coreLengthParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'core_length')?.defaultValue ?? 8,
-                  initialPattern: initialPatternParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_pattern_plus_boundaries')?.defaultValue ?? Array(18).fill(false),
-                  outputMode: outputModeParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'output_mode')?.defaultValue ?? 'sum_bits',
-              }),
-          },
-          parameterData: paramDescriptors,
-      };
+      // const workletNodeOptions: AudioWorkletNodeOptions = {
+      //     processorOptions: {
+      //         instanceId: instanceId,
+      //         sampleRate: this.audioContext!.sampleRate,
+      //         ...(definition.id === OSCILLATOR_BLOCK_DEFINITION.id && {
+      //             waveform: waveformParam?.currentValue ?? OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'waveform')?.defaultValue ?? 'sine'
+      //         }),
+      //         ...(definition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id && {
+      //             coreLength: coreLengthParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'core_length')?.defaultValue ?? 8,
+      //             initialPattern: initialPatternParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_pattern_plus_boundaries')?.defaultValue ?? Array(18).fill(false),
+      //             outputMode: outputModeParam?.currentValue ?? RULE_110_OSCILLATOR_BLOCK_DEFINITION.parameters.find(p => p.id === 'output_mode')?.defaultValue ?? 'sum_bits',
+      //         }),
+      //     },
+      //     parameterData: paramDescriptors,
+      // };
 
       // Add the new guard immediately before the AudioWorkletNode constructor
       if (!definition.audioWorkletProcessorName) {
@@ -288,28 +293,30 @@ try {
       // After the guard, definition.audioWorkletProcessorName is known to be a non-empty string.
       // Applying non-null assertion operator as requested.
       // console.log('[AudioWorkletManager] TEMP LOG: Before new AudioWorkletNode. Processor name:', definition.audioWorkletProcessorName); // Removing temporary log
-      const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName!, workletNodeOptions);
+      // const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName!, workletNodeOptions);
 
-      newNode.port.onmessage = (event) => {
-        console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
-      };
-      let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
-      if (definition.id === SYSTEM_AUDIO_OUTPUT_ID) { // Changed
-        inputGainNodeForOutputBlock = this.audioContext!.createGain();
-        const volumeParam = initialParams.find(p => p.id === 'volume');
-        inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
-        inputGainNodeForOutputBlock.connect(newNode);
-      }
-      this.managedWorkletNodesRef.set(instanceId, { node: newNode, definition, instanceId, inputGainNode: inputGainNodeForOutputBlock });
-      this.onStateChangeForReRender();
-      return true;
-    } catch (e: any) {
-      // Use definition.audioWorkletProcessorName in error message, ensuring it's not undefined due to the guard.
-      const procNameForError = definition.audioWorkletProcessorName || "UNKNOWN_PROCESSOR";
-      // const errMsg = `Failed to construct '${procNameForError}' for '${instanceId}': ${e.message}`; // Unused variable
-      this.setAudioInitializationError(`WorkletNode Error: ${procNameForError} - ${e.message.substring(0, 100)}`);
-      return false;
-    }
+    //   newNode.port.onmessage = (event) => {
+    //     console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
+    //   };
+    //   let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
+    //   if (definition.id === SYSTEM_AUDIO_OUTPUT_ID) { // Changed
+    //     inputGainNodeForOutputBlock = this.audioContext!.createGain();
+    //     const volumeParam = initialParams.find(p => p.id === 'volume');
+    //     inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
+    //     inputGainNodeForOutputBlock.connect(newNode);
+    //   }
+    //   this.managedWorkletNodesRef.set(instanceId, { node: newNode, definition, instanceId, inputGainNode: inputGainNodeForOutputBlock });
+    //   this.onStateChangeForReRender();
+    //   return true;
+    // } catch (e: any) {
+    //   // Use definition.audioWorkletProcessorName in error message, ensuring it's not undefined due to the guard.
+    //   const procNameForError = definition.audioWorkletProcessorName || "UNKNOWN_PROCESSOR";
+    //   // const errMsg = `Failed to construct '${procNameForError}' for '${instanceId}': ${e.message}`; // Unused variable
+    //   this.setAudioInitializationError(`WorkletNode Error: ${procNameForError} - ${e.message.substring(0, 100)}`);
+    //   return false;
+    // }
+    console.warn(`[AudioWorkletManager] setupManagedAudioWorkletNode ${definition.audioWorkletProcessorName} not found`, definition)
+    return false
   }
 
   public updateManagedAudioWorkletNodeParams(instanceId: string, parameters: BlockParameter[]): void {

@@ -14,7 +14,6 @@ import {
     ManagedLyriaServiceInfo // Import from common
 } from '@interfaces/common';
 import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Added
-import { AllpassFilterNativeBlock } from './native-blocks/AllpassFilterNativeBlock'; // Added
 
 export interface ActiveWebAudioConnection {
   connectionId: string;
@@ -96,32 +95,33 @@ export class AudioGraphConnectorService {
         } else if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
           targetAudioParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
           targetAudioNode = toNativeInfo.node; // Assuming .node is the main node for param targeting
-        } else if (toNativeInfo?.allpassInternalNodes && inputPortDef.audioParamTarget === 'delayTime') {
-            targetAudioParam = toNativeInfo.allpassInternalNodes.inputDelay.delayTime;
-            targetAudioNode = toNativeInfo.allpassInternalNodes.inputDelay;
-        } else if (toNativeInfo?.allpassInternalNodes && inputPortDef.audioParamTarget === 'coefficient') {
-            targetAudioParam = toNativeInfo.allpassInternalNodes.feedbackGain.gain;
-            targetAudioNode = toNativeInfo.allpassInternalNodes.feedbackGain;
-        }
+        } 
+        // else if (toNativeInfo?.allpassInternalNodes && inputPortDef.audioParamTarget === 'delayTime') {
+        //     targetAudioParam = toNativeInfo.allpassInternalNodes.inputDelay.delayTime;
+        //     targetAudioNode = toNativeInfo.allpassInternalNodes.inputDelay;
+        // } else if (toNativeInfo?.allpassInternalNodes && inputPortDef.audioParamTarget === 'coefficient') {
+        //     targetAudioParam = toNativeInfo.allpassInternalNodes.feedbackGain.gain;
+        //     targetAudioNode = toNativeInfo.allpassInternalNodes.feedbackGain;
+        // }
       } else {
         if (toWorkletInfo) {
             targetAudioNode = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
                 ? toWorkletInfo.inputGainNode
                 : toWorkletInfo.node;
         } else if (toNativeInfo) {
-            if (toDef.id === AllpassFilterNativeBlock.getDefinition().id && toNativeInfo.allpassInternalNodes) {
-                if (sourceAudioNode && toNativeInfo.allpassInternalNodes.inputGain1 && toNativeInfo.allpassInternalNodes.inputPassthroughNode) {
-                    try {
-                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputGain1);
-                        newActiveConnections.set(`${conn.id}-path1`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputGain1 });
-                        sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode);
-                        newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
-                    } catch (e) { console.error(`[AudioGraphConnectorService Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`); }
-                    targetAudioNode = null;
-                }
-            } else {
-                 targetAudioNode = toNativeInfo.nodeForInputConnections;
-            }
+            // if (toDef.id === AllpassFilterNativeBlock.getDefinition().id && toNativeInfo.allpassInternalNodes) {
+            //     if (sourceAudioNode && toNativeInfo.allpassInternalNodes.inputGain1 && toNativeInfo.allpassInternalNodes.inputPassthroughNode) {
+            //         try {
+            //             sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputGain1);
+            //             newActiveConnections.set(`${conn.id}-path1`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputGain1 });
+            //             sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode);
+            //             newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
+            //         } catch (e) { console.error(`[AudioGraphConnectorService Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`); }
+            //         targetAudioNode = null;
+            //     }
+            // } else {
+            //      targetAudioNode = toNativeInfo.nodeForInputConnections;
+            // }
         }
       }
 

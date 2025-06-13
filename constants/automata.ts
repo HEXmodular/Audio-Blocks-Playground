@@ -258,7 +258,6 @@ if (postMessageToWorklet) {
   if (internalState.lastSamplesPerRuleStep !== samplesPerRuleStep) {
     postMessageToWorklet({ type: 'SET_SAMPLES_PER_RULE_STEP', value: samplesPerRuleStep });
     internalState.lastSamplesPerRuleStep = samplesPerRuleStep;
-    // __custom_block_logger__(\`Rule110Osc: Samples per step set to \${samplesPerRuleStep} (Rate: \${modulatedRateHz.toFixed(2)} Hz)\`);
   }
   
   const currentPattern = params.initial_pattern_plus_boundaries;
@@ -434,8 +433,6 @@ if (trigger === true && (internalState.prevTriggerState === false || internalSta
     
     collectedBits = (collectedBits << 1) | (selectedBit ? 1 : 0);
     bitCount++;
-    
-    // __custom_block_logger__(\`Read bit \${bitToRead} as \${selectedBit}. Collected: \${collectedBits.toString(2).padStart(bitCount,'0')}, Count: \${bitCount}/\${N}\`);
 
     if (bitCount >= N) {
       setOutput('byte_out', collectedBits & ((1 << N) -1) ); // Output last N bits

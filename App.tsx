@@ -187,12 +187,12 @@ const App: React.FC = () => {
     audioEngineService.audioContext,
   ]);
 
-  useEffect(() => {
-    console.log("audioNodeManager changed", JSON.stringify(audioNodeManager));
-  },[audioNodeManager])
-  useEffect(() => {
-    console.log("appBlockInstances changed", JSON.stringify(appBlockInstances));
-  }, [appBlockInstances])
+  // useEffect(() => {
+  //   console.log("audioNodeManager changed");
+  // },[audioNodeManager])
+  // useEffect(() => {
+  //   console.log("appBlockInstances changed");
+  // }, [appBlockInstances])
   // useEffect(() => {
   //   console.log("globalBpm changed");
   // },[globalBpm])
@@ -214,8 +214,8 @@ const App: React.FC = () => {
       globalBpm
     );
   }, [
-    audioNodeManager,
-    appBlockInstances, // Use new state
+    // audioNodeManager,
+    // appBlockInstances, // Use new state
     connections,
     globalBpm,
   ]);
@@ -228,8 +228,8 @@ const App: React.FC = () => {
       syncedGlobalAudioState.isAudioGloballyEnabled
     );
   }, [
-    audioNodeManager,
-    appBlockInstances, // Use new state
+    // audioNodeManager,
+    // appBlockInstances, // Use new state
     connections,
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
@@ -242,9 +242,9 @@ const App: React.FC = () => {
       syncedGlobalAudioState.isAudioGloballyEnabled
     );
   }, [
-    audioNodeManager,
+    // audioNodeManager,
     connections,
-    appBlockInstances, // Use new state
+    // appBlockInstances, // Use new state
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
 
