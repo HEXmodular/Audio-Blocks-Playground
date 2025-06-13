@@ -1,8 +1,6 @@
 
-import { BlockDefinition, BlockParameterDefinition, BlockPort, BlockParameter, Scale as AppScale } from '@interfaces/common'; // Added BlockParameterDefinition, AppScale
-import { AUDIO_OUTPUT_BLOCK_DEFINITION as NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION } from '@services/native-blocks/AudioOutputNativeBlock';
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, Scale as AppScale } from '@interfaces/common'; // Added BlockParameterDefinition, AppScale
 
-export { NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION };
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 // Input pDefProto is effectively Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any }
@@ -1465,5 +1463,5 @@ export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
   NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION,
   LYRIA_MASTER_BLOCK_DEFINITION,
   LYRIA_PROMPT_BLOCK_DEFINITION,
-  NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION, // Should usually be last or handled specially in UI lists
+  // NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION, // Should usually be last or handled specially in UI lists
 ];
