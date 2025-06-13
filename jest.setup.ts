@@ -63,7 +63,7 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
     disconnect: jest.fn(),
     mediaStream: stream,
   })),
-  createMediaElementSource: jest.fn(element => ({
+  createMediaElementSource: jest.fn(_element => ({ // Changed element to _element
     connect: jest.fn(),
     disconnect: jest.fn(),
   })),
@@ -78,21 +78,21 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
   sampleRate: 44100,
   currentTime: 0,
   state: 'suspended', // Initial state
-  resume: jest.fn().mockResolvedValue(undefined).mockImplementation(function() {
+  resume: jest.fn().mockResolvedValue(undefined).mockImplementation(function(this: any) { // Typed this
     this.state = 'running';
     if (this.onstatechange) {
       this.onstatechange();
     }
     return Promise.resolve();
   }),
-  suspend: jest.fn().mockResolvedValue(undefined).mockImplementation(function() {
+  suspend: jest.fn().mockResolvedValue(undefined).mockImplementation(function(this: any) { // Typed this
     this.state = 'suspended';
     if (this.onstatechange) {
       this.onstatechange();
     }
     return Promise.resolve();
   }),
-  close: jest.fn().mockResolvedValue(undefined).mockImplementation(function() {
+  close: jest.fn().mockResolvedValue(undefined).mockImplementation(function(this: any) { // Typed this
     this.state = 'closed';
     if (this.onstatechange) {
       this.onstatechange();
@@ -111,11 +111,22 @@ global.MediaStream = jest.fn().mockImplementation(() => ({
   removeTrack: jest.fn(),
 }));
 
-global.navigator.mediaDevices = {
-  ...global.navigator.mediaDevices,
-  getUserMedia: jest.fn().mockResolvedValue(new MediaStream()),
-  enumerateDevices: jest.fn().mockResolvedValue([]),
-};
+// Ensure navigator exists
+if (!(global as any).navigator) {
+  (global as any).navigator = {};
+}
+
+// Define mediaDevices with a more robust approach
+Object.defineProperty(global.navigator, 'mediaDevices', {
+  value: {
+    getUserMedia: jest.fn().mockResolvedValue(new MediaStream()),
+    enumerateDevices: jest.fn().mockResolvedValue([]),
+    // Include other mediaDevices properties/methods if they are accessed by the application
+    // For example: addEventListener: jest.fn(), removeEventListener: jest.fn()
+  },
+  writable: true, // Allows tests to override parts of mediaDevices if necessary
+  configurable: true,
+});
 
 // Clear mocks before each test to ensure test isolation
 beforeEach(() => {

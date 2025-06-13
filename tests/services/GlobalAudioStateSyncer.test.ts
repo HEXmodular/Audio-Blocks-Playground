@@ -13,18 +13,19 @@ const mockAudioDevice = (id: string, label: string = `Device ${id}`): AudioDevic
 });
 
 describe('GlobalAudioStateSyncer', () => {
-  let mockAudioEngineServiceInstance: jest.Mocked<AudioEngineService>;
+  // Use a more flexible type for the instance if jest.Mocked<T> is too strict
+  let mockAudioEngineServiceInstance: any; // Changed to any for pragmatic type handling
   let audioEngineStateChangeCallback: () => void;
 
   const setupMockAudioEngineServiceState = (state: GlobalAudioState) => {
-    (mockAudioEngineServiceInstance as any).isAudioGloballyEnabled = state.isAudioGloballyEnabled;
-    (mockAudioEngineServiceInstance as any).availableOutputDevices = [...state.availableOutputDevices];
-    (mockAudioEngineServiceInstance as any).selectedSinkId = state.selectedSinkId;
+    mockAudioEngineServiceInstance.isAudioGloballyEnabled = state.isAudioGloballyEnabled;
+    mockAudioEngineServiceInstance.availableOutputDevices = [...state.availableOutputDevices];
+    mockAudioEngineServiceInstance.selectedSinkId = state.selectedSinkId;
 
     if (!mockAudioEngineServiceInstance.audioWorkletManager) {
-        (mockAudioEngineServiceInstance as any).audioWorkletManager = {};
+        mockAudioEngineServiceInstance.audioWorkletManager = {};
     }
-    (mockAudioEngineServiceInstance.audioWorkletManager as any).isAudioWorkletSystemReady = state.isWorkletSystemReady;
+    mockAudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady = state.isWorkletSystemReady;
 
     const valueToReturnByGetter = {
         isAudioGloballyEnabled: state.isAudioGloballyEnabled,
@@ -44,11 +45,11 @@ describe('GlobalAudioStateSyncer', () => {
   const updateMockAudioEngineServiceState = (newState: Partial<GlobalAudioState>) => {
     const engineStateFromGetter = mockAudioEngineServiceInstance.audioEngineState;
     const currentGlobalState: GlobalAudioState = {
-      isAudioGloballyEnabled: (mockAudioEngineServiceInstance as any).isAudioGloballyEnabled,
-      availableOutputDevices: (mockAudioEngineServiceInstance as any).availableOutputDevices,
-      selectedSinkId: (mockAudioEngineServiceInstance as any).selectedSinkId,
+      isAudioGloballyEnabled: mockAudioEngineServiceInstance.isAudioGloballyEnabled,
+      availableOutputDevices: mockAudioEngineServiceInstance.availableOutputDevices,
+      selectedSinkId: mockAudioEngineServiceInstance.selectedSinkId,
       audioContextState: engineStateFromGetter.audioContextState,
-      isWorkletSystemReady: (mockAudioEngineServiceInstance.audioWorkletManager as any)?.isAudioWorkletSystemReady,
+      isWorkletSystemReady: mockAudioEngineServiceInstance.audioWorkletManager?.isAudioWorkletSystemReady,
     };
 
     const updatedState: GlobalAudioState = { ...currentGlobalState, ...newState };
@@ -60,17 +61,33 @@ describe('GlobalAudioStateSyncer', () => {
   };
 
   beforeEach(() => {
-    const MockedAudioEngineService = AudioEngineService as jest.MockedClass<typeof AudioEngineService>;
-    mockAudioEngineServiceInstance = new MockedAudioEngineService();
+    const MockedAudioEngineServiceConstructor = AudioEngineService as jest.MockedClass<typeof AudioEngineService>;
+    mockAudioEngineServiceInstance = new MockedAudioEngineServiceConstructor();
 
-    (mockAudioEngineServiceInstance as any).isAudioGloballyEnabled = false;
-    (mockAudioEngineServiceInstance as any).availableOutputDevices = [];
-    (mockAudioEngineServiceInstance as any).selectedSinkId = null;
-    (mockAudioEngineServiceInstance as any).audioWorkletManager = { isAudioWorkletSystemReady: false };
-
-    mockAudioEngineServiceInstance.subscribe.mockImplementation((callback) => {
+    // Methods on an auto-mocked class instance are already jest.fn().
+    // We cast to jest.Mock to satisfy TypeScript when calling mockImplementation.
+    (mockAudioEngineServiceInstance.subscribe as jest.Mock).mockImplementation((callback: () => void) => {
       audioEngineStateChangeCallback = callback;
-      return jest.fn();
+      return jest.fn(); // Return mock unsubscribe
+    });
+
+    // Setup default values for direct properties
+    mockAudioEngineServiceInstance.isAudioGloballyEnabled = false;
+    mockAudioEngineServiceInstance.availableOutputDevices = [];
+    mockAudioEngineServiceInstance.selectedSinkId = null;
+    mockAudioEngineServiceInstance.audioWorkletManager = { isAudioWorkletSystemReady: false };
+
+    // Define a default getter for audioEngineState.
+    Object.defineProperty(mockAudioEngineServiceInstance, 'audioEngineState', {
+        get: jest.fn(() => ({
+            isAudioGloballyEnabled: mockAudioEngineServiceInstance.isAudioGloballyEnabled,
+            audioInitializationError: null,
+            availableOutputDevices: mockAudioEngineServiceInstance.availableOutputDevices,
+            selectedSinkId: mockAudioEngineServiceInstance.selectedSinkId,
+            audioContextState: null,
+            sampleRate: 44100,
+        })),
+        configurable: true
     });
   });
 
@@ -173,21 +190,21 @@ describe('GlobalAudioStateSyncer', () => {
 
     describe('availableOutputDevices comparison', () => {
       test('should notify on adding a device', () => {
-        const newDevices = [...syncer.currentState.availableOutputDevices, mockAudioDevice('2')];
+        const newDevices: AudioDevice[] = [...syncer.currentState.availableOutputDevices, mockAudioDevice('2')];
         updateMockAudioEngineServiceState({ availableOutputDevices: newDevices });
         expect(mockSubscriber).toHaveBeenCalledTimes(1);
         expect(syncer.currentState.availableOutputDevices).toEqual(newDevices);
       });
 
       test('should notify on removing a device', () => {
-        const newDevices = [];
+        const newDevices: AudioDevice[] = [];
         updateMockAudioEngineServiceState({ availableOutputDevices: newDevices });
         expect(mockSubscriber).toHaveBeenCalledTimes(1);
         expect(syncer.currentState.availableOutputDevices).toEqual(newDevices);
       });
 
       test('should notify on changing a deviceId', () => {
-        const modifiedDevices = [...syncer.currentState.availableOutputDevices];
+        const modifiedDevices: AudioDevice[] = [...syncer.currentState.availableOutputDevices];
         if (modifiedDevices.length === 0) modifiedDevices.push(mockAudioDevice('temp'));
         modifiedDevices[0] = mockAudioDevice('new-default','Device new-default');
         updateMockAudioEngineServiceState({ availableOutputDevices: modifiedDevices });
@@ -196,7 +213,7 @@ describe('GlobalAudioStateSyncer', () => {
       });
 
       test.skip('should not notify on changing a device label (current implementation detail)', () => {
-        const devicesWithNewLabel = syncer.currentState.availableOutputDevices.map(d => ({...d}));
+        const devicesWithNewLabel: AudioDevice[] = syncer.currentState.availableOutputDevices.map(d => ({...d}));
         if(devicesWithNewLabel.length > 0) {
             devicesWithNewLabel[0].label = "New Label For Device";
         } else {
@@ -207,13 +224,13 @@ describe('GlobalAudioStateSyncer', () => {
       });
 
       test.skip('should not notify if a new array reference with identical devices is provided', () => {
-        const newArrayRefDevices = [...syncer.currentState.availableOutputDevices.map(d => ({...d}))];
+        const newArrayRefDevices: AudioDevice[] = [...syncer.currentState.availableOutputDevices.map(d => ({...d}))];
         updateMockAudioEngineServiceState({ availableOutputDevices: newArrayRefDevices });
         expect(mockSubscriber).not.toHaveBeenCalled();
       });
 
       test('should notify if device order changes (and IDs at indices differ)', () => {
-        const specificInitialDevices = [mockAudioDevice('1', 'Device 1'), mockAudioDevice('2', 'Device 2')];
+        const specificInitialDevices: AudioDevice[] = [mockAudioDevice('1', 'Device 1'), mockAudioDevice('2', 'Device 2')];
         setupMockAudioEngineServiceState({
             isAudioGloballyEnabled: false,
             availableOutputDevices: specificInitialDevices,
@@ -226,7 +243,7 @@ describe('GlobalAudioStateSyncer', () => {
         localSyncer.subscribe(localMockSubscriber);
         localMockSubscriber.mockClear();
 
-        const reorderedDevices = [specificInitialDevices[1], specificInitialDevices[0]];
+        const reorderedDevices: AudioDevice[] = [specificInitialDevices[1], specificInitialDevices[0]];
         updateMockAudioEngineServiceState({ availableOutputDevices: reorderedDevices });
 
         expect(localMockSubscriber).toHaveBeenCalledTimes(1);

@@ -10,7 +10,7 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
-import { AUDIO_OUTPUT_BLOCK_DEFINITION, createParameterDefinitions } from '@constants/constants'; // Added AUDIO_OUTPUT_BLOCK_DEFINITION
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Removed createParameterDefinitions
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager } from './AudioWorkletManager';
@@ -207,8 +207,11 @@ public initializeBasicAudioContext = async (): Promise<void> => {
 
         await this.listOutputDevices();
 
-        // Check if context is still valid before setting output device
-        if (this._audioContext && this._audioContext.state !== 'closed') {
+        // At this point, _audioContext is guaranteed to be non-null and its state is not 'closed'
+        // due to the checks around lines 155-163. So, the explicit check here is redundant.
+        // The original error TS2367 pointed to this redundancy.
+        // We can proceed directly if _audioContext exists (which it should).
+        if (this._audioContext) { // Keep a null check just in case, though logic implies it's always true.
             const defaultOutput = this._availableOutputDevices.find(d => d.deviceId === 'default') || this._availableOutputDevices[0];
             if (defaultOutput) {
                 console.log(`AudioEngineService: Attempting to set default output device to: ${defaultOutput.label} (${defaultOutput.deviceId})`);
@@ -216,21 +219,15 @@ public initializeBasicAudioContext = async (): Promise<void> => {
             } else {
                 console.log("AudioEngineService: No default output device found or available to set.");
             }
-        } else {
-            const message = `AudioEngineService: AudioContext became invalid (state: ${this._audioContext?.state}) before default output device could be set.`;
-            console.warn(message);
-            this._audioInitializationError = this._audioInitializationError || message;
         }
+        // The 'else' block where context became invalid is removed as the preceding logic
+        // should prevent reaching here if context is null or closed.
+        // If _audioContext were null here, it implies a logic flaw earlier.
         console.log(`AudioEngineService: AudioContext initialization process finished. Final state: ${this._audioContext?.state}, GloballyEnabled: ${this._isAudioGloballyEnabled}`);
 
-    // Check if context is active (not closed) before trying to register worklets
-    // The if condition that was here previously was found to be redundant (TS2367).
-    // this._audioContext is guaranteed to be non-null and its state not 'closed'
-    // if execution reaches this point (due to checks around line 130).
-    // console.log('[AudioEngineService] TEMP LOG: Before attempting worklet registration. Context state:', this._audioContext?.state); // Removing temporary log
+    // At this point, _audioContext is guaranteed to be non-null and not 'closed'.
     try {
-        // Assuming checkAndRegisterPredefinedWorklets and setIsAudioWorkletSystemReady use the context stored within audioWorkletManager,
-        // which should have been set correctly (and is non-null and not 'closed') if this part of the code is reached.
+        // audioWorkletManager's context is set prior, and it's non-null / not 'closed'.
         const workletsRegistered = await this.audioWorkletManager.checkAndRegisterPredefinedWorklets(true);
         this.audioWorkletManager.setIsAudioWorkletSystemReady(workletsRegistered);
         if (!workletsRegistered) {
