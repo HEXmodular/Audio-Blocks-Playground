@@ -51,7 +51,7 @@ export interface BlockDefinition {
   outputs: BlockPort[];
   parameters: BlockParameterDefinition[]; 
   logicCode: string; 
-  initialPrompt: string; 
+  initialPrompt?: string;
   runsAtAudioRate?: boolean; 
   audioWorkletProcessorName?: string; 
   audioWorkletCode?: string; 
