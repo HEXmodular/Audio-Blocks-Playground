@@ -138,6 +138,9 @@ export class AudioEngineService {
         this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this)); // Pass nulls if constructor expects them
         this.audioGraphConnectorService = new AudioGraphConnectorService();
 
+        // Register the Audio Output definition with the AudioWorkletManager
+        this.audioWorkletManager.registerWorkletDefinition(AudioEngineService.getAudioOutputDefinition());
+
         this.initializeBasicAudioContext();
         this.listOutputDevices();
     }

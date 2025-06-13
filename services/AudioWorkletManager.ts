@@ -18,11 +18,13 @@ import {
     // AUDIO_OUTPUT_BLOCK_DEFINITION, // Removed
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
 } from '@constants/constants';
-import { AudioEngineService } from './AudioEngineService'; // Added
+// import { AudioEngineService } from './AudioEngineService'; // Removed
+
+const SYSTEM_AUDIO_OUTPUT_ID = 'system-audio-output-v1'; // Added constant
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
     OSCILLATOR_BLOCK_DEFINITION,
-    AudioEngineService.getAudioOutputDefinition(), // Added
+    // AudioEngineService.getAudioOutputDefinition(), // Removed
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
 ];
 
@@ -53,6 +55,7 @@ export class AudioWorkletManager implements IAudioWorkletManager {
   private managedWorkletNodesRef: Map<string, ManagedWorkletNodeInfo>;
   private audioContext: AudioContext | null;
   private readonly onStateChangeForReRender: () => void;
+  private dynamicallyRegisteredDefs: BlockDefinition[] = []; // Added
 
   constructor(audioContext: AudioContext | null, onStateChangeForReRender: () => void) {
     this.audioContext = audioContext;
@@ -165,8 +168,11 @@ try {
       return false;
     }
     const currentState: AudioContextState = this.audioContext.state;
-    const allCached = PREDEFINED_WORKLET_DEFS.every(def =>
-      !def.audioWorkletCode || !def.audioWorkletProcessorName || this.registeredWorkletNamesRef.has(def.audioWorkletProcessorName)
+
+    const allDefsToConsider = [...PREDEFINED_WORKLET_DEFS, ...this.dynamicallyRegisteredDefs];
+
+    const allCached = allDefsToConsider.every(def =>
+      !def.audioWorkletCode || !def.audioWorkletProcessorName || this.registeredWorkletNamesRef.has(def.audioWorkletProcessorName!)
     );
 
     if (currentState === 'suspended') {
@@ -177,18 +183,32 @@ try {
     }
 
     let allEffectivelyRegistered = true;
-    for (const def of PREDEFINED_WORKLET_DEFS) {
+    for (const def of allDefsToConsider) {
       if (def.audioWorkletCode && def.audioWorkletProcessorName) {
         if (!this.registeredWorkletNamesRef.has(def.audioWorkletProcessorName)) {
           const regSuccess = await this.registerWorkletProcessor(def.audioWorkletProcessorName, def.audioWorkletCode);
           if (!regSuccess) {
             allEffectivelyRegistered = false;
+            // console.warn(`[WorkletManager Worklets] Failed to register ${def.audioWorkletProcessorName}, stopping further registrations in this pass.`);
             break;
           }
         }
       }
     }
     return allEffectivelyRegistered;
+  }
+
+  public registerWorkletDefinition(definition: BlockDefinition): void {
+    if (definition.audioWorkletProcessorName && definition.audioWorkletCode) {
+      // Avoid duplicates if called multiple times
+      const alreadyExists = PREDEFINED_WORKLET_DEFS.some(d => d.id === definition.id) ||
+                            this.dynamicallyRegisteredDefs.some(d => d.id === definition.id);
+      if (!alreadyExists) {
+        this.dynamicallyRegisteredDefs.push(definition);
+      }
+    } else {
+      console.warn(`[AudioWorkletManager] Attempted to register worklet definition "${definition.name}" but it's missing processorName or workletCode.`);
+    }
   }
 
   public async setupManagedAudioWorkletNode(
@@ -278,7 +298,7 @@ try {
         console.log(`[AudioWorkletManager] Message FROM Worklet (${instanceId}):`, event.data);
       };
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
-      if (definition.id === AudioEngineService.getAudioOutputDefinition().id) {
+      if (definition.id === SYSTEM_AUDIO_OUTPUT_ID) { // Changed
         inputGainNodeForOutputBlock = this.audioContext!.createGain();
         const volumeParam = initialParams.find(p => p.id === 'volume');
         inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
@@ -303,7 +323,7 @@ try {
     parameters.forEach(param => {
       const audioParam = info.node.parameters.get(param.id);
       if (audioParam && typeof param.currentValue === 'number') {
-        if (info.definition.id === AudioEngineService.getAudioOutputDefinition().id && param.id === 'volume' && info.inputGainNode) {
+        if (info.definition.id === SYSTEM_AUDIO_OUTPUT_ID && param.id === 'volume' && info.inputGainNode) { // Changed
           info.inputGainNode.gain.setTargetAtTime(Number(param.currentValue), this.audioContext!.currentTime, 0.01);
         } else {
           audioParam.setTargetAtTime(Number(param.currentValue), this.audioContext!.currentTime, 0.01);
