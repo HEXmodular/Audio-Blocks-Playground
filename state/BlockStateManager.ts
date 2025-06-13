@@ -74,21 +74,31 @@ function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (.
 const DEBOUNCE_WAIT_MS = 300; // Or another suitable value
 
 export class BlockStateManager {
+  private static _instance: BlockStateManager | null = null;
+
   private _blockDefinitions: BlockDefinition[];
   private _blockInstances: BlockInstance[];
-  private _onDefinitionsChangeCallback: (definitions: BlockDefinition[]) => void;
-  private _onInstancesChangeCallback: (instances: BlockInstance[]) => void;
+  private _onDefinitionsChangeCallback: ((definitions: BlockDefinition[]) => void) | null = null;
+  private _onInstancesChangeCallback: ((instances: BlockInstance[]) => void) | null = null;
   private _initializationDone: boolean = false;
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
 
-  constructor(
-    onDefinitionsChangeCallback: (definitions: BlockDefinition[]) => void,
-    onInstancesChangeCallback: (instances: BlockInstance[]) => void
-  ) {
-    this._onDefinitionsChangeCallback = onDefinitionsChangeCallback;
-    this._onInstancesChangeCallback = onInstancesChangeCallback;
+  public static getInstance(): BlockStateManager {
+    if (BlockStateManager._instance === null) {
+      BlockStateManager._instance = new BlockStateManager();
+    }
+    return BlockStateManager._instance;
+  }
 
+  public init(onDefinitionsChange: (definitions: BlockDefinition[]) => void, onInstancesChange: (instances: BlockInstance[]) => void): void {
+    this._onDefinitionsChangeCallback = onDefinitionsChange;
+    this._onInstancesChangeCallback = onInstancesChange;
+    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+  }
+
+  private constructor() {
     // Initialize debounced functions
     this._debouncedSaveInstances = debounce(this._saveInstancesToLocalStorageInternal.bind(this), DEBOUNCE_WAIT_MS);
     this._debouncedSaveDefinitions = debounce(this._saveDefinitionsToLocalStorageInternal.bind(this), DEBOUNCE_WAIT_MS);
@@ -96,8 +106,8 @@ export class BlockStateManager {
     this._blockDefinitions = this._loadDefinitions(); // Loads from LS
     this._blockInstances = this._loadAndProcessInstances(this._blockDefinitions); // Loads from LS
     
-    this._onDefinitionsChangeCallback([...this._blockDefinitions]);
-    this._onInstancesChangeCallback([...this._blockInstances]);
+    // this._onDefinitionsChangeCallback([...this._blockDefinitions]); // Removed
+    // this._onInstancesChangeCallback([...this._blockInstances]); // Removed
     
     this._initializationDone = true;
     // Initial saves should still happen directly
@@ -423,7 +433,7 @@ export class BlockStateManager {
         : b
     );
     this._saveInstancesToLocalStorage();
-    this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
 
   public addBlockDefinition(definition: BlockDefinition): void {
@@ -439,7 +449,7 @@ export class BlockStateManager {
       this._blockDefinitions = [...this._blockDefinitions, definition];
     }
     this._saveDefinitionsToLocalStorage();
-    this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
 
   public updateBlockDefinition(definitionId: string, updates: Partial<BlockDefinition>): void {
@@ -447,7 +457,7 @@ export class BlockStateManager {
       def.id === definitionId ? { ...def, ...updates } : def
     );
     this._saveDefinitionsToLocalStorage();
-    this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
   
   public deleteBlockDefinition(definitionId: string): boolean {
@@ -466,7 +476,7 @@ export class BlockStateManager {
 
     this._blockDefinitions = this._blockDefinitions.filter(def => def.id !== definitionId);
     this._saveDefinitionsToLocalStorage();
-    this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
     console.info(`BlockStateManager: Block definition "${definitionId}" deleted.`);
     return true;
   }
@@ -530,7 +540,7 @@ export class BlockStateManager {
 
     this._blockInstances = [...this._blockInstances, newInstance];
     this._saveInstancesToLocalStorage();
-    this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
     return newInstance;
   }
 
@@ -558,26 +568,26 @@ export class BlockStateManager {
 
     if (wasUpdated) {
         this._saveInstancesToLocalStorage();
-        this._onInstancesChangeCallback([...this._blockInstances]);
+        if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
     }
   }
 
   public deleteBlockInstance(instanceId: string): void {
     this._blockInstances = this._blockInstances.filter(b => b.instanceId !== instanceId);
     this._saveInstancesToLocalStorage();
-    this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
     this._blockInstances = newInstances;
     this._saveInstancesToLocalStorage();
-    this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
 
   public setAllBlockDefinitions(newDefinitions: BlockDefinition[]): void {
     this._blockDefinitions = newDefinitions;
     this._saveDefinitionsToLocalStorage();
-    this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
 
   public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
@@ -613,7 +623,7 @@ export class BlockStateManager {
 
     if (wasAnyInstanceUpdated) {
       this._saveInstancesToLocalStorage(); // Call the debounced save
-      this._onInstancesChangeCallback([...this._blockInstances]); // Notify listeners once
+      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
     }
   }
 }

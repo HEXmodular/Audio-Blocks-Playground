@@ -7,7 +7,7 @@ import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManag
 import { AudioEngineService } from '@services/AudioEngineService';
 import { BlockStateManager } from '../state/BlockStateManager';
 import { ConnectionState } from '@services/ConnectionState';
-import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 
 interface ToolbarProps {
   appBlockDefinitionsFromCtx: BlockDefinition[];

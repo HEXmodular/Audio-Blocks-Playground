@@ -10,7 +10,8 @@ import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from 
 import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
-import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+import { BlockStateManager } from '../state/BlockStateManager';
 
 
 interface BlockDetailPanelProps {
@@ -44,12 +45,11 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   onUpdateConnections,
   getAnalyserNodeForInstance,
 }) => {
-  const {
-    blockInstances, // Use from context instead of props.allInstances
-    getDefinitionById, // Use from context instead of props.getBlockDefinition
-    updateBlockInstance, // Use from context instead of props.onUpdateInstance
-    deleteBlockInstance: ctxDeleteBlockInstance // Use from context instead of props.onDeleteInstance
-  } = useBlockState();
+  const blockStateManager = BlockStateManager.getInstance();
+  const blockInstances = blockStateManager.getBlockInstances(); // Use from context instead of props.allInstances
+  const getDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager); // Use from context instead of props.getBlockDefinition
+  const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager); // Use from context instead of props.onUpdateInstance
+  const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager); // Use from context instead of props.onDeleteInstance
 
   const [currentViewInternal, setCurrentViewInternal] = useState<BlockView>(BlockView.UI);
   const [editableName, setEditableName] = useState('');

@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { BlockInstance, BlockDefinition } from '@interfaces/common';
 import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '@services/geminiService';
 import { LightBulbIcon } from '@icons/icons';
-import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+import { BlockStateManager } from '../state/BlockStateManager';
 
 interface GeminiChatPanelProps {
   isOpen: boolean;
@@ -35,7 +36,8 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
   onUpdateBlockLogicCode,
   apiKeyMissing
 }, ref) => {
-  const { getDefinitionById } = useBlockState(); // Consume context
+  const blockStateManager = BlockStateManager.getInstance();
+  const getDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager); // Consume context
 
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);

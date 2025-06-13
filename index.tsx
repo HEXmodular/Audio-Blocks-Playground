@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 // import './index.css'; // Assuming you have this or similar for global styles
-import { BlockStateProvider } from '@context/BlockStateContext';
+// import { BlockStateProvider } from '@context/BlockStateContext'; // Removed
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -13,8 +13,6 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <BlockStateProvider>
-      <App />
-    </BlockStateProvider>
+    <App />
   </React.StrictMode>
 );
