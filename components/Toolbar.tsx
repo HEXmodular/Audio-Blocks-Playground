@@ -5,9 +5,9 @@ import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from '@icons
 import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
 import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
 import { AudioEngineService } from '@services/AudioEngineService';
-import { BlockStateManager } from '../state/BlockStateManager';
+import { BlockStateManager } from '../state/BlockStateManager'; // Ensure this is present
 import { ConnectionState } from '@services/ConnectionState';
-// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
+// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState // Removed
 
 interface ToolbarProps {
   appBlockDefinitionsFromCtx: BlockDefinition[];
@@ -105,9 +105,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => {
     e.stopPropagation(); // Prevent block add
-    // Use blockDefinitions from context for the confirmation message
-    if (window.confirm(`Are you sure you want to delete the block definition for "${blockDefinitions.find(d=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-      deleteBlockDefinition(definitionId); // Use context function
+    // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
+    if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
+      deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
       setIsAddBlockMenuOpen(false); // Close menu after action
     }
   };
@@ -141,7 +141,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </button>
         {isAddBlockMenuOpen && (
           <div className="absolute left-0 mt-2 w-72 bg-gray-700 border border-gray-600 rounded-md shadow-lg py-1 z-30 max-h-96 overflow-y-auto">
-            {blockDefinitions.map((def) => { // Use blockDefinitions from context
+            {appBlockDefinitionsFromCtx.map((def: BlockDefinition) => { // Use prop and add type
               const isCoreDefinition = coreDefinitionIds.has(def.id);
               return (
                 <div key={def.id} className="flex items-center justify-between hover:bg-gray-600 group">

@@ -45,15 +45,13 @@ const App: React.FC = () => {
   // Initialize BlockStateManager callbacks
   useEffect(() => {
     blockStateManager.init(setAppBlockDefinitions, setAppBlockInstances);
-    // No cleanup needed for this specific init as init overwrites callbacks
   }, [blockStateManager]);
 
-  // Replace useBlockState with direct use of blockStateManager or new state variables
-  // const appBlockDefinitionsFromCtx = appBlockDefinitions; // Now from state - REMOVED
-  // const appBlockInstancesFromCtx = appBlockInstances; // Now from state - REMOVED
-  const ctxBlockStateManager = blockStateManager; // Direct instance
-  const ctxUpdateBlockDefinition = blockStateManager.updateBlockDefinition.bind(blockStateManager); // Keep for Gemini Panel
-  const ctxGetDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager); // Keep for Gemini Panel & Detail Panel
+  // Update related variables
+  const ctxBlockStateManager = blockStateManager;
+  const ctxUpdateBlockDefinition = blockStateManager.updateBlockDefinition.bind(blockStateManager);
+  const ctxGetDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager);
+
 
   const globalAudioStateSyncer = useMemo(() => {
     return new GlobalAudioStateSyncer(audioEngineService);
@@ -75,8 +73,8 @@ const App: React.FC = () => {
   }, [globalAudioStateSyncer]);
 
   const getDefinitionForBlock = useCallback((instance: BlockInstance): BlockDefinition | undefined => {
-    return appBlockDefinitions.find(def => def.id === instance.definitionId); // Use appBlockDefinitions
-  }, [appBlockDefinitions]); // Use appBlockDefinitions
+    return appBlockDefinitions.find(def => def.id === instance.definitionId); // Use new state
+  }, [appBlockDefinitions]); // Use new state
 
   const connectionState = useMemo(() => new ConnectionState(), []);
   const [connections, setConnections] = useState<Connection[]>(() => connectionState.getConnections());
@@ -94,7 +92,7 @@ const App: React.FC = () => {
   const connectionDragHandler = useMemo(() => {
     const handler = new ConnectionDragHandler({
       svgRef: svgRef as React.RefObject<SVGSVGElement>,
-      blockInstances: appBlockInstances, // Updated
+      blockInstances: appBlockInstances, // Use new state
       getDefinitionForBlock,
       updateConnections: connectionState.updateConnections,
       onStateChange: () => {
@@ -103,7 +101,7 @@ const App: React.FC = () => {
       },
     });
     return handler;
-  }, [appBlockInstances, getDefinitionForBlock, connectionState]); // Updated
+  }, [appBlockInstances, getDefinitionForBlock, connectionState]); // Use new state
 
   useEffect(() => {
     return () => {
@@ -119,9 +117,9 @@ const App: React.FC = () => {
       connectionState,
       setSelectedInstanceId,
       () => globalBpm,
-      () => appBlockInstances // Updated
+      () => appBlockInstances // Use new state
     );
-  }, [ctxBlockStateManager, connectionState, globalBpm, appBlockInstances]); // Updated
+  }, [ctxBlockStateManager, connectionState, globalBpm, appBlockInstances]); // Use new state
 
   const logicExecutionEngineManager = useMemo(() => {
     if (ctxBlockStateManager) {
@@ -136,7 +134,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (logicExecutionEngineManager) {
       logicExecutionEngineManager.updateCoreDependencies(
-        appBlockInstances, // Updated
+        appBlockInstances, // Use new state
         connections,
         globalBpm,
         syncedGlobalAudioState.isAudioGloballyEnabled
@@ -144,7 +142,7 @@ const App: React.FC = () => {
     }
   }, [
     logicExecutionEngineManager,
-    appBlockInstances, // Updated
+    appBlockInstances, // Use new state
     connections,
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled
@@ -168,7 +166,7 @@ const App: React.FC = () => {
     const setupNodes = async () => {
       try {
         await audioNodeManager.processAudioNodeSetupAndTeardown(
-          appBlockInstances, // Updated
+          appBlockInstances, // Use new state
           globalBpm,
           syncedGlobalAudioState.isAudioGloballyEnabled,
           audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
@@ -182,7 +180,7 @@ const App: React.FC = () => {
     setupNodes();
   }, [
     audioNodeManager,
-    appBlockInstances, // Updated
+    appBlockInstances, // Use new state
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
     audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
@@ -211,13 +209,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.updateAudioNodeParameters(
-      appBlockInstances, // Updated
+      appBlockInstances, // Use new state
       connections,
       globalBpm
     );
   }, [
     audioNodeManager,
-    appBlockInstances, // Updated
+    appBlockInstances, // Use new state
     connections,
     globalBpm,
   ]);
@@ -225,13 +223,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!audioNodeManager) return;
     audioNodeManager.manageLyriaServiceUpdates(
-      appBlockInstances, // Updated
+      appBlockInstances, // Use new state
       connections,
       syncedGlobalAudioState.isAudioGloballyEnabled
     );
   }, [
     audioNodeManager,
-    appBlockInstances, // Updated
+    appBlockInstances, // Use new state
     connections,
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
@@ -240,19 +238,19 @@ const App: React.FC = () => {
     if (!audioNodeManager) return;
     audioNodeManager.updateAudioGraphConnections(
       connections,
-      appBlockInstances, // Updated
+      appBlockInstances, // Use new state
       syncedGlobalAudioState.isAudioGloballyEnabled
     );
   }, [
     audioNodeManager,
     connections,
-    appBlockInstances, // Updated
+    appBlockInstances, // Use new state
     syncedGlobalAudioState.isAudioGloballyEnabled,
   ]);
 
   const selectedBlockInstance = useMemo(() => {
     return appBlockInstances.find(b => b.instanceId === selectedInstanceId) || null;
-  }, [appBlockInstances, selectedInstanceId]); // Updated
+  }, [appBlockInstances, selectedInstanceId]); // Use new state
 
   if (!syncedGlobalAudioState.audioContextState && audioEngineService.audioContext === null) {
     return (
@@ -288,8 +286,8 @@ const App: React.FC = () => {
             return false;
           }
         }}
-        appBlockDefinitionsFromCtx={appBlockDefinitions} // Updated
-        appBlockInstancesFromCtx={appBlockInstances} // Updated
+        appBlockDefinitionsFromCtx={appBlockDefinitions}
+        appBlockInstancesFromCtx={appBlockInstances}
         connections={connections}
         globalBpm={globalBpm}
         selectedSinkId={syncedGlobalAudioState.selectedSinkId || ""}
@@ -305,13 +303,13 @@ const App: React.FC = () => {
             svgRef={svgRef as React.RefObject<SVGSVGElement>}
             connections={connections}
             pendingConnection={pendingConnection}
-            blockInstances={appBlockInstances} // Updated
+            blockInstances={appBlockInstances}
             getDefinitionForBlock={getDefinitionForBlock}
             onUpdateConnections={connectionState.updateConnections}
           />
         </svg>
 
-        {appBlockInstances.map(instance => ( // Updated
+        {appBlockInstances.map(instance => (
           <BlockInstanceComponent
             key={instance.instanceId}
             blockInstance={instance}
@@ -330,7 +328,7 @@ const App: React.FC = () => {
       {selectedBlockInstance && ctxBlockStateManager && (
         <BlockDetailPanel
           blockInstance={selectedBlockInstance}
-          // getBlockDefinition, onUpdateInstance, onDeleteInstance, allInstances are now sourced from context
+          blockInstances={appBlockInstances} // Added prop
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
           onUpdateConnections={connectionState.updateConnections}
@@ -348,7 +346,7 @@ const App: React.FC = () => {
           setIsGeminiPanelOpen(false);
         }}
         onUpdateBlockLogicCode={(instanceId: string, newLogicCode: string, modificationPrompt: string) => {
-          const instance = appBlockInstances.find(i => i.instanceId === instanceId); // Updated
+          const instance = appBlockInstances.find(i => i.instanceId === instanceId); // Use new state
           if (instance && blockInstanceController && ctxGetDefinitionById && ctxUpdateBlockDefinition) {
             const definition = ctxGetDefinitionById(instance.definitionId);
             if (definition) {

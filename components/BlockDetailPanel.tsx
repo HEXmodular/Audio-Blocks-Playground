@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BlockInstance, BlockPort, BlockParameter, Connection } from '@interfaces/common';
+import type { BlockInstance, BlockPort, BlockParameter, Connection, BlockDefinition } from '@interfaces/common'; // Added BlockDefinition
 import { BlockView } from '@interfaces/common';
 import CodeLogToggle from '@components/CodeLogToggle';
 import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
@@ -16,7 +16,7 @@ import { BlockStateManager } from '../state/BlockStateManager';
 
 interface BlockDetailPanelProps {
   blockInstance: BlockInstance | null;
-  // getBlockDefinition, onUpdateInstance, onDeleteInstance, allInstances removed from props
+  blockInstances: BlockInstance[]; // Added blockInstances prop
   connections: Connection[];
   onClosePanel: () => void;
   onUpdateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
@@ -44,12 +44,13 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   onClosePanel,
   onUpdateConnections,
   getAnalyserNodeForInstance,
+  // blockInstances prop is now destructured here but not used in this snippet directly for replacement
 }) => {
   const blockStateManager = BlockStateManager.getInstance();
-  const blockInstances = blockStateManager.getBlockInstances(); // Use from context instead of props.allInstances
-  const getDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager); // Use from context instead of props.getBlockDefinition
-  const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager); // Use from context instead of props.onUpdateInstance
-  const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager); // Use from context instead of props.onDeleteInstance
+  // const blockInstances = blockStateManager.getBlockInstances(); // REMOVED - will use prop
+  const getDefinitionById = (definitionId: string): BlockDefinition | undefined => blockStateManager.getDefinitionForBlock(definitionId);
+  const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager);
+  const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager);
 
   const [currentViewInternal, setCurrentViewInternal] = useState<BlockView>(BlockView.UI);
   const [editableName, setEditableName] = useState('');
