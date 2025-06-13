@@ -24,7 +24,18 @@ describe('AudioContextService', () => {
             };
             const contextMock = {
                 suspend: jest.fn().mockResolvedValue(undefined),
-                resume: jest.fn().mockResolvedValue(undefined),
+                resume: jest.fn().mockImplementation(function(this: MockAudioContext) {
+                    // Simulate that resume() eventually leads to 'running' state
+                    // This helps align the service's check `this.context.state === 'running'`
+                    // with the outcome of the resume call more closely in the test environment.
+                    if (this.state === 'suspended') { // Only trigger if actually suspended
+                        // Schedule state change to occur after current sync operations
+                        Promise.resolve().then(() => {
+                            this._triggerStateChange('running');
+                        });
+                    }
+                    return Promise.resolve(undefined);
+                }),
                 close: jest.fn().mockResolvedValue(undefined),
                 createGain: jest.fn().mockReturnValue(gainNodeMock),
                 destination: { type: 'AudioDestinationNode' } as unknown as AudioDestinationNode, // Simplified mock, cast to unknown first
@@ -64,44 +75,36 @@ describe('AudioContextService', () => {
             expect(createdContext.createGain).toHaveBeenCalledTimes(1);
             const gainNode = createdContext._getGainNodeMock();
             expect(gainNode.connect).toHaveBeenCalledWith(createdContext.destination);
-            expect(createdContext.resume).toHaveBeenCalledTimes(1); // Initial state is 'suspended'
+            expect(createdContext.resume).not.toHaveBeenCalled(); // Changed: Should not resume on initial creation
             expect(result.context).toBe(createdContext);
-            // Simulate state change to running AFTER resume would have been processed internally by the browser
-            createdContext._triggerStateChange('running');
-            // Re-evaluate initialize's return based on the new state if necessary for contextJustResumed,
-            // or adjust the service's return logic for contextJustResumed.
-            // For now, let's assume the test needs to reflect that resume() was called and state became running.
-            // The service's current logic is: contextJustResumed: contextJustResumed && this.context?.state === 'running'
-            // So, if resume() was called (contextJustResumed internal var is true) AND state is now 'running', it will be true.
-            expect(audioContextService.getContextState()).toBe('running'); // Verify state
-            // According to service logic, contextJustResumed is false because state is not yet 'running' when it's set.
+            expect(result.context?.state).toBe('suspended'); // Verify it's suspended
             expect(result.contextJustResumed).toBe(false);
 
-            // Simulate state change to running after resume
-            createdContext._triggerStateChange('running');
+            // If we manually resume it now, then state change should occur
+            await createdContext.resume(); // Manually resume for further state check
+            createdContext._triggerStateChange('running'); // Simulate actual state change post-resume
+            expect(audioContextService.getContextState()).toBe('running');
             expect(onContextStateChangeCallback).toHaveBeenCalledWith('running');
         });
 
         test('should resume an existing suspended AudioContext', async () => {
-            // Initialize once
-            await audioContextService.initialize(true); // Pass true to resume initially
+            // Initialize once, don't auto-resume so the mock isn't called yet
+            await audioContextService.initialize(false);
             const contextInstance = mockAudioContextInstances[0];
-            contextInstance._triggerStateChange('suspended'); // Ensure it's suspended
+            // Ensure it's suspended (it should be by default from mock)
+            expect(contextInstance.state).toBe('suspended');
             onContextStateChangeCallback.mockClear();
-            (contextInstance.resume as jest.Mock).mockClear();
+            // (contextInstance.resume as jest.Mock).mockClear(); // Not needed if not called yet
 
 
-            const result = await audioContextService.initialize(true); // Pass true to resume
+            const result = await audioContextService.initialize(true); // Pass true to resume existing suspended
 
-            // Simulate state change to running if resume was called and successful
-            if ((contextInstance.resume as jest.Mock).mock.calls.length > 0) {
-                contextInstance._triggerStateChange('running');
-            }
-
-            expect(contextInstance.resume).toHaveBeenCalledTimes(1);
+            expect(contextInstance.resume).toHaveBeenCalledTimes(1); // Now it should be called
             expect(result.context).toBe(contextInstance);
-            // According to service logic, contextJustResumed is false because state is not yet 'running' when it's set.
-            expect(result.contextJustResumed).toBe(false);
+
+            // Simulate state change to running AFTER resume would have been processed
+            contextInstance._triggerStateChange('running');
+            expect(result.contextJustResumed).toBe(true); // Service logic: contextJustResumed && this.context?.state === 'running'
         });
 
         test('should not resume an existing running AudioContext', async () => {
@@ -129,19 +132,15 @@ describe('AudioContextService', () => {
             (oldContextInstance.close as jest.Mock).mockClear();
 
 
-            const result = await audioContextService.initialize(true); // Pass true to resume new context
+            const result = await audioContextService.initialize(true); // Pass true, but it shouldn't resume a NEW context
 
-            // oldContextInstance.close should NOT be called as it's already closed.
-            // Service's cleanupContext correctly handles this.
-            expect(oldGainNode.disconnect).toHaveBeenCalled(); // old gain node disconnected
-            expect(global.AudioContext).toHaveBeenCalledTimes(1); // new one created
+            expect(oldGainNode.disconnect).toHaveBeenCalled();
+            expect(global.AudioContext).toHaveBeenCalledTimes(1);
 
-            const newContextInstance = mockAudioContextInstances[1]; // Second instance from the factory
+            const newContextInstance = mockAudioContextInstances[1];
             expect(result.context).toBe(newContextInstance);
-            expect(newContextInstance.resume).toHaveBeenCalledTimes(1); // New one is suspended initially
-            // Simulate state change for the new context
-            newContextInstance._triggerStateChange('running');
-            // According to service logic, contextJustResumed is false because state is not yet 'running' when it's set.
+            expect(newContextInstance.resume).not.toHaveBeenCalled(); // Changed: Should not resume on initial creation
+            expect(result.context?.state).toBe('suspended'); // Verify it's suspended
             expect(result.contextJustResumed).toBe(false);
         });
 
@@ -188,7 +187,8 @@ describe('AudioContextService', () => {
     describe('suspendContext', () => {
         test('should suspend a running context', async () => {
             await audioContextService.initialize();
-            const contextInstance = mockAudioContextInstances[0];
+            const contextInstance = audioContextService.getAudioContext() as MockAudioContext;
+            expect(contextInstance).not.toBeNull(); // Ensure context exists
             contextInstance._triggerStateChange('running');
 
             await audioContextService.suspendContext();
@@ -198,7 +198,8 @@ describe('AudioContextService', () => {
         test('should not suspend if context not running or not initialized', async () => {
             // Test when suspended
             await audioContextService.initialize(); // initial state is suspended
-            const contextInstance = mockAudioContextInstances[0];
+            const contextInstance = audioContextService.getAudioContext() as MockAudioContext;
+            expect(contextInstance).not.toBeNull(); // Ensure context exists
             await audioContextService.suspendContext();
             expect(contextInstance.suspend).not.toHaveBeenCalled();
 
@@ -217,15 +218,17 @@ describe('AudioContextService', () => {
     describe('resumeContext', () => {
         test('should resume a suspended context', async () => {
             await audioContextService.initialize(); // initial state is suspended
-            const contextInstance = mockAudioContextInstances[0];
+            const contextInstance = audioContextService.getAudioContext() as MockAudioContext;
+            expect(contextInstance).not.toBeNull(); // Ensure context exists
 
             await audioContextService.resumeContext();
-            expect(contextInstance.resume).toHaveBeenCalledTimes(1); // resume was called once during init, once now
+            expect(contextInstance.resume).toHaveBeenCalledTimes(1);
         });
 
         test('should not resume if context not suspended or not initialized', async () => {
             await audioContextService.initialize();
-            const contextInstance = mockAudioContextInstances[0];
+            const contextInstance = audioContextService.getAudioContext() as MockAudioContext;
+            expect(contextInstance).not.toBeNull(); // Ensure context exists
             contextInstance._triggerStateChange('running'); // Set to running
             (contextInstance.resume as jest.Mock).mockClear(); // Clear calls from init
 

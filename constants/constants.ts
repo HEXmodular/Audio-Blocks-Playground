@@ -1,59 +1,108 @@
-
-import { BlockDefinition, BlockParameterDefinition, BlockParameter, Scale as AppScale } from '@interfaces/common'; // Added BlockParameterDefinition, AppScale. Removed unused BlockPort.
+import { BlockDefinition, BlockParameterDefinition, BlockParameter, Scale as AppScale } from '@interfaces/common';
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
-// Input pDefProto is effectively Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any }
-// because the objects passed to it will have these fields.
 export const createParameterDefinitions = (
   params: Array<Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any, steps?: number, isFrequency?: boolean }>
 ): BlockParameterDefinition[] => {
   return params.map(pDefProto => {
     let typedDefaultValue = pDefProto.defaultValue;
-
     if (pDefProto.type === 'slider' || pDefProto.type === 'knob' || pDefProto.type === 'number_input') {
       const parsedDefault = parseFloat(pDefProto.defaultValue as string);
-      if (!isNaN(parsedDefault)) {
-        typedDefaultValue = parsedDefault;
-      } else {
-        const parsedMin = pDefProto.min !== undefined ? parseFloat(pDefProto.min as any) : undefined;
-        typedDefaultValue = (parsedMin !== undefined && !isNaN(parsedMin)) ? parsedMin : 0;
-      }
+      typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (pDefProto.min !== undefined ? parseFloat(pDefProto.min as any) : 0);
     } else if (pDefProto.type === 'toggle') {
       typedDefaultValue = typeof pDefProto.defaultValue === 'boolean' ? pDefProto.defaultValue : String(pDefProto.defaultValue).toLowerCase() === 'true';
     } else if (pDefProto.type === 'select' && pDefProto.options && pDefProto.options.length > 0) {
       const defaultOptionExists = pDefProto.options.find(opt => opt.value === pDefProto.defaultValue);
-      if (!defaultOptionExists) {
-        typedDefaultValue = pDefProto.options[0].value;
-      }
-      // If defaultOptionExists or no options, typedDefaultValue remains pDefProto.defaultValue
+      typedDefaultValue = defaultOptionExists ? pDefProto.defaultValue : pDefProto.options[0].value;
     } else if (pDefProto.type === 'step_sequencer_ui') {
-      if (Array.isArray(pDefProto.defaultValue) && pDefProto.defaultValue.every(val => typeof val === 'boolean')) {
-        typedDefaultValue = pDefProto.defaultValue;
-      } else {
-        // Default to 'steps' if provided, otherwise default to 4 steps if defaultValue is not a valid boolean array.
-        const numSteps = typeof pDefProto.steps === 'number' && pDefProto.steps > 0 ? pDefProto.steps : 4;
-        typedDefaultValue = Array(numSteps).fill(false);
-        console.warn(`Invalid or missing defaultValue for step_sequencer_ui '${pDefProto.id}'. Defaulting to ${numSteps} false steps.`);
-      }
+      const numSteps = typeof pDefProto.steps === 'number' && pDefProto.steps > 0 ? pDefProto.steps : 4;
+      typedDefaultValue = (Array.isArray(pDefProto.defaultValue) && pDefProto.defaultValue.length === numSteps && pDefProto.defaultValue.every(val => typeof val === 'boolean'))
+        ? pDefProto.defaultValue
+        : Array(numSteps).fill(false);
     }
-    // For other types (text_input, etc.), typedDefaultValue remains as is.
-
-    // Return BlockParameterDefinition (no currentValue)
     return {
-      id: pDefProto.id,
-      name: pDefProto.name,
-      type: pDefProto.type,
-      options: pDefProto.options,
-      min: pDefProto.min,
-      max: pDefProto.max,
-      step: pDefProto.step,
-      defaultValue: typedDefaultValue, // Typed defaultValue
-      description: pDefProto.description,
-      steps: pDefProto.steps, // Include steps if defined
-      isFrequency: pDefProto.isFrequency // Include isFrequency hint
-      // No 'currentValue' here
+      id: pDefProto.id, name: pDefProto.name, type: pDefProto.type, options: pDefProto.options,
+      min: pDefProto.min, max: pDefProto.max, step: pDefProto.step, defaultValue: typedDefaultValue,
+      description: pDefProto.description, steps: pDefProto.steps, isFrequency: pDefProto.isFrequency,
     };
   });
+};
+
+// Moved from AudioEngineService.ts to break circular dependency
+const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
+const SAMPLE_BUFFER_WORKLET_CODE = `
+    class SampleBufferProcessor extends AudioWorkletProcessor {
+      static get parameterDescriptors() {
+        return [];
+      }
+
+      constructor(options) {
+        super(options);
+        this.instanceId = options?.processorOptions?.instanceId || 'UnknownSampleBufferWorklet';
+        this.recentSamples = new Float32Array(1024); // Store last 1024 samples
+        this.recentSamplesWritePtr = 0;
+
+        this.port.onmessage = (event) => {
+          if (event.data?.type === 'GET_RECENT_SAMPLES') {
+            const orderedSamples = new Float32Array(this.recentSamples.length);
+            let readPtr = this.recentSamplesWritePtr;
+            for (let i = 0; i < this.recentSamples.length; i++) {
+              orderedSamples[i] = this.recentSamples[readPtr];
+              readPtr = (readPtr + 1) % this.recentSamples.length;
+            }
+            this.port.postMessage({ type: 'RECENT_SAMPLES_DATA', samples: orderedSamples });
+          }
+        };
+      }
+
+      process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+
+        if (input && input.length > 0 && output && output.length > 0) {
+          const inputChannel = input[0];
+          const outputChannel = output[0];
+          if (inputChannel && outputChannel) {
+            for (let i = 0; i < outputChannel.length; ++i) {
+              const sample = inputChannel[i] !== undefined ? inputChannel[i] : 0;
+              outputChannel[i] = sample;
+              this.recentSamples[this.recentSamplesWritePtr] = sample;
+              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
+            }
+          }
+        } else if (output && output.length > 0) {
+          const outputChannel = output[0];
+          if (outputChannel) {
+            for (let i = 0; i < outputChannel.length; ++i) {
+              outputChannel[i] = 0;
+              this.recentSamples[this.recentSamplesWritePtr] = 0;
+              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
+            }
+          }
+        }
+        return true;
+      }
+    }
+    // IMPORTANT: The registerProcessor call will be done by the host environment (useAudioEngine)
+    `;
+
+export const AUDIO_OUTPUT_BLOCK_DEFINITION: BlockDefinition = {
+    id: 'system-audio-output-v1',
+    name: 'Audio Output',
+    description: 'Plays the incoming audio signal. Contains an internal GainNode for volume control which then feeds a SampleBufferProcessor AudioWorklet (acting as a sink). The input port connects to this internal GainNode.',
+    runsAtAudioRate: true,
+    inputs: [
+        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume GainNode.' }
+    ],
+    outputs: [],
+    parameters: createParameterDefinitions([
+        { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal GainNode AudioParam)' }
+    ]),
+    logicCode: "", // No specific main-thread logic code, it's a sink with an AudioWorklet.
+    audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME,
+    audioWorkletCode: SAMPLE_BUFFER_WORKLET_CODE,
+    isAiGenerated: false, // This is a system block
+    initialPrompt: '', // Not applicable
 };
 
 
@@ -611,10 +660,7 @@ const rateCV = inputs.rate_cv_in; // Expected to be audio-rate, effectively 0 if
 // Let's say CV of 0 means base rate. CV of 1 means baseRate + cvSensitivity. CV of -1 means baseRate - cvSensitivity (clamped).
 // A simpler approach for audio CV: treat it as a direct addition to frequency, scaled by sensitivity.
 // If rateCV is an audio signal, it will average to 0 over time if not DC biased.
-// For this example, let's assume host ensures rateCV is a somewhat stable value if connected to LFO, etc.
-// Average of audio signal is 0, so let's use it as deviation.
-// Effective rate = baseRate + (rateCV * cvSensitivity)
-// This is tricky if rateCV is full audio. For now, let's assume it provides a control value.
+// For this example, let's assume it provides a control value.
 // If rateCV input is not connected, inputs.rate_cv_in will be 0.
 const modulatedRateHz = Math.max(1, baseRateHz + (rateCV * cvSensitivity)); // Ensure positive rate
 
@@ -1199,6 +1245,7 @@ Ensure 'fixedLogicCodeTests' is a string containing the test code. Only provide 
 
 
 export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
+  AUDIO_OUTPUT_BLOCK_DEFINITION, // Added this
   OSCILLATOR_BLOCK_DEFINITION,
   MANUAL_GATE_BLOCK_DEFINITION,
   STEP_SEQUENCER_BLOCK_DEFINITION,

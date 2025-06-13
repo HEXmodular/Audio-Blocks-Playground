@@ -13,8 +13,7 @@ import {
     ManagedNativeNodeInfo,  // Import from common
     ManagedLyriaServiceInfo // Import from common
 } from '@interfaces/common';
-// import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants'; // Removed
-import { AudioEngineService } from './AudioEngineService'; // Added
+import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Added
 import { AllpassFilterNativeBlock } from './native-blocks/AllpassFilterNativeBlock'; // Added
 
 export interface ActiveWebAudioConnection {
@@ -106,7 +105,7 @@ export class AudioGraphConnectorService {
         }
       } else {
         if (toWorkletInfo) {
-            targetAudioNode = (toDef.id === AudioEngineService.getAudioOutputDefinition().id && toWorkletInfo.inputGainNode)
+            targetAudioNode = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
                 ? toWorkletInfo.inputGainNode
                 : toWorkletInfo.node;
         } else if (toNativeInfo) {

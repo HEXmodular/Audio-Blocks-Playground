@@ -2,12 +2,19 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.(ts|tsx)$': ['ts-jest', { useESM: true }],
+    '^.+\\.(js|jsx)$': 'babel-jest',
+  },
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
-  transformIgnorePatterns: [ // Updated line
-    "/node_modules/(?!(@google/genai)/)"
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'mjs'],
+  transformIgnorePatterns: [
+    "/node_modules/" // Ignore all node_modules, relying on jest.doMock via setup file
   ],
   moduleNameMapper: {
+    // '^@google/genai$': '<rootDir>/__mocks__/@google/genai.js', // Ensure this is commented out
+    // Standard path mappings
     '^@/(.*)$': '<rootDir>/$1',
     '^@services/(.*)$': '<rootDir>/services/$1',
     '^@interfaces/(.*)$': '<rootDir>/interfaces/$1',
@@ -19,5 +26,6 @@ module.exports = {
     '^@constants/(.*)$': '<rootDir>/constants/$1',
     '^@state/(.*)$': '<rootDir>/state/$1',
     '^@hooks/(.*)$': '<rootDir>/hooks/$1'
-  }
+  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'] // Added setup file
 };
