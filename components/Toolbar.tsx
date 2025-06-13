@@ -57,7 +57,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   availableOutputDevices,
   onSetOutputDevice,
 }) => {
-  const { blockDefinitions, deleteBlockDefinition } = useBlockState(); // Consume context
+  // const { blockDefinitions, deleteBlockDefinition } = useBlockState(); // Consume context
 
   const workspacePersistenceManager = useMemo(() => {
     if (!ctxBlockStateManager || !audioEngineService || !connectionState || !selectedSinkId) return null;
@@ -107,7 +107,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     e.stopPropagation(); // Prevent block add
     // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
     if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-      deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
+      // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
       setIsAddBlockMenuOpen(false); // Close menu after action
     }
   };

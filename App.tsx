@@ -142,7 +142,7 @@ const App: React.FC = () => {
     }
   }, [
     logicExecutionEngineManager,
-    appBlockInstances, // Use new state
+    // appBlockInstances, // Use new state
     connections,
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled
@@ -179,20 +179,20 @@ const App: React.FC = () => {
     };
     setupNodes();
   }, [
-    audioNodeManager,
-    appBlockInstances, // Use new state
+    // audioNodeManager,
+    // appBlockInstances, // Use new state
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
     audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     audioEngineService.audioContext,
   ]);
 
-  // useEffect(() => {
-  //   console.log("audioNodeManager changed");
-  // },[audioNodeManager])
-  // useEffect(() => {
-  //   console.log("appBlockInstancesFromCtx changed");
-  // }, [appBlockInstancesFromCtx])
+  useEffect(() => {
+    console.log("audioNodeManager changed", JSON.stringify(audioNodeManager));
+  },[audioNodeManager])
+  useEffect(() => {
+    console.log("appBlockInstances changed", JSON.stringify(appBlockInstances));
+  }, [appBlockInstances])
   // useEffect(() => {
   //   console.log("globalBpm changed");
   // },[globalBpm])

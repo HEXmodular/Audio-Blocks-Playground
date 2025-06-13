@@ -68,6 +68,7 @@ export class AudioNodeManager {
                     }));
                     if (needsToLog) {
                         this.addLog(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
+                        console.warn(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
                     }
                 }
             });
@@ -97,7 +98,11 @@ export class AudioNodeManager {
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call lyriaServiceManager.setupLyriaService for ${instance.instanceId}`);
                     if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
-                        this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(instance.instanceId, definition, (msg) => this.addLog(instance.instanceId, msg))
+                        console.log(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
+                        this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(instance.instanceId, definition, (msg) => {
+                            this.addLog(instance.instanceId, msg);
+                            console.log(instance.instanceId, msg);
+                        })
                             .then(success => {
                                 this.updateInstance(instance.instanceId, currentInst => ({
                                     ...currentInst,
@@ -111,9 +116,13 @@ export class AudioNodeManager {
                                     error: success ? null : "Lyria Service setup failed."
                                 }));
                                 if (success) this.addLog(instance.instanceId, "Lyria service ready.");
-                                else this.addLog(instance.instanceId, "Lyria service setup failed.", "error");
+                                else {
+                                    this.addLog(instance.instanceId, "Lyria service setup failed.", "error");
+                                    console.error(instance.instanceId, "Lyria service setup failed.", "error");
+                                }
                             }).catch(err => {
                                 this.addLog(instance.instanceId, `Lyria service setup error: ${(err as Error).message}`, "error");
+                                console.error(instance.instanceId, `Lyria service setup error: ${(err as Error).message}`, "error");
                                 this.updateInstance(instance.instanceId, { error: "Lyria service setup error." });
                             });
                     }
@@ -130,6 +139,7 @@ export class AudioNodeManager {
                             }));
                         }
                         this.addLog(instance.instanceId, "Worklet node setup initiated by AudioNodeManager.");
+                        console.log(instance.instanceId, "Worklet node setup initiated by AudioNodeManager.");
                         // const node = this.audioEngineService.addManagedAudioWorkletNode(instance.instanceId, { processorName: definition.audioWorkletProcessorName, nodeOptions: instance.parameters });
                         // The actual call to audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode is expected to be within audioEngineService.addManagedAudioWorkletNode
                         // For now, we assume addManagedAudioWorkletNode in AudioEngineService does the right thing.
@@ -146,14 +156,17 @@ export class AudioNodeManager {
                                 }
                             }));
                             this.addLog(instance.instanceId, "Worklet node setup successful.");
+                            console.log(instance.instanceId, "Worklet node setup successful.");
                             // Specific connection for AUDIO_OUTPUT_BLOCK_DEFINITION is now handled in AudioEngineService's updateAudioGraphConnections
                         } else {
                             this.addLog(instance.instanceId, "Worklet node setup failed.", "error");
+                            console.error(instance.instanceId, "Worklet node setup failed.", "error");
                             this.updateInstance(instance.instanceId, { error: "Worklet node setup failed." });
                         }
                     } else if (instance.internalState.needsAudioNodeSetup && !isWorkletSystemReady) {
                         if (!instance.internalState.loggedWorkletSystemNotReady) {
                             this.addLog(instance.instanceId, "Worklet system not ready, deferring setup.", "warn");
+                            console.warn(instance.instanceId, "Worklet system not ready, deferring setup.", "warn")
                             this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
                                 internalState: { ...currentInst.internalState, loggedWorkletSystemNotReady: true }
@@ -167,6 +180,7 @@ export class AudioNodeManager {
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioEngineService.addNativeNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
+                        console.log(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
                         const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
                         if (success) {
                             this.updateInstance(instance.instanceId, currentInst => ({
@@ -178,8 +192,10 @@ export class AudioNodeManager {
                                 }
                             }));
                             this.addLog(instance.instanceId, "Native node setup successful.");
+                            console.log(instance.instanceId, "Native node setup successful.")
                         } else {
                             this.addLog(instance.instanceId, "Native node setup failed.", "error");
+                            console.error(instance.instanceId, "Native node setup failed.", "error");
                             this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
                         }
                     }
@@ -201,6 +217,7 @@ export class AudioNodeManager {
                 }));
                 if (needsToLog) {
                     this.addLog(instance.instanceId, "Audio system not active. Node now requires setup.", "warn");
+                    console.warn(instance.instanceId, "Audio system not active. Node now requires setup.", "warn");
                 }
             }
         }
@@ -270,6 +287,7 @@ export class AudioNodeManager {
                 !instance.internalState.stopRequest &&
                 !instance.internalState.pauseRequest) {
                 this.addLog(instance.instanceId, `AudioNodeManager triggering auto-play for Lyria block: ${instance.name}`);
+                console.log(instance.instanceId, `AudioNodeManager triggering auto-play for Lyria block: ${instance.name}`);
                 this.updateInstance(instance.instanceId, currentInst => ({
                     ...currentInst,
                     internalState: { ...currentInst.internalState, playRequest: true, autoPlayInitiated: true }
