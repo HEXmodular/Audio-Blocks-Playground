@@ -207,24 +207,6 @@ return {};
 
 const SEQUENCER_BPM_FRACTIONS = BPM_FRACTIONS.filter(f => f.value <=4 && f.value >= 1/32); // Sensible range for sequencers
 
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
-};
-
 export const STEP_SEQUENCER_BLOCK_DEFINITION: BlockDefinition = {
   id: 'step-sequencer-v1',
   name: 'Step Sequencer',
@@ -298,24 +280,6 @@ setOutput('gate_out', gateHigh);
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Step Sequencer block. Parameters: "Steps Pattern" (step_sequencer_ui, default 8 steps), "Run Mode" (select: Internal BPM, External Trigger), "Rate (BPM Fraction)" (select: musical divisions for BPM sync), "Number of Steps" (slider 1-16). Inputs: "External Trigger". Outputs: "Trigger Output", "Gate Output". Logic should handle step advancement based on mode and timing.',
-};
-
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
 };
 
 export const PROBABILITY_SEQUENCER_BLOCK_DEFINITION: BlockDefinition = {
@@ -399,24 +363,6 @@ setOutput('gate_out', gateHigh);
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Probability Sequencer block. Parameters: "Steps Pattern (Activation)" (step_sequencer_ui), "Probabilities (0-100%)" (text_input, comma-separated), "Run Mode", "Rate (BPM Fraction)", "Number of Steps". Inputs: "External Trigger". Outputs: "Trigger Output", "Gate Output". Logic should consider step activation and its probability.',
-};
-
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
 };
 
 export const RULE_110_BLOCK_DEFINITION: BlockDefinition = {
@@ -526,24 +472,6 @@ internalState.prevExtTriggerState = externalTrigger;
 return internalState;
   `.trim(),
   initialPrompt: 'Create a Rule 110 cellular automaton block. Parameters: "Core Length" (slider 1-16), "Pattern + Boundaries" (step_sequencer_ui, 18 steps for L-Bnd, N core, R-Bnd), "Run Mode" (select: Internal Trigger, External Trigger, LFO), "Internal Freq (Hz)" (number_input 0.01-8000), "LFO BPM Sync Rate" (select), "LFO Sync to BPM" (toggle). Inputs: "Trigger", "Numeric State In". Output: "Numeric State Out". Logic must implement Rule 110, handle timing for different modes, and convert core pattern to/from number. Max 16 core cells + 2 boundaries = 18 UI steps.',
-};
-
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
 };
 
 const RULE_110_OSCILLATOR_WORKLET_PROCESSOR_NAME = 'rule-110-oscillator-processor';
@@ -728,24 +656,6 @@ return internalState;
   audioWorkletCode: RULE_110_OSCILLATOR_WORKLET_CODE,
 };
 
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
-};
-
 export const RULE_110_JOIN_BLOCK_DEFINITION: BlockDefinition = {
   id: 'rule-110-join-v1',
   name: 'Rule 110 Join',
@@ -852,25 +762,7 @@ return internalState;
   `.trim(),
   initialPrompt: 'Create a Rule 110 Join block. Parameters: "Core Length 1 (N1)" (slider 1-8), "Core Length 2 (N2)" (slider 1-8), "Boundary Bits" (select: Zeros, Ones, Wrap). Inputs: "Numeric State In 1", "Numeric State In 2", "Trigger". Outputs: "Numeric State Out 1", "Numeric State Out 2". Logic combines N1 and N2 bits, applies Rule 110 with chosen boundaries, then splits the result.',
 };
-
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  logicCode: "",
-};
-
+ 
 export const RULE_110_BYTE_READER_BLOCK_DEFINITION: BlockDefinition = {
   id: 'rule-110-byte-reader-v1',
   name: 'Rule 110 Byte Reader',
