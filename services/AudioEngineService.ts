@@ -10,7 +10,7 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
+import { NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager, ManagedWorkletNodeInfo } from './AudioWorkletManager';
@@ -413,9 +413,9 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           return; // continue to next instance
         }
         // New Log 3 (Combined with check for AUDIO_OUTPUT_BLOCK_DEFINITION.id for context)
-        // console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
+        // console.log(`[AudioEngineService] Instance ${instance.instanceId} has definition name: '${definition.name}', definition ID: '${definition.id}'. Comparing with AUDIO_OUTPUT_ID: '${NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id}'`);
 
-        if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+        if (definition.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
           const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
 
           // console.log(`[AudioOutputDebug] Instance: ${instance.instanceId} IS an AUDIO_OUTPUT_BLOCK.`); // Moved from previous [AudioOutputDebug] set
@@ -465,7 +465,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
           } else {
             // console.log(`[AudioOutputDebug] WorkletInfo or WorkletInfo.node NOT FOUND for AUDIO_OUTPUT_BLOCK instance ${instance.instanceId}`);
           }
-        } // End of: if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id)
+        } // End of: if (definition.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id)
       }); // End of: blockInstances.forEach
 
       // console.log(`[AudioEngineService] Finished processing blockInstances for master output connection. Processed ${blockInstances.length} instances this call.`); // New Log 4
@@ -475,7 +475,7 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         blockInstances
           .filter(instance => {
             const def = getDefinitionForBlock(instance);
-            return def && def.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id;
+            return def && def.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id;
           })
           .map(instance => instance.instanceId)
       );

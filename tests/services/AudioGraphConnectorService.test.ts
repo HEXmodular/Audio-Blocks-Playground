@@ -3,7 +3,7 @@ import { Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
 import { ManagedWorkletNodeInfo } from '@hooks/useAudioWorkletManager';
 import { ManagedNativeNodeInfo } from '@hooks/useNativeNodeManager';
 import { ManagedLyriaServiceInfo } from '@hooks/hooks/useLyriaServiceManager';
-import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION, AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
+import { NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION, NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants';
 
 // Helper to create mock AudioNode
 const createMockAudioNode = (name: string = 'node') => ({

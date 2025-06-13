@@ -8,13 +8,13 @@
 import { BlockDefinition, BlockParameter, AudioContextState } from '@interfaces/common';
 import {
     OSCILLATOR_BLOCK_DEFINITION,
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
+    NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION,
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
 } from '@constants/constants';
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
     OSCILLATOR_BLOCK_DEFINITION,
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
+    NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION,
     RULE_110_OSCILLATOR_BLOCK_DEFINITION,
 ];
 
@@ -313,7 +313,7 @@ try {
       };
 
       let inputGainNodeForOutputBlock: GainNode | undefined = undefined;
-      if (definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
+      if (definition.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id) {
         inputGainNodeForOutputBlock = this.audioContext!.createGain(); // Added non-null assertion
         const volumeParam = initialParams.find(p => p.id === 'volume');
         inputGainNodeForOutputBlock.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
@@ -341,7 +341,7 @@ try {
     parameters.forEach(param => {
       const audioParam = info.node.parameters.get(param.id);
       if (audioParam && typeof param.currentValue === 'number') {
-        if (info.definition.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && param.id === 'volume' && info.inputGainNode) {
+        if (info.definition.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id && param.id === 'volume' && info.inputGainNode) {
           info.inputGainNode.gain.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01); // Added non-null assertion
         } else {
           audioParam.setTargetAtTime(param.currentValue, this.audioContext!.currentTime, 0.01); // Added non-null assertion

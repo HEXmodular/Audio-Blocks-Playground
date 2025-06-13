@@ -4,7 +4,7 @@ import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
 import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
 import { ConnectionState } from '@services/ConnectionState'; // Adjust path
 import {
-    AUDIO_OUTPUT_BLOCK_DEFINITION,
+    NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION,
     // GAIN_BLOCK_DEFINITION, // Removed from here
     LYRIA_MASTER_BLOCK_DEFINITION,
     OSCILLOSCOPE_BLOCK_DEFINITION
@@ -96,7 +96,7 @@ export class BlockInstanceController {
                 this.audioEngineService.lyriaServiceManager.removeLyriaServiceForInstance?.(instanceId);
             } else if (definition?.audioWorkletProcessorName) {
                 this.audioEngineService.removeManagedAudioWorkletNode(instanceId);
-            } else if (definition?.id.startsWith('native-') || definition?.id === GAIN_BLOCK_DEFINITION.id || definition?.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id || definition?.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
+            } else if (definition?.id.startsWith('native-') || definition?.id === GAIN_BLOCK_DEFINITION.id || definition?.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id || definition?.id === OSCILLOSCOPE_BLOCK_DEFINITION.id) {
                 this.audioEngineService.removeNativeNode(instanceId);
             }
         }

@@ -1,10 +1,10 @@
 import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager';
 import { BlockDefinition, BlockInstance } from '@interfaces/common';
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking
+import { NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking
 
 // Minimal mock for CORE_BLOCK_DEFINITIONS_ARRAY to avoid import issues in test
 const MOCK_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
-  AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition,
+  NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition,
   // Add any other essential definitions if their structure is specifically needed by BSM constructor logic beyond just being an array.
   // For these tests, primarily focusing on save/load mechanics, a simple array with one item should suffice.
 ];
@@ -79,8 +79,8 @@ describe('BlockStateManager Debouncing and Batching', () => {
     const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor
 
-    bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
-    bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
+    bsm.addBlockInstance(NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
+    bsm.addBlockInstance(NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
 
     expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
 
@@ -110,7 +110,7 @@ describe('BlockStateManager Debouncing and Batching', () => {
 
   test('updateMultipleBlockInstances should call _onInstancesChangeCallback once and trigger debounced save', () => {
     const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
-    const initialInstance = bsm.addBlockInstance(AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
+    const initialInstance = bsm.addBlockInstance(NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION as BlockDefinition);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor & addBlockInstance's initial save
     onInstancesChangeCallback.mockClear();
 

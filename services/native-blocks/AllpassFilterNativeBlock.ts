@@ -113,7 +113,40 @@ export class AllpassFilterNativeBlock extends CreatableNode {
         });
     }
 
-    // connect and disconnect are inherited
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    connect(destination: AudioNode): void {
+        if (this.audioContext && this.isContextInitialized()) {
+            const info = {} as ManagedNativeNodeInfo; // Placeholder, real info would be needed
+            // In a real scenario, you'd get the actual output node from ManagedNativeNodeInfo
+            // For Allpass, this is typically info.allpassInternalNodes.summingNode or info.nodeForOutputConnections
+            // This is a stub, so actual connection logic might be more complex or managed elsewhere.
+            const outputNode = info.nodeForOutputConnections || info.allpassInternalNodes?.summingNode;
+            if (outputNode) {
+                outputNode.connect(destination);
+                console.log(`${this.constructor.name} connected to ${destination.constructor.name}`);
+            } else {
+                console.warn(`${this.constructor.name}: Output node not available for connection.`);
+            }
+        } else {
+            console.warn(`${this.constructor.name}: AudioContext not initialized. Cannot connect.`);
+        }
+    }
+
+    disconnect(destination: AudioNode): void {
+        if (this.audioContext && this.isContextInitialized()) {
+            const info = {} as ManagedNativeNodeInfo; // Placeholder
+            const outputNode = info.nodeForOutputConnections || info.allpassInternalNodes?.summingNode;
+            if (outputNode) {
+                try {
+                    outputNode.disconnect(destination);
+                    console.log(`${this.constructor.name} disconnected from ${destination.constructor.name}`);
+                } catch (e) {
+                    console.warn(`${this.constructor.name}: Error disconnecting - ${ (e as Error).message}`);
+                }
+            } else {
+                console.warn(`${this.constructor.name}: Output node not available for disconnection.`);
+            }
+        } else {
+            console.warn(`${this.constructor.name}: AudioContext not initialized. Cannot disconnect.`);
+        }
+    }
 }

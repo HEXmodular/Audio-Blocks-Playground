@@ -79,7 +79,16 @@ export class EnvelopeNativeBlock extends CreatableNode {
         });
     }
 
-    // connect and disconnect are inherited
-    // connect(destination: AudioNode): void { /* ... */ }
-    // disconnect(destination: AudioNode): void { /* ... */ }
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): void {
+        // This class (and other CreatableNode derivatives) provides nodes to NativeNodeManager.
+        // The actual connection logic using these nodes is handled by AudioGraphConnectorService.
+        // This method is primarily for interface conformance with NativeBlock.
+        console.warn(`${this.constructor.name}.connect(dest, outIdx=${outputIndex}, inIdx=${inputIndex}) called. This is generally a stub. Connections are managed by AudioGraphConnectorService using node info provided by createNode().`);
+    }
+
+    disconnect(destination?: AudioNode, outputIndex?: number): void {
+        // Similar to connect, this is a stub for interface conformance.
+        // Actual disconnection is handled by AudioGraphConnectorService or NativeNodeManager.
+        console.warn(`${this.constructor.name}.disconnect(dest, outIdx=${outputIndex}) called. This is generally a stub. Disconnections are managed externally.`);
+    }
 }

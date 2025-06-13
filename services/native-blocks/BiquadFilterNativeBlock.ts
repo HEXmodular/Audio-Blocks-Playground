@@ -60,22 +60,32 @@ export class BiquadFilterNativeBlock extends CreatableNode {
         });
     }
 
-    // connect and disconnect are inherited, not typically called directly by NativeNodeManager
-    // connect(destination: AudioNode): void {
-    //     if (this.audioContext && this.isContextInitialized() && this.isContextInitialized() && info.mainProcessingNode) {
-    //          // Assuming info.mainProcessingNode holds the biquad filter
-    //         info.mainProcessingNode.connect(destination);
-    //     } else {
-    //         console.warn("BiquadFilterNativeBlock.connect() called but context or node is not initialized.");
-    //     }
-    // }
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): void {
+        // This class (and other CreatableNode derivatives) provides nodes to NativeNodeManager.
+        // The actual connection logic using these nodes is handled by AudioGraphConnectorService.
+        // This method is primarily for interface conformance with NativeBlock.
+        // It could be implemented if direct connection control from the block instance itself was needed,
+        // but that would require the block to store its own ManagedNativeNodeInfo or relevant AudioNodes.
+        console.warn(`${this.constructor.name}.connect(dest, outIdx=${outputIndex}, inIdx=${inputIndex}) called. This is generally a stub. Connections are managed by AudioGraphConnectorService using node info provided by createNode().`);
+        // Example of what it might do if it stored its output node:
+        // const nodeInfo = this.getManagedNodeInfo(); // Hypothetical method
+        // if (nodeInfo && nodeInfo.nodeForOutputConnections) {
+        //   nodeInfo.nodeForOutputConnections.connect(destination, outputIndex, inputIndex);
+        // } else {
+        //   console.warn(`${this.constructor.name}: Output node not available for direct connection.`);
+        // }
+    }
 
-    // disconnect(destination: AudioNode): void {
-    //     if (this.audioContext && this.isContextInitialized() && info.mainProcessingNode) {
-    //         // Assuming info.mainProcessingNode holds the biquad filter
-    //         info.mainProcessingNode.disconnect(destination);
-    //     } else {
-    //         console.warn("BiquadFilterNativeBlock.disconnect() called but context or node is not initialized.");
-    //     }
-    // }
+    disconnect(destination?: AudioNode, outputIndex?: number): void {
+        // Similar to connect, this is a stub for interface conformance.
+        // Actual disconnection is handled by AudioGraphConnectorService or NativeNodeManager.
+        console.warn(`${this.constructor.name}.disconnect(dest, outIdx=${outputIndex}) called. This is generally a stub. Disconnections are managed externally.`);
+        // Example:
+        // const nodeInfo = this.getManagedNodeInfo(); // Hypothetical method
+        // if (nodeInfo && nodeInfo.nodeForOutputConnections) {
+        //   nodeInfo.nodeForOutputConnections.disconnect(destination, outputIndex);
+        // } else {
+        //   console.warn(`${this.constructor.name}: Output node not available for direct disconnection.`);
+        // }
+    }
 }

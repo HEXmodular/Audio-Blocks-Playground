@@ -20,6 +20,7 @@ import {
 } from '@constants/constants'; // From root constants.ts
 
 import { GAIN_BLOCK_DEFINITION } from '@services/native-blocks/GainControlNativeBlock'; // Specifically from its own file
+import { AudioOutputNativeBlock, AUDIO_OUTPUT_BLOCK_DEFINITION as NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION } from '@services/native-blocks/AudioOutputNativeBlock';
 
 import { CreatableNode } from '@services/native-blocks/CreatableNode';
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
@@ -103,6 +104,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(NATIVE_AR_ENVELOPE_BLOCK_DEFINITION.id, new EnvelopeNativeBlock(context));
         this.blockHandlers.set(NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION.id, new AllpassFilterNativeBlock(context));
         this.blockHandlers.set(NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id, new NumberToConstantAudioNativeBlock(context));
+        this.blockHandlers.set(NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id, new AudioOutputNativeBlock(context));
     }
 
     /**

@@ -9,7 +9,7 @@ import { Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
 import { ManagedWorkletNodeInfo } from '../hooks/useAudioWorkletManager';
 import { ManagedNativeNodeInfo } from '../hooks/useNativeNodeManager';
 import { ManagedLyriaServiceInfo } from '../hooks/useLyriaServiceManager';
-import { AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants';
+import { NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION, NATIVE_ALLPASS_FILTER_BLOCK_DEFINITION } from '@constants/constants';
 
 export interface ActiveWebAudioConnection {
   connectionId: string;
@@ -100,7 +100,7 @@ export class AudioGraphConnectorService {
         }
       } else {
         if (toWorkletInfo) {
-            targetAudioNode = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
+            targetAudioNode = (toDef.id === NATIVE_AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
                 ? toWorkletInfo.inputGainNode
                 : toWorkletInfo.node;
         } else if (toNativeInfo) {
