@@ -488,17 +488,17 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         return Array.from(this.nativeNodeManager.getManagedNodesMap().values()); // Corrected: was getAllNodeInfo
     }
 
-    public triggerNativeNodeEnvelope = (nodeId: string, _params: EnvelopeParams, _triggerTime?: number): void => {
-        // This method seems to be a direct call if NativeNodeManager implements it with this exact signature.
-        // If params is meant to be broken down, this call needs adjustment.
-        // For now, assuming NativeNodeManager has this signature.
-        // The error was "triggerEnvelope" does not exist, but NativeNodeManager has more specific ones.
-        // This specific method is not directly on NativeNodeManager, it has specific AD/AR triggers.
-        // This will require refactoring where it's called, or adding a generic triggerEnvelope to NativeNodeManager.
-        // For now, commenting out to remove immediate error, needs design decision.
-        // this.nativeNodeManager.triggerEnvelope(nodeId, params, triggerTime);
-        console.warn(`AudioEngineService.triggerNativeNodeEnvelope called for ${nodeId} but is a placeholder/needs refactor.`);
-    }
+    // public triggerNativeNodeEnvelope = (nodeId: string, _params: EnvelopeParams, _triggerTime?: number): void => {
+    //     // This method seems to be a direct call if NativeNodeManager implements it with this exact signature.
+    //     // If params is meant to be broken down, this call needs adjustment.
+    //     // For now, assuming NativeNodeManager has this signature.
+    //     // The error was "triggerEnvelope" does not exist, but NativeNodeManager has more specific ones.
+    //     // This specific method is not directly on NativeNodeManager, it has specific AD/AR triggers.
+    //     // This will require refactoring where it's called, or adding a generic triggerEnvelope to NativeNodeManager.
+    //     // For now, commenting out to remove immediate error, needs design decision.
+    //     // this.nativeNodeManager.triggerEnvelope(nodeId, params, triggerTime);
+    //     console.warn(`AudioEngineService.triggerNativeNodeEnvelope called for ${nodeId} but is a placeholder/needs refactor.`);
+    // }
 
     public dispose = (): void => {
         console.log('Disposing AudioEngineService...');

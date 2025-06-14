@@ -224,39 +224,6 @@ export class LogicExecutionService {
       let newInternalState = { ...(instance.internalState || {}), ...nextInternalStateOpaque };
 
       if (this.audioEngine && this.audioEngine.nativeNodeManager) { // Ensure nativeNodeManager exists
-        if (definition.id === EnvelopeNativeBlock.getADEnvelopeDefinition().id && newInternalState.envelopeNeedsTriggering) {
-          const attackParam = instance.parameters.find(p => p.id === 'attackTime');
-          const decayParam = instance.parameters.find(p => p.id === 'decayTime');
-          const peakLevelParam = instance.parameters.find(p => p.id === 'peakLevel');
-          if (attackParam && decayParam && peakLevelParam) {
-            this.audioEngine.nativeNodeManager.triggerNativeNodeEnvelope?.(
-              instance.instanceId,
-              Number(attackParam.currentValue),
-              Number(decayParam.currentValue),
-              Number(peakLevelParam.currentValue)
-            );
-          }
-          newInternalState.envelopeNeedsTriggering = false;
-        } else if (definition.id === EnvelopeNativeBlock.getAREnvelopeDefinition().id) {
-          if (newInternalState.gateStateChangedToHigh) {
-            const attackParam = instance.parameters.find(p => p.id === 'attackTime');
-            const sustainLevelParam = instance.parameters.find(p => p.id === 'sustainLevel');
-            if (attackParam && sustainLevelParam) {
-              this.audioEngine.nativeNodeManager.triggerNativeNodeAttackHold?.(
-                instance.instanceId,
-                Number(attackParam.currentValue),
-                Number(sustainLevelParam.currentValue)
-              );
-            }
-            newInternalState.gateStateChangedToHigh = false;
-          } else if (newInternalState.gateStateChangedToLow) {
-            const releaseParam = instance.parameters.find(p => p.id === 'releaseTime');
-            if (releaseParam) {
-              this.audioEngine.nativeNodeManager.triggerNativeNodeRelease?.(instance.instanceId, Number(releaseParam.currentValue));
-            }
-            newInternalState.gateStateChangedToLow = false;
-          }
-        }
         if (definition.id.startsWith('native-') && !instance.internalState.needsAudioNodeSetup && this.audioEngine.audioContext) {
           if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
             this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(

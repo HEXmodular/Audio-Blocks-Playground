@@ -31,9 +31,6 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster';
 export interface INativeNodeManager {
     setupManagedNativeNode: (instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number) => Promise<boolean>;
     updateManagedNativeNodeParams: (instanceId: string, parameters: BlockParameter[], currentInputs?: Record<string, any>, currentBpm?: number) => void;
-    triggerNativeNodeEnvelope: (instanceId: string, attackTime: number, decayTime: number, peakLevel: number) => void;
-    triggerNativeNodeAttackHold: (instanceId: string, attackTime: number, sustainLevel: number) => void;
-    triggerNativeNodeRelease: (instanceId: string, releaseTime: number) => void;
     removeManagedNativeNode: (instanceId: string) => void;
     removeAllManagedNativeNodes: () => void;
     getAnalyserNodeForInstance: (instanceId: string) => AnalyserNode | null;
@@ -42,7 +39,6 @@ export interface INativeNodeManager {
     removeNode: (nodeId: string) => void;
     getNodeInfo: (nodeId: string) => ManagedNativeNodeInfo | undefined;
     getAllNodeInfo: () => ManagedNativeNodeInfo[];
-    triggerEnvelope: (nodeId: string, params: EnvelopeParams, triggerTime?: number) => void;
 }
 
 export class NativeNodeManager implements INativeNodeManager {
@@ -317,29 +313,5 @@ export class NativeNodeManager implements INativeNodeManager {
     }
     public getAllNodeInfo(): ManagedNativeNodeInfo[] {
         return Array.from(this.managedNativeNodesRef.values());
-    }
-    public triggerEnvelope(nodeId: string, params: EnvelopeParams, _triggerTime?: number): void {
-        // This is a generic envelope trigger. NativeNodeManager has specific AD and AR triggers.
-        // We need to decide which one to call or add a more generic one.
-        // For now, let's try to call AD envelope if decayTime is present, else log.
-        // This is a simplification and might need specific block definition check.
-        const info = this.managedNativeNodesRef.get(nodeId);
-        if (info && info.definition) {
-            if (info.definition.id === EnvelopeNativeBlock.getADEnvelopeDefinition().id && params.decayTime !== undefined && params.peakLevel !== undefined) {
-                this.triggerNativeNodeEnvelope(nodeId, params.attackTime, params.decayTime, params.peakLevel);
-            } else if (info.definition.id === EnvelopeNativeBlock.getAREnvelopeDefinition().id && params.releaseTime !== undefined && params.sustainLevel !== undefined) {
-                // AR logic is more gate-driven, not a simple one-shot trigger with these params.
-                // This mapping is imperfect. LogicExecutionService should call specific AD/AR methods.
-                console.warn(`triggerEnvelope called for AR block '${nodeId}', but AR is gate-driven. Use specific attack/release methods if applicable.`);
-                 // Attempting to map to an attack phase for simplicity for now if sustainLevel is available
-                if (params.sustainLevel !== undefined) {
-                     this.triggerNativeNodeAttackHold(nodeId, params.attackTime, params.sustainLevel);
-                }
-            } else {
-                 console.warn(`triggerEnvelope called for '${nodeId}' with unhandled params or block type for generic trigger.`);
-            }
-        } else {
-            console.warn(`triggerEnvelope called for unknown or non-native-envelope node '${nodeId}'.`);
-        }
     }
 }
