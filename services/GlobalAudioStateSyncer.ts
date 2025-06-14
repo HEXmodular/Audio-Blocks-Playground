@@ -16,6 +16,7 @@ export interface GlobalAudioState {
   selectedSinkId: string | null;
   audioContextState: AudioContextState | null;
   isWorkletSystemReady: boolean;
+  updateCounter: number; // Added updateCounter
 }
 
 export class GlobalAudioStateSyncer {
@@ -31,6 +32,7 @@ export class GlobalAudioStateSyncer {
       selectedSinkId: this.audioEngineService.selectedSinkId,
       audioContextState: this.audioEngineService.audioContext?.state || null,
       isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+      updateCounter: this.audioEngineService.audioEngineState.updateCounter, // Initialize updateCounter
     };
 
     this.audioEngineService.subscribe(this.handleAudioEngineChange);
@@ -46,38 +48,28 @@ export class GlobalAudioStateSyncer {
       audioContextState: newEngineState.audioContextState,
       // isWorkletSystemReady is not part of AudioEngineState, so get it directly
       isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+      updateCounter: newEngineState.updateCounter, // Ensure updateCounter is copied
       // sampleRate is also not in GlobalAudioState, so omitting as per current interface
     };
 
-    let changed = false;
-    if (newGlobalState.isAudioGloballyEnabled !== this.currentState.isAudioGloballyEnabled) changed = true;
-    if (newGlobalState.selectedSinkId !== this.currentState.selectedSinkId) changed = true;
-    if (newGlobalState.audioContextState !== this.currentState.audioContextState) changed = true;
-    if (newGlobalState.isWorkletSystemReady !== this.currentState.isWorkletSystemReady) changed = true;
+    // With updateCounter, any notification from AudioEngineService implies a change.
+    // The detailed per-property check might still be useful for logging or specific reactions,
+    // but the notification to listeners should happen if updateCounter changed.
+    if (newGlobalState.updateCounter !== this.currentState.updateCounter) {
+      // For debugging, you can still log what specifically changed if needed:
+      // if (newGlobalState.isAudioGloballyEnabled !== this.currentState.isAudioGloballyEnabled) console.log("GASS: isAudioGloballyEnabled changed");
+      // if (newGlobalState.selectedSinkId !== this.currentState.selectedSinkId) console.log("GASS: selectedSinkId changed");
+      // ... etc.
 
-    // Compare availableOutputDevices
-    if (!changed) { // Only if no other change has been detected yet
-      if (newGlobalState.availableOutputDevices.length !== this.currentState.availableOutputDevices.length) {
-        changed = true;
-      } else {
-        for (let i = 0; i < newGlobalState.availableOutputDevices.length; i++) {
-          if (newGlobalState.availableOutputDevices[i].deviceId !== this.currentState.availableOutputDevices[i].deviceId) {
-            changed = true;
-            break;
-          }
-          // Optional: compare other properties of AudioDevice if necessary for your definition of "changed"
-          // For example, if device labels changing should trigger an update:
-          // if (newGlobalState.availableOutputDevices[i].label !== this.currentState.availableOutputDevices[i].label) {
-          //   changed = true;
-          //   break;
-          // }
-        }
-      }
-    }
-
-    if (changed) {
       this.currentState = newGlobalState;
       this.notifyListeners();
+    } else {
+      // This case should ideally not happen if AudioEngineService._notifySubscribers always increments the counter
+      // and then calls its subscribers. However, if there's a scenario where AudioEngineService notifies
+      // without an actual state change relevant to GlobalAudioState (besides counter), this would catch it.
+      // For robustness, one might still perform the detailed diff as before if the counter is the same,
+      // but the primary driver for React updates should be the counter ensuring a new state object reference.
+      // console.log("GASS: handleAudioEngineChange called, but updateCounter was the same. This might indicate a redundant notification or an issue.");
     }
   };
 

@@ -381,7 +381,10 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
 
     let oscilloscopeUI = null;
     if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
+      console.log(`[BlockDetailPanel] Rendering UI view for instanceId: ${blockInstance.instanceId}, definitionId: ${blockDefinition.id}`);
+      console.log(`[BlockDetailPanel] Calling getAnalyserNodeForInstance with id: ${blockInstance.instanceId}`);
       const analyserNode = getAnalyserNodeForInstance(blockInstance.instanceId);
+      console.log(`[BlockDetailPanel] Received analyserNode from getAnalyserNodeForInstance:`, analyserNode);
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 

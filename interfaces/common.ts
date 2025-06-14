@@ -151,6 +151,7 @@ export interface AudioEngineState {
   audioContextState: AudioContextState | null;
   sampleRate: number | null;
   status?: "initializing" | "running" | "suspended" | "closed" | "error";
+  updateCounter: number; // Added updateCounter
 }
 
 export interface AudioNodeInfo {

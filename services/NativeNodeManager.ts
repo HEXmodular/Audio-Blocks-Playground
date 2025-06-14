@@ -289,10 +289,22 @@ export class NativeNodeManager implements INativeNodeManager {
     }
 
     public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
-        if (!this?.managedNativeNodesRef) {
+        console.log(`[NativeNodeManager.getAnalyserNodeForInstance] Called for instanceId: ${instanceId}`);
+        const nativeInfo = this.managedNativeNodesRef.get(instanceId);
+        console.log(`[NativeNodeManager.getAnalyserNodeForInstance] nativeInfo found:`, nativeInfo);
+        if (nativeInfo) {
+            console.log(`[NativeNodeManager.getAnalyserNodeForInstance] nativeInfo.definition.id: ${nativeInfo.definition.id}`);
+            console.log(`[NativeNodeManager.getAnalyserNodeForInstance] Oscilloscope Block ID: ${OscilloscopeNativeBlock.getDefinition().id}`);
+            console.log(`[NativeNodeManager.getAnalyserNodeForInstance] nativeInfo.mainProcessingNode:`, nativeInfo.mainProcessingNode);
+            if (nativeInfo.mainProcessingNode) {
+                console.log(`[NativeNodeManager.getAnalyserNodeForInstance] nativeInfo.mainProcessingNode instanceof AnalyserNode: ${nativeInfo.mainProcessingNode instanceof AnalyserNode}`);
+            }
+        }
+
+        if (!this?.managedNativeNodesRef) { // This check seems a bit redundant if get succeeds, but keeping original logic flow
             return null;
         }
-        const nativeInfo = this.managedNativeNodesRef.get(instanceId);
+        // const nativeInfo = this.managedNativeNodesRef.get(instanceId); // Already fetched
         if (nativeInfo && nativeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
             return nativeInfo.mainProcessingNode;
         }
