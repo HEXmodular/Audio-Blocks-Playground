@@ -23,7 +23,6 @@ import {
     // AudioNodeInfo, // Removed unused import
     ManagedAudioWorkletNodeMessage,
     // AudioWorkletNodeOptions, // This was unused, removing import based on previous type-check
-    EnvelopeParams,
     Connection,
     BlockInstance,
     BlockDefinition,

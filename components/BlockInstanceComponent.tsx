@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { BlockInstance, BlockDefinition, BlockPort } from '@interfaces/common';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
+import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120; 
@@ -134,14 +135,14 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     );
   }
   
-  const firstNumericalParamDef = blockDefinition.parameters.find(
-    p => p.type === 'slider' || p.type === 'knob' || p.type === 'number_input'
-  );
-  const firstNumericalParamInstance = firstNumericalParamDef
-    ? blockInstance.parameters.find(p => p.id === firstNumericalParamDef.id)
-    : undefined;
+  // const firstNumericalParamDef = blockDefinition.parameters.find(
+  //   p => p.type === 'slider' || p.type === 'knob' || p.type === 'number_input'
+  // );
+  // const firstNumericalParamInstance = firstNumericalParamDef
+  //   ? blockInstance.parameters.find(p => p.id === firstNumericalParamDef.id)
+  //   : undefined;
 
-  const blockHeight = calculateBlockHeight(!!firstNumericalParamInstance);
+  const blockHeight = calculateBlockHeight(true); // Content area is always active for a renderer
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight - COMPACT_BLOCK_HEADER_HEIGHT;
@@ -200,25 +201,18 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         </div>
       </div>
 
-      {/* Body: Optional Main Parameter Display */}
-      <div className="flex-grow flex flex-col justify-center px-2.5 py-1 relative">
-        {firstNumericalParamInstance && firstNumericalParamDef && (
-          <div 
-              className="flex items-center justify-start"
-              style={{ height: `${PARAM_DISPLAY_HEIGHT}px`}}
-              title={`${firstNumericalParamDef.name}: ${Number(firstNumericalParamInstance.currentValue).toFixed(firstNumericalParamDef.step && firstNumericalParamDef.step < 1 ? 2 : (firstNumericalParamDef.step && firstNumericalParamDef.step >= 1 ? 0 : 2))}`}
-          >
-              <span className="text-[10px] text-gray-400 truncate mr-1.5 flex-shrink-0">{firstNumericalParamDef.name}:</span>
-              <span className="text-xs text-sky-300 font-mono truncate">
-                  {Number(firstNumericalParamInstance.currentValue).toFixed(
-                    firstNumericalParamDef.step && firstNumericalParamDef.step < 1 ? 2 : 
-                    (firstNumericalParamDef.step && firstNumericalParamDef.step >= 1 && Math.floor(firstNumericalParamDef.step) === firstNumericalParamDef.step ? 0 : 2)
-                  )}
-              </span>
-          </div>
-        )}
-        {!firstNumericalParamInstance && (
-           <div className="h-full" style={{minHeight: `${PARAM_DISPLAY_HEIGHT}px` }}></div> 
+      {/* Body: Custom or Default Compact Renderer */}
+      <div className="flex-grow flex flex-col justify-center relative">
+        {blockDefinition.compactRenderer ? (
+          <blockDefinition.compactRenderer
+            blockInstance={blockInstance}
+            blockDefinition={blockDefinition}
+          />
+        ) : (
+          <DefaultCompactRenderer
+            blockInstance={blockInstance}
+            blockDefinition={blockDefinition}
+          />
         )}
       </div>
 

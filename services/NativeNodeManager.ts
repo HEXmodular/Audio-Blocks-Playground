@@ -10,7 +10,6 @@ import {
     BlockParameter,
     ManagedNativeNodeInfo,
     // AllpassInternalNodes, // Removed unused import - implicitly used by ManagedNativeNodeInfo
-    EnvelopeParams // Import EnvelopeParams
 } from '@interfaces/common';
 
 // Removed direct imports of BlockDefinition constants

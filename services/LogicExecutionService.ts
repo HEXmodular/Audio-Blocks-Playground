@@ -8,7 +8,6 @@
 import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; 
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
-import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock'; 
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';

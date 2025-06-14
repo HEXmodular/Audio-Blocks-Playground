@@ -67,6 +67,7 @@ export interface BlockDefinition {
   audioWorkletCode?: string; 
   logicCodeTests?: string; 
   isAiGenerated?: boolean;
+  compactRenderer?: React.FC<CompactRendererProps>;
 }
 
 export interface BlockInstance {
@@ -261,3 +262,8 @@ export enum MusicGenerationMode {
  *   weight: number; // Typically 0.0 to 1.0
  * }
  */
+
+export interface CompactRendererProps {
+  blockInstance: BlockInstance;
+  blockDefinition: BlockDefinition;
+}
