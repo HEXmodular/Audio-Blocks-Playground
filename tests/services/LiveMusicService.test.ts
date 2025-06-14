@@ -1,6 +1,7 @@
 import { PlaybackState } from '@interfaces/common';
-import type { LiveMusicService as LiveMusicServiceType, LiveMusicServiceCallbacks, Scale, LiveMusicGenerationConfig, WeightedPrompt, DEFAULT_MUSIC_GENERATION_CONFIG as RealDefaultConfig } from '@services/LiveMusicService';
-import type { GoogleGenAI as RealGoogleGenAIType, LiveMusicSession, LiveMusicServerMessage } from '@google/genai';
+// Unused type imports Scale, WeightedPrompt, RealGoogleGenAIType removed
+import type { LiveMusicService as LiveMusicServiceType, LiveMusicServiceCallbacks, LiveMusicGenerationConfig, DEFAULT_MUSIC_GENERATION_CONFIG as RealDefaultConfig } from '@services/LiveMusicService';
+import type { LiveMusicSession, LiveMusicServerMessage } from '@google/genai';
 
 // --- Mock Control Variables (Module Scope) ---
 interface ConnectController {
@@ -180,10 +181,11 @@ describe('LiveMusicService', () => {
       expect(mockedLowLevelConnectInstance).toHaveBeenCalledTimes(1);
       const ctrl = getLatestConnectController();
 
-      ctrl.resolve(ctrl.sessionSpies); 
-      await new Promise(resolve => setTimeout(resolve, 0)); 
+      ctrl.resolve(ctrl.sessionSpies);
+      await new Promise(resolve => setTimeout(resolve, 0));
       if (ctrl.callbacks && ctrl.callbacks.onmessage) {
-        await ctrl.callbacks.onmessage({ setupComplete: {} }).catch(() => {}); 
+        // Corrected AudioChunk mock to use string data
+        await ctrl.callbacks.onmessage({ setupComplete: {}, audioChunk: { data: "" } }).catch(() => {});
       }
       try { await serviceConnectPromise; } catch (e) { /* Ignore */ }
     });
@@ -191,29 +193,31 @@ describe('LiveMusicService', () => {
     it('connect() resolves and calls onSetupComplete after setupComplete message', async () => {
       const service = LiveMusicService.getInstance(apiKey, audioContext, mockServiceCallbacks);
       const connectPromise = service.connect();
-      
-      const ctrl = getLatestConnectController();
-      ctrl.resolve(ctrl.sessionSpies); 
-      await new Promise(resolve => setTimeout(resolve, 0)); 
 
-      await ctrl.callbacks.onmessage({ setupComplete: {} });
-      
+      const ctrl = getLatestConnectController();
+      ctrl.resolve(ctrl.sessionSpies);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Corrected AudioChunk mock to use string data
+      await ctrl.callbacks.onmessage({ setupComplete: {}, audioChunk: { data: "" } });
+
       await expect(connectPromise).resolves.toBeUndefined();
       expect(mockServiceCallbacks.onSetupComplete).toHaveBeenCalled();
     });
 
     it('connect() sends initial musicGenerationConfig after setupComplete', async () => {
-      const initialConfig = { bpm: 100, scale: LiveMusicServiceModule.Scale.D_MAJOR_B_MINOR };
+      const initialConfig: Partial<LiveMusicGenerationConfig> = { bpm: 100, scale: LiveMusicServiceModule.Scale.D_MAJOR_B_MINOR };
       const service = LiveMusicService.getInstance(apiKey, audioContext, mockServiceCallbacks, initialConfig);
       const connectPromise = service.connect();
 
       const ctrl = getLatestConnectController();
       ctrl.resolve(ctrl.sessionSpies);
-      await new Promise(resolve => setTimeout(resolve, 0)); 
+      await new Promise(resolve => setTimeout(resolve, 0));
 
-      await ctrl.callbacks.onmessage({ setupComplete: {} });
+      // Corrected AudioChunk mock to use string data
+      await ctrl.callbacks.onmessage({ setupComplete: {}, audioChunk: { data: "" } });
       await connectPromise;
-      
+
       const mergedConfig = { ...DEFAULT_MUSIC_GENERATION_CONFIG, ...initialConfig };
       const expectedConfigSentToSDK: Partial<LiveMusicGenerationConfig> = {};
       for (const key in mergedConfig) {
@@ -262,7 +266,8 @@ describe('LiveMusicService', () => {
       const ctrl = getLatestConnectController();
       ctrl.resolve(ctrl.sessionSpies);
       await new Promise(resolve => setTimeout(resolve, 0));
-      await ctrl.callbacks.onmessage({ setupComplete: {} });
+      // Corrected AudioChunk mock for this instance too
+      await ctrl.callbacks.onmessage({ setupComplete: {}, audioChunk: { data: "" } });
       await connectPromise;
 
       expect(mockServiceCallbacks.onPlaybackStateChange).toHaveBeenCalledWith(PlaybackState.PAUSED);

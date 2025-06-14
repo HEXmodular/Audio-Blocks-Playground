@@ -3,9 +3,10 @@ import { Connection, PendingConnection, BlockInstance, BlockDefinition } from '@
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 
 const getPortElementCenterForConnectionLine = (
-    portElement: Element,
+    portElement: Element | null,
     svgRef: React.RefObject<SVGSVGElement>
 ): { x: number; y: number } => {
+    if (!portElement) return { x: 0, y: 0 }; // Return 0,0 if element is not found
     const rect = portElement.getBoundingClientRect();
     const svgRect = svgRef.current?.getBoundingClientRect();
     if (!svgRect) return { x: 0, y: 0 }; // Should not happen if svgRef is valid
@@ -54,7 +55,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
 
                 if (!outputPortElem || !inputPortElem) {
                     // console.warn(`[ConnectionsRenderer] Port elements not found for connection ${conn.id}. This might be a timing issue.`);
-                    return null; // Or some fallback rendering / error indicator
+                    // return null; // Or some fallback rendering / error indicator
                 }
 
                 const startPos = getPortElementCenterForConnectionLine(outputPortElem, svgRef);
