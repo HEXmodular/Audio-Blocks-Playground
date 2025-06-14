@@ -78,6 +78,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock(context)); // Added handler
     }
 
+    // этот блок был добавлен недавно для исправление работы осцилоскопа, тут может быть дичь
     public _setAudioContext(newContext: AudioContext | null): void {
         const oldContext = this.audioContext;
         if (oldContext !== newContext) {
@@ -288,11 +289,12 @@ export class NativeNodeManager implements INativeNodeManager {
         console.log("[NativeManager] All managed native nodes removed.", true);
     }
 
-    public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
+    public getAnalyserNodeForInstance = (instanceId: string): AnalyserNode | null => {
+        const nativeInfo = this.managedNativeNodesRef.get(instanceId);
+
         if (!this?.managedNativeNodesRef) {
             return null;
         }
-        const nativeInfo = this.managedNativeNodesRef.get(instanceId);
         if (nativeInfo && nativeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
             return nativeInfo.mainProcessingNode;
         }
