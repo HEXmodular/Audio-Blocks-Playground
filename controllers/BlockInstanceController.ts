@@ -6,7 +6,8 @@ import { ConnectionState } from '@services/ConnectionState';
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock'; // Added import
-import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
+import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
 
 
 export class BlockInstanceController {
@@ -42,7 +43,7 @@ export class BlockInstanceController {
         const globalBpm = this.getGlobalBpm();
 
         if (newInstance && definition.runsAtAudioRate && this.audioEngineService.audioContext && this.audioEngineService.audioContext.state === 'running') {
-            if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+            if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
                 const setupPromise = this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(
                     newInstance.instanceId,
                     definition,
@@ -92,7 +93,7 @@ export class BlockInstanceController {
 
         if (instanceToRemove) {
             const definition = this.getDefinitionForBlock(instanceToRemove);
-            if (definition?.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+            if (definition?.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
                 this.audioEngineService.lyriaServiceManager.removeLyriaServiceForInstance?.(instanceId);
             } else if (definition?.audioWorkletProcessorName) {
                 this.audioEngineService.removeManagedAudioWorkletNode(instanceId);

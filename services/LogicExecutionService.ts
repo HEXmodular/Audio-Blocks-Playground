@@ -9,7 +9,8 @@ import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock'; 
-import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
+import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 
 // Helper function, can be static or outside the class
@@ -175,7 +176,7 @@ export class LogicExecutionService {
       };
     }
 
-    if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+    if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
       return null;
     }
 

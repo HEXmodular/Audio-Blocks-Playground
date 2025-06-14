@@ -5,7 +5,8 @@ import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinitio
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
 import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
-import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
+import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
   ...CONSTANT_DEFINITIONS,
@@ -335,11 +336,11 @@ export class BlockStateManager {
         loggedAudioSystemNotActive: loadedInst.internalState?.loggedAudioSystemNotActive || false,
       };
       if (definition) {
-        initialInternalState.needsAudioNodeSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id);
+        initialInternalState.needsAudioNodeSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LyriaMasterBlock.getDefinition().id); // Changed
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
             initialInternalState.needsAudioNodeSetup = false;
         }
-        if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+        if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
             // For Lyria, ensure specific fields are there, respecting loaded values for new flags
             initialInternalState = {
                 lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
@@ -376,7 +377,7 @@ export class BlockStateManager {
         logs: loadedInst.logs || [],
         modificationPrompts: loadedInst.modificationPrompts || [],
         audioWorkletNodeId: undefined,
-        lyriaServiceInstanceId: definition?.id === LYRIA_MASTER_BLOCK_DEFINITION.id ? loadedInst.lyriaServiceInstanceId : undefined,
+        lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst.lyriaServiceInstanceId : undefined, // Changed
       } as BlockInstance;
     });
   }
@@ -497,7 +498,7 @@ export class BlockStateManager {
       initialOutputs[outPort.id] = getDefaultOutputValue(outPort.type);
     });
 
-    let needsAudioSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id);
+    let needsAudioSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LyriaMasterBlock.getDefinition().id); // Changed
     if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
         needsAudioSetup = false;
     }
@@ -507,7 +508,7 @@ export class BlockStateManager {
         loggedWorkletSystemNotReady: false, // Initialize new flag
         loggedAudioSystemNotActive: false,   // Initialize new flag
     };
-    if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+    if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
         // Spread initialInternalState to keep the new logging flags
         initialInternalState = {
             ...initialInternalState,

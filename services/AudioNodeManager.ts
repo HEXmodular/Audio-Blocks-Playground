@@ -11,7 +11,8 @@ import { AudioEngineService } from './AudioEngineService';
 import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; 
-import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
+import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 
 
 export class AudioNodeManager {
@@ -94,7 +95,7 @@ export class AudioNodeManager {
 
             if (isAudioContextRunning && isAudioGloballyEnabled) {
                 // Setup Lyria Service
-                if (definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+                if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call lyriaServiceManager.setupLyriaService for ${instance.instanceId}`);
                     if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
@@ -176,7 +177,7 @@ export class AudioNodeManager {
                 }
                 // Setup Native Audio Node
                 // Assuming isNativeNodeDefinition can be implemented by checking !definition.audioWorkletProcessorName and not Lyria
-                else if (!definition.audioWorkletProcessorName && definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) { // Basic check for native
+                else if (!definition.audioWorkletProcessorName && definition.id !== LyriaMasterBlock.getDefinition().id) { // Changed // Basic check for native
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioEngineService.addNativeNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
@@ -232,7 +233,7 @@ export class AudioNodeManager {
 
         blockInstances.forEach(instance => {
             const definition = this.getDefinition(instance);
-            if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+            if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
                 return;
             }
 
@@ -272,7 +273,7 @@ export class AudioNodeManager {
 
         blockInstances.forEach(instance => {
             const definition = this.getDefinition(instance);
-            if (!definition || definition.id !== LYRIA_MASTER_BLOCK_DEFINITION.id) return;
+            if (!definition || definition.id !== LyriaMasterBlock.getDefinition().id) return; // Changed
 
             const service = this.audioEngineService.lyriaServiceManager.getLyriaServiceInstance(instance.instanceId);
             const servicePlaybackState = service?.getPlaybackState();

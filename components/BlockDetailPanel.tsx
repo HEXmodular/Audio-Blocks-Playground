@@ -7,7 +7,8 @@ import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
 import {  NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
 import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
-import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
+import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
 // import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
@@ -392,7 +393,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
     }
     
     let lyriaControlsUI = null;
-    if (blockDefinition.id === LYRIA_MASTER_BLOCK_DEFINITION.id) {
+    if (blockDefinition.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
       lyriaControlsUI = (
         <div className="my-3 p-2 bg-gray-700/30 rounded-md">
           <h4 className="text-xs font-medium text-gray-400 mb-1.5">Lyria Controls</h4>
