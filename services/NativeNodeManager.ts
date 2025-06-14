@@ -79,10 +79,11 @@ export class NativeNodeManager implements INativeNodeManager {
     }
 
     public _setAudioContext(newContext: AudioContext | null): void {
-        if (this.audioContext !== newContext) {
-            if (this.managedNativeNodesRef.size > 0) {
-                console.log("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes.", true);
-                this.removeAllManagedNativeNodes();
+        const oldContext = this.audioContext;
+        if (oldContext !== newContext) {
+            if (this.managedNativeNodesRef.size > 0 && oldContext) { // Only remove if there was an old context
+                console.log("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes that depended on the old context.", true);
+                this.removeAllManagedNativeNodes(); // This should ideally only remove nodes tied to the old context
             }
             this.audioContext = newContext;
             if (this.audioContext) {
@@ -94,11 +95,61 @@ export class NativeNodeManager implements INativeNodeManager {
                     }
                 }
             } else {
+                // Context is null, ensure handlers know
                 for (const handler of this.blockHandlers.values()) {
                     handler.setAudioContext(null);
                 }
             }
-            this.onStateChangeForReRender();
+            this.onStateChangeForReRender(); // Initial re-render due to context change
+
+            // If new context is ready, try to initialize previously failed oscilloscopes
+            if (this.audioContext && this.audioContext.state === 'running') {
+                console.log("[NativeManager] Audio context is now running. Checking for uninitialized Oscilloscope nodes.");
+                for (const [instanceId, nodeInfo] of this.managedNativeNodesRef.entries()) {
+                    if (nodeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nodeInfo.mainProcessingNode === null) {
+                        console.log(`[NativeManager] Attempting to initialize AnalyserNode for Oscilloscope instance '${instanceId}'.`);
+                        const handler = this.blockHandlers.get(nodeInfo.definition.id) as OscilloscopeNativeBlock | undefined;
+                        if (handler) {
+                            // Ensure handler has the current context (should be already set, but good practice)
+                            handler.setAudioContext(this.audioContext);
+
+                            const paramsFromDefinition: BlockParameter[] = nodeInfo.definition.parameters.map(pDef => ({
+                                id: pDef.id,
+                                name: pDef.name,
+                                type: pDef.type,
+                                defaultValue: pDef.defaultValue, // Must include defaultValue
+                                currentValue: pDef.defaultValue, // Set currentValue from definition's default
+                                // Optional properties from BlockParameterBase / BlockParameterDefinition
+                                options: pDef.options,
+                                min: pDef.min,
+                                max: pDef.max,
+                                step: pDef.step,
+                                description: pDef.description,
+                                steps: pDef.steps, // Assuming 'steps' might be part of your BlockParameterBase
+                                isFrequency: pDef.isFrequency, // Assuming 'isFrequency' might be part of BlockParameterBase
+                                // Properties like unit, isFilename, filenameFilter, runsAtAudioRate, canBeOverriddenByCv
+                                // were causing errors because they are not in the provided BlockParameterBase.
+                                // If they are needed, BlockParameterBase in common.ts must be updated.
+                                // For now, they are omitted to align with the provided interface.
+                            }));
+
+                            const newNodeInfo = handler.createNode(instanceId, nodeInfo.definition, paramsFromDefinition);
+                            if (newNodeInfo && newNodeInfo.mainProcessingNode) {
+                                this.managedNativeNodesRef.set(instanceId, newNodeInfo);
+                                console.log(`[NativeManager] Successfully initialized AnalyserNode for Oscilloscope instance '${instanceId}'.`);
+                                // Potentially need to re-apply current parameters if they differ from defaults
+                                // For now, this re-creation uses defaults.
+                                // this.updateManagedNativeNodeParams(instanceId, paramsFromDefinition); // Re-apply (default) params
+                                this.onStateChangeForReRender(); // Trigger UI update
+                            } else {
+                                console.warn(`[NativeManager] Failed to initialize AnalyserNode for Oscilloscope instance '${instanceId}' even though context is ready.`);
+                            }
+                        } else {
+                            console.warn(`[NativeManager] Could not find handler for Oscilloscope instance '${instanceId}' during re-initialization.`);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -108,10 +159,21 @@ export class NativeNodeManager implements INativeNodeManager {
         initialParams: BlockParameter[],
         currentBpm: number = 120
     ): Promise<boolean> {
-        if (!this.audioContext || this.audioContext.state !== 'running') {
-            console.warn(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`);
-            return false;
+        // Special handling for Oscilloscope: it can be "created" (handler instantiated) even if context is not running.
+        // The handler's createNode will return null nodes if context is not ready.
+        if (definition.id !== OscilloscopeNativeBlock.getDefinition().id) {
+            if (!this.audioContext || this.audioContext.state !== 'running') {
+                console.warn(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`);
+                return false;
+            }
+        } else {
+            // For Oscilloscope, if context is not running, we still proceed but log it.
+            // The OscilloscopeNativeBlock itself will handle the null context.
+            if (!this.audioContext || this.audioContext.state !== 'running') {
+                console.warn(`[NativeManager Setup] Audio system not ready for Oscilloscope '${definition.name}' (ID: ${instanceId}). Node will be created without an AnalyserNode initially.`);
+            }
         }
+
         if (this.managedNativeNodesRef.has(instanceId)) {
             console.warn(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
             return true;
@@ -192,14 +254,16 @@ export class NativeNodeManager implements INativeNodeManager {
         const info = this.managedNativeNodesRef.get(instanceId);
         if (info) {
             try {
-                info.nodeForOutputConnections.disconnect();
+                if (info.nodeForOutputConnections) {
+                    info.nodeForOutputConnections.disconnect();
+                }
                 if (info.mainProcessingNode && info.mainProcessingNode !== info.nodeForOutputConnections && info.mainProcessingNode !== info.nodeForInputConnections) {
                     info.mainProcessingNode.disconnect();
                     if (info.mainProcessingNode instanceof OscillatorNode || info.mainProcessingNode instanceof ConstantSourceNode) {
                         try { (info.mainProcessingNode as OscillatorNode | ConstantSourceNode).stop(); } catch (e) { /* already stopped */ }
                     }
                 }
-                if (info.nodeForInputConnections !== info.nodeForOutputConnections && info.nodeForInputConnections !== info.mainProcessingNode) {
+                if (info.nodeForInputConnections && info.nodeForInputConnections !== info.nodeForOutputConnections && info.nodeForInputConnections !== info.mainProcessingNode) {
                     info.nodeForInputConnections.disconnect();
                 }
                 if (info.internalGainNode) info.internalGainNode.disconnect();

@@ -212,11 +212,11 @@ export interface AllpassInternalNodes {
 }
 
 export interface ManagedNativeNodeInfo {
-    node: AudioNode;
-    nodeForInputConnections: AudioNode;
-    nodeForOutputConnections: AudioNode;
-    mainProcessingNode?: AudioNode;
-    internalGainNode?: GainNode; // <-- ADD THIS LINE
+    node: AudioNode | null;
+    nodeForInputConnections: AudioNode | null;
+    nodeForOutputConnections: AudioNode | null;
+    mainProcessingNode?: AudioNode | null;
+    internalGainNode?: GainNode;
     allpassInternalNodes?: AllpassInternalNodes | null;
     paramTargetsForCv?: Map<string, AudioParam>;
     definition: BlockDefinition;

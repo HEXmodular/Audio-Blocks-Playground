@@ -55,21 +55,34 @@ export class OscilloscopeNativeBlock implements CreatableNode {
         definition: BlockDefinition,
         initialParams: BlockParameter[]
     ): ManagedNativeNodeInfo {
-        if (!this.context) throw new Error("AudioContext not initialized");
-        this.analyserNode = this.context.createAnalyser();
-
         const fftSizeParam = initialParams.find(p => p.id === 'fftSize');
-        this.analyserNode.fftSize = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
+        const fftSize = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 
-        return {
-            node: this.analyserNode, // The AnalyserNode itself
-            nodeForInputConnections: this.analyserNode,
-            nodeForOutputConnections: this.analyserNode, // Analyser can pass through audio
-            mainProcessingNode: this.analyserNode,
-            paramTargetsForCv: new Map<string, AudioParam>(), // No direct CV targets for AnalyserNode params
-            definition,
-            instanceId,
-        };
+        if (this.context && this.context.state === 'running') {
+            this.analyserNode = this.context.createAnalyser();
+            this.analyserNode.fftSize = fftSize;
+
+            return {
+                node: this.analyserNode,
+                nodeForInputConnections: this.analyserNode,
+                nodeForOutputConnections: this.analyserNode,
+                mainProcessingNode: this.analyserNode,
+                paramTargetsForCv: new Map<string, AudioParam>(),
+                definition,
+                instanceId,
+            };
+        } else {
+            this.analyserNode = null;
+            return {
+                node: null,
+                nodeForInputConnections: null,
+                nodeForOutputConnections: null,
+                mainProcessingNode: null,
+                paramTargetsForCv: new Map<string, AudioParam>(),
+                definition,
+                instanceId,
+            };
+        }
     }
 
     updateNodeParams(
