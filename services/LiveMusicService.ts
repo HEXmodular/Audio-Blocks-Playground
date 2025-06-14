@@ -15,25 +15,8 @@ import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utili
 
 const MODEL_NAME = 'lyria-realtime-exp';
 
-// Define Scale and MusicGenerationMode locally as they are not direct exports from @google/genai
-// For Scale, ensure that values sent to the service are compatible with GenAIScale.
-// The local Scale enum is used for UI representation.
-export enum Scale {
-  C_MAJOR_A_MINOR = "C_MAJOR_A_MINOR",
-  // C_SHARP_MAJOR_A_SHARP_MINOR = "C_SHARP_MAJOR_A_SHARP_MINOR", // Removed due to incompatibility with GenAIScale
-  D_MAJOR_B_MINOR = "D_MAJOR_B_MINOR",
-  D_SHARP_MAJOR_C_MINOR = "D_SHARP_MAJOR_C_MINOR", // Or E_FLAT_MAJOR_C_MINOR
-  E_MAJOR_C_SHARP_MINOR = "E_MAJOR_C_SHARP_MINOR",
-  F_MAJOR_D_MINOR = "F_MAJOR_D_MINOR",
-  F_SHARP_MAJOR_D_SHARP_MINOR = "F_SHARP_MAJOR_D_SHARP_MINOR",
-  G_MAJOR_E_MINOR = "G_MAJOR_E_MINOR",
-  G_SHARP_MAJOR_F_MINOR = "G_SHARP_MAJOR_F_MINOR",
-  A_MAJOR_F_SHARP_MINOR = "A_MAJOR_F_SHARP_MINOR",
-  A_SHARP_MAJOR_G_MINOR = "A_SHARP_MAJOR_G_MINOR", // Or B_FLAT_MAJOR_G_MINOR
-  B_MAJOR_G_SHARP_MINOR = "B_MAJOR_G_SHARP_MINOR",
-  // CHROMATIC = "CHROMATIC", // Removed as per user request
-  // Add other scales as needed based on API documentation or expected values
-}
+// Local Scale enum removed, will import from interfaces/common (which re-exports @google/genai's Scale)
+import { Scale } from '@interfaces/common'; // Import the centralized Scale
 
 export enum MusicGenerationMode {
   QUALITY = "QUALITY",
@@ -57,7 +40,7 @@ export interface LiveMusicServiceCallbacks {
 // Scale and MusicGenerationMode are now locally defined and exported.
 // Fix: Explicitly re-export WeightedPrompt type for use in other modules.
 export type { LiveMusicGenerationConfig, WeightedPrompt };
-export { PlaybackState }; // Re-export PlaybackState
+export { PlaybackState, Scale }; // Re-export PlaybackState and the centralized Scale
 
 
 export const DEFAULT_MUSIC_GENERATION_CONFIG: LiveMusicGenerationConfig = {
@@ -65,14 +48,14 @@ export const DEFAULT_MUSIC_GENERATION_CONFIG: LiveMusicGenerationConfig = {
   bpm: undefined, // Default to unset (auto)
   density: undefined, // Default to unset
   brightness: undefined, // Default to unset
-  scale: undefined, // Default to auto (unset), must be compatible with GenAIScale if set
+  scale: undefined, // Default to auto (unset), uses the imported @google/genai Scale
   muteBass: false,
   muteDrums: false,
   onlyBassAndDrums: false,
   // musicGenerationMode: MusicGenerationMode.QUALITY, // Removed: Not part of @google/genai LiveMusicGenerationConfig
   temperature: 1.1, // Default to 1.1
   topK: 40, // Service likely has its own default if this is omitted
-  seed: getCurrentDateAsSeed(), 
+  seed: getCurrentDateAsSeed(),
 };
 
 export class LiveMusicService {

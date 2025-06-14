@@ -91,7 +91,8 @@ export class LyriaMasterBlock implements CreatableNode {
         { id: 'top_k', name: 'Top K', type: 'number_input', min: 1, max: 100, step: 1, defaultValue: 40, description: 'Lyria Top K. Overridden by CV.' },
         { id: 'bpm', name: 'BPM', type: 'number_input', min: 30, max: 240, step: 1, defaultValue: 120, description: 'Lyria BPM. Overridden by CV.' },
       ]),
-      // logicCode and initialPrompt have been removed as the block's logic is now in TypeScript.
+      logicCode: '', // Added to satisfy BlockDefinition interface
+      // initialPrompt has been removed as the block's logic is now in TypeScript.
       maxInstances: 1, // Typically, there's only one master output for Lyria service
     } as BlockDefinition;
   }
@@ -230,10 +231,11 @@ export class LyriaMasterBlock implements CreatableNode {
   }
 
   public updateNodeParams(
-    nodeInfo: ManagedNativeNodeInfo, // instanceId can be derived from nodeInfo.instanceId
+    nodeInfo: ManagedNativeNodeInfo,
     parameters: BlockParameter[],
     currentInputs?: Record<string, any>
   ): void {
+    // instanceId parameter removed as nodeInfo.instanceId is used
     if (!this.liveMusicService || !this.audioContext) {
       console.warn(`👩‍🦳 [LyriaMasterBlock ${nodeInfo.instanceId}] LiveMusicService or AudioContext not available in updateNodeParams.`);
       return;
@@ -304,25 +306,34 @@ export class LyriaMasterBlock implements CreatableNode {
         // Type conversions and specific logic
         if (serviceKey === 'scale') {
           const scaleStringValue = String(valueToSet);
-          // Validate that scaleStringValue is a valid string member of the LyriaScale enum
           if (Object.values(LyriaScale).some(validScale => validScale === scaleStringValue)) {
-            newConfig.scale = scaleStringValue as any; // Force assignment
+            newConfig.scale = scaleStringValue as LyriaScale | undefined; // Allow undefined
           } else {
             // console.warn(`[LyriaMasterBlock ${instanceId}] Invalid scale value: ${valueToSet}`);
-            // If valueToSet is not a valid LyriaScale, newConfig.scale remains undefined for this key
-            // which is fine, it means "no change" or "use default/previous" by the service.
-            // However, we still need to mark configChanged if valueToSet is different from effectiveOldValue.
           }
         } else if (serviceKey === 'seed') {
-          if (valueSource === 'param' && Number(valueToSet) === 0) {
+          const numSeed = Math.floor(Number(valueToSet));
+          if (valueSource === 'param' && numSeed === 0) {
             newConfig.seed = undefined; // 0 for param means auto/date-based
+          } else if (!Number.isNaN(numSeed)) {
+            newConfig.seed = numSeed;
           } else {
-            newConfig.seed = Math.floor(Number(valueToSet));
+            newConfig.seed = undefined; // Invalid number results in undefined
           }
         } else if (serviceKey === 'topK' || serviceKey === 'bpm') {
-          newConfig[serviceKey] = Math.floor(Number(valueToSet));
+          const numVal = Math.floor(Number(valueToSet));
+          if (!Number.isNaN(numVal)) {
+            newConfig[serviceKey as keyof LiveMusicGenerationConfig] = numVal as any;
+          } else {
+            newConfig[serviceKey as keyof LiveMusicGenerationConfig] = undefined;
+          }
         } else if (['brightness', 'density', 'temperature', 'guidance'].includes(serviceKey)) {
-          newConfig[serviceKey] = Number(valueToSet);
+          const numVal = Number(valueToSet);
+          if (!Number.isNaN(numVal)) {
+            newConfig[serviceKey as keyof LiveMusicGenerationConfig] = numVal as any;
+          } else {
+            newConfig[serviceKey as keyof LiveMusicGenerationConfig] = undefined;
+          }
         }
       }
 
@@ -530,7 +541,7 @@ export class LyriaMasterBlock implements CreatableNode {
     if (this.schedulerIntervalId === null) {
       this.schedulePlayback(); // Run once immediately
       this.schedulerIntervalId = setInterval(() => this.schedulePlayback(), this.SCHEDULING_INTERVAL_MS);
-      // console.log(`👩‍🦳 [LyriaMasterBlock ${instanceId}] Playback scheduler started.`, this.schedulerIntervalId);
+      console.log(`👩‍🦳 [LyriaMasterBlock ${instanceId}] Playback scheduler started. Interval ID: ${this.schedulerIntervalId}`);
     }
   }
 

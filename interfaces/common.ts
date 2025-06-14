@@ -1,9 +1,19 @@
 import type { WeightedPrompt as GenAIWeightedPrompt, LiveMusicGenerationConfig as GenAILiveMusicConfig } from '@google/genai';
+// Removed unused GenAIScaleType from type import.
+// It's possible Scale is exported as a value (enum object) or just a type.
+// If it's an enum object, it would be: import { Scale as GenAIScaleEnum } from '@google/genai';
+// For now, assuming it might be primarily a type for config, and we might need a local compatible enum if the value isn't exported.
+// However, the error messages imply @google/genai/dist/genai.Scale is a concrete type. So trying to re-export it.
+import { Scale as GenAIScale } from '@google/genai'; // Attempting to import as a value/enum.
 import { LiveMusicService } from '@services/LiveMusicService'; // Ensure this is the actual class
 
 // Re-export for easier usage within the app if needed directly
 export type WeightedPrompt = GenAIWeightedPrompt;
 export type LiveMusicGenerationConfig = GenAILiveMusicConfig;
+export { GenAIScale as Scale }; // Re-exporting @google/genai Scale
+// If GenAIScale is only a type, this export might need to be `export type { GenAIScale as Scale };`
+// and a compatible const enum might be needed if values are used directly.
+// But error messages point to it being a concrete type that other enums are failing to match.
 
 
 export enum BlockView {
@@ -233,19 +243,7 @@ export interface ManagedLyriaServiceInfo {
 
 
 // Enums for Lyria Service Integration (matching those in LiveMusicService.ts)
-export enum Scale {
-  C_MAJOR_A_MINOR = "C_MAJOR_A_MINOR",
-  D_MAJOR_B_MINOR = "D_MAJOR_B_MINOR",
-  D_SHARP_MAJOR_C_MINOR = "D_SHARP_MAJOR_C_MINOR",
-  E_MAJOR_C_SHARP_MINOR = "E_MAJOR_C_SHARP_MINOR",
-  F_MAJOR_D_MINOR = "F_MAJOR_D_MINOR",
-  F_SHARP_MAJOR_D_SHARP_MINOR = "F_SHARP_MAJOR_D_SHARP_MINOR",
-  G_MAJOR_E_MINOR = "G_MAJOR_E_MINOR",
-  G_SHARP_MAJOR_F_MINOR = "G_SHARP_MAJOR_F_MINOR",
-  A_MAJOR_F_SHARP_MINOR = "A_MAJOR_F_SHARP_MINOR",
-  A_SHARP_MAJOR_G_MINOR = "A_SHARP_MAJOR_G_MINOR",
-  B_MAJOR_G_SHARP_MINOR = "B_MAJOR_G_SHARP_MINOR",
-}
+// Removed local Scale enum, now re-exporting from @google/genai
 
 export enum MusicGenerationMode {
   QUALITY = "QUALITY",

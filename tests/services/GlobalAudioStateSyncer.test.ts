@@ -34,7 +34,7 @@ describe('GlobalAudioStateSyncer', () => {
         selectedSinkId: state.selectedSinkId,
         audioContextState: state.audioContextState,
         sampleRate: 44100,
-        updateCounter: state.updateCounter || 0, // Add updateCounter
+        // updateCounter: state.updateCounter || 0, // Removed updateCounter
     };
 
     Object.defineProperty(mockAudioEngineServiceInstance, 'audioEngineState', {
@@ -51,10 +51,10 @@ describe('GlobalAudioStateSyncer', () => {
       selectedSinkId: mockAudioEngineServiceInstance.selectedSinkId,
       audioContextState: engineStateFromGetter.audioContextState,
       isWorkletSystemReady: mockAudioEngineServiceInstance.audioWorkletManager?.isAudioWorkletSystemReady,
-      updateCounter: engineStateFromGetter.updateCounter || 0, // Ensure updateCounter is present
+      // updateCounter: engineStateFromGetter.updateCounter || 0, // Removed updateCounter
     };
 
-    const updatedState: GlobalAudioState = { ...currentGlobalState, ...newState, updateCounter: (newState.updateCounter !== undefined ? newState.updateCounter : currentGlobalState.updateCounter + 1) };
+    const updatedState: GlobalAudioState = { ...currentGlobalState, ...newState }; // Removed updateCounter logic
     setupMockAudioEngineServiceState(updatedState);
 
     if (audioEngineStateChangeCallback) {
@@ -88,7 +88,7 @@ describe('GlobalAudioStateSyncer', () => {
             selectedSinkId: mockAudioEngineServiceInstance.selectedSinkId,
             audioContextState: null,
             sampleRate: 44100,
-            updateCounter: 0, // Add default updateCounter
+            // updateCounter: 0, // Removed default updateCounter
         })),
         configurable: true
     });
@@ -102,7 +102,7 @@ describe('GlobalAudioStateSyncer', () => {
         selectedSinkId: '1',
         audioContextState: 'running' as AudioContextState,
         isWorkletSystemReady: true,
-        updateCounter: 0, // Add updateCounter
+        // updateCounter: 0, // Removed updateCounter
       };
       setupMockAudioEngineServiceState(initialState);
 
@@ -131,7 +131,7 @@ describe('GlobalAudioStateSyncer', () => {
         selectedSinkId: 'default',
         audioContextState: 'suspended' as AudioContextState,
         isWorkletSystemReady: false,
-        updateCounter: 0, // Add updateCounter
+        // updateCounter: 0, // Removed updateCounter
       };
       setupMockAudioEngineServiceState(initialState);
       syncer = new GlobalAudioStateSyncer(mockAudioEngineServiceInstance);
@@ -242,7 +242,6 @@ describe('GlobalAudioStateSyncer', () => {
             selectedSinkId: '1',
             audioContextState: 'suspended',
             isWorkletSystemReady: false,
-            updateCounter: 0, // Add updateCounter
         });
         const localSyncer = new GlobalAudioStateSyncer(mockAudioEngineServiceInstance);
         const localMockSubscriber = jest.fn();
