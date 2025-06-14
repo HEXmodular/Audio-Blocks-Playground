@@ -78,7 +78,7 @@ export class AudioGraphConnectorService {
       const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
 
       if (fromWorkletInfo) sourceAudioNode = fromWorkletInfo.node;
-      else if (fromNativeInfo) sourceAudioNode = fromNativeInfo.nodeForOutputConnections;
+      else if (fromNativeInfo) sourceAudioNode = fromNativeInfo.nodeForOutputConnections === null ? undefined : fromNativeInfo.nodeForOutputConnections;
       else if (fromLyriaInfo) sourceAudioNode = fromLyriaInfo.outputNode;
 
       if (!sourceAudioNode) return;
@@ -114,7 +114,7 @@ export class AudioGraphConnectorService {
             // The AllpassFilterNativeBlock might have more complex internal routing needs,
             // but its basic input should also be nodeForInputConnections.
             // For now, using the general case:
-            targetAudioNode = toNativeInfo.nodeForInputConnections;
+            targetAudioNode = toNativeInfo.nodeForInputConnections === null ? undefined : toNativeInfo.nodeForInputConnections;
             // TODO: Review if AllpassFilterNativeBlock or other native blocks need more specific connection logic here.
             // The previously commented out Allpass logic:
             // if (toDef.id === AllpassFilterNativeBlock.getDefinition().id && toNativeInfo.allpassInternalNodes) {
