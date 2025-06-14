@@ -1,7 +1,7 @@
 
 
 import React, { useMemo, useCallback, useState } from 'react'; // Added useState
-import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from '@icons/icons';
+import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons'; // Removed SmallTrashIcon
 import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
 import AddBlockModal from './AddBlockModal'; // Import AddBlockModal
 import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
@@ -29,7 +29,7 @@ interface ToolbarProps {
   onToggleTestRunner: () => void;
   // allBlockDefinitions and onDeleteBlockDefinition removed from props
   // onExportWorkspace and onImportWorkspace are now fully internal
-  coreDefinitionIds: Set<string>;
+  // coreDefinitionIds: Set<string>; // Removed unused prop
   availableOutputDevices: MediaDeviceInfo[];
   // selectedSinkId is already listed in the new props
   onSetOutputDevice: (sinkId: string) => Promise<boolean>;
@@ -54,7 +54,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onToggleTestRunner,
   // onExportWorkspaceProp, // Removed
   // onImportWorkspaceProp, // Removed
-  coreDefinitionIds,
+  // coreDefinitionIds, // Removed from destructuring
   availableOutputDevices,
   onSetOutputDevice,
 }) => {
@@ -104,14 +104,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   // handleExportClick is removed, logic inlined in button onClick
 
-  const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => {
-    e.stopPropagation(); // Prevent block add
-    // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
-    if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-      // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
-      // setIsAddBlockMenuOpen(false); // This state is removed
-    }
-  };
+  // const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => { // Removed unused function
+  //   e.stopPropagation(); // Prevent block add
+  //   // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
+  //   if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
+  //     // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
+  //     // setIsAddBlockMenuOpen(false); // This state is removed
+  //   }
+  // };
   
   const handleBpmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseInt(e.target.value, 10);

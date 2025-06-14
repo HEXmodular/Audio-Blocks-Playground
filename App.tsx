@@ -4,16 +4,16 @@ import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import GeminiChatPanel, { GeminiChatPanelRef } from '@components/GeminiChatPanel';
 import BlockDetailPanel from '@components/BlockDetailPanel';
-import {
-  ALL_BLOCK_DEFINITIONS as NON_NATIVE_DEFINITIONS, // Aliased original import
-} from '@constants/constants';
-import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added import
+// import {
+//   ALL_BLOCK_DEFINITIONS as NON_NATIVE_DEFINITIONS, // Aliased original import
+// } from '@constants/constants'; // Removed unused import
+// import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Removed unused import
 
 // Now, create the final CORE_BLOCK_DEFINITIONS_ARRAY
-const CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
-  ...NON_NATIVE_DEFINITIONS,
-  ...ALL_NATIVE_BLOCK_DEFINITIONS
-];
+// const CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [ // Removed unused variable
+//   ...NON_NATIVE_DEFINITIONS,
+//   ...ALL_NATIVE_BLOCK_DEFINITIONS
+// ];
 
 // import { useBlockState } from '@context/BlockStateContext'; // Removed
 import { BlockStateManager } from './state/BlockStateManager'; // Added
@@ -84,7 +84,7 @@ const App: React.FC = () => {
     return unsubscribe;
   }, [connectionState]);
 
-  const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), []);
+  // const coreDefinitionIds = useMemo(() => new Set(CORE_BLOCK_DEFINITIONS_ARRAY.map(def => def.id)), []); // Removed unused variable
 
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [draggedOverPort, setDraggedOverPort] = useState<{ instanceId: string; portId: string } | null>(null);
@@ -274,7 +274,7 @@ const App: React.FC = () => {
         onToggleGlobalAudio={audioEngineService.toggleGlobalAudio}
         isAudioGloballyEnabled={syncedGlobalAudioState.isAudioGloballyEnabled}
         onToggleTestRunner={() => setIsTestRunnerOpen(!isTestRunnerOpen)}
-        coreDefinitionIds={coreDefinitionIds}
+        // coreDefinitionIds={coreDefinitionIds} // Removed prop
         availableOutputDevices={syncedGlobalAudioState.availableOutputDevices}
         onSetOutputDevice={async (sinkId: string): Promise<boolean> => {
           try {
