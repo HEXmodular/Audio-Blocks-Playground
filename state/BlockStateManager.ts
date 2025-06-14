@@ -1,9 +1,16 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/common';
-import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
+// import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // OLD
+import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
+import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
 import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
+
+const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
+  ...CONSTANT_DEFINITIONS,
+  ...ALL_NATIVE_BLOCK_DEFINITIONS
+];
 
 // --- Helper Functions (co-located with the class) ---
 export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameterDefinition[]): BlockInstance['parameters'] => {
@@ -54,7 +61,7 @@ export const getDefaultOutputValue = (portType: BlockPort['type']): any => {
   }
 };
 
-const CORE_DEFINITION_IDS_SET = new Set(ALL_BLOCK_DEFINITIONS.map(def => def.id));
+const CORE_DEFINITION_IDS_SET = new Set(INITIAL_DEFINITIONS_FROM_CODE.map(def => def.id)); // UPDATED
 
 // --- BlockStateManager Class ---
 
@@ -189,7 +196,7 @@ export class BlockStateManager {
   }
 
   private _loadDefinitions(): BlockDefinition[] {
-    let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(ALL_BLOCK_DEFINITIONS));
+    let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
     const definitionsById = new Map<string, BlockDefinition>(mergedDefinitions.map(def => [def.id, def]));
 
     try {
@@ -231,7 +238,7 @@ export class BlockStateManager {
       }
     } catch (error) {
       console.error(`BlockStateManager: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
-      mergedDefinitions = JSON.parse(JSON.stringify(ALL_BLOCK_DEFINITIONS));
+      mergedDefinitions = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
       mergedDefinitions = mergedDefinitions.map(def => ({
         ...def,
         parameters: def.parameters.map((p: any) => {
