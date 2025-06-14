@@ -1,6 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/common';
+import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
 // import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // OLD
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
@@ -264,13 +265,27 @@ export class BlockStateManager {
         isAiGenerated: false,
       }));
     }
-    return mergedDefinitions.map(def => ({
+    return mergedDefinitions.map(def => {
+      let rendererComponent; // Variable to hold the resolved component
+      if (def.compactRendererId) {
+        rendererComponent = compactRendererRegistry[def.compactRendererId];
+        if (!rendererComponent) {
+          console.warn(`BlockStateManager: Compact renderer for ID '${def.compactRendererId}' not found in registry for definition '${def.id}'.`);
+        }
+      }
+
+      // Clean up parameters (remove currentValue from definition)
+      const parametersWithoutCurrentValue = def.parameters.map(p => {
+        const { currentValue, ...paramDef } = p as any; // Cast to any to access currentValue if it sneakily exists
+        return paramDef as BlockParameterDefinition;
+      });
+
+      return {
         ...def,
-        parameters: def.parameters.map(p => {
-            const { currentValue, ...paramDef } = p as any; 
-            return paramDef as BlockParameterDefinition;
-        })
-    }));
+        parameters: parametersWithoutCurrentValue,
+        compactRendererComponent: rendererComponent, // Assign the resolved component (or undefined)
+      };
+    });
   }
 
   private _loadAndProcessInstances(definitions: BlockDefinition[]): BlockInstance[] {

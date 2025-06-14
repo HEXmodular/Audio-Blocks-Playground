@@ -67,7 +67,9 @@ export interface BlockDefinition {
   audioWorkletCode?: string; 
   logicCodeTests?: string; 
   isAiGenerated?: boolean;
-  compactRenderer?: React.FC<CompactRendererProps>;
+  compactRendererId?: string; // ID for serialization
+  // Transient: Populated at runtime based on compactRendererId
+  compactRendererComponent?: React.FC<CompactRendererProps>;
 }
 
 export interface BlockInstance {

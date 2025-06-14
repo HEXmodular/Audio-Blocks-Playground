@@ -203,8 +203,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Body: Custom or Default Compact Renderer */}
       <div className="flex-grow flex flex-col justify-center relative">
-        {blockDefinition.compactRenderer ? (
-          <blockDefinition.compactRenderer
+        {blockDefinition.compactRendererComponent ? (
+          <blockDefinition.compactRendererComponent
             blockInstance={blockInstance}
             blockDefinition={blockDefinition}
           />

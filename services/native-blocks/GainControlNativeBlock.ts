@@ -1,7 +1,7 @@
 import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
 import { CreatableNode } from './CreatableNode';
 import { createParameterDefinitions } from '@constants/constants';
-import GainCompactRenderer from './renderers/GainCompactRenderer';
+// import GainCompactRenderer from './renderers/GainCompactRenderer'; // Removed
 
 export class GainControlNativeBlock implements CreatableNode {
     private context: AudioContext | null;
@@ -23,7 +23,7 @@ export class GainControlNativeBlock implements CreatableNode {
           { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (AudioParam).' }
         ]),
         logicCode: "", // Ensure this is an empty string
-        compactRenderer: GainCompactRenderer,
+        compactRendererId: 'gain',
       };
     }
 

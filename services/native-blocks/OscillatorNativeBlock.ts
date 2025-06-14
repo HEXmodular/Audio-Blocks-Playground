@@ -1,7 +1,7 @@
 import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
 import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
-import OscillatorCompactRenderer from './renderers/OscillatorCompactRenderer';
+// import OscillatorCompactRenderer from './renderers/OscillatorCompactRenderer'; // Removed
 // OscillatorType is a global type from Web Audio API
 
 // Define BPM_FRACTIONS here as it's used by NATIVE_LFO_BPM_SYNC_BLOCK_DEFINITION
@@ -34,7 +34,7 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'gain', name: 'Gain/CV Depth', type: 'slider', min: 0, max: 200, step: 0.1, defaultValue: 0.5, description: 'Output amplitude or CV modulation depth. Controls an internal GainNode.' }
         ]),
         logicCode: "",
-        compactRenderer: OscillatorCompactRenderer,
+        compactRendererId: 'oscillator',
       };
     }
 
@@ -56,7 +56,7 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
         ]),
         logicCode: "",
-        compactRenderer: OscillatorCompactRenderer,
+        compactRendererId: 'oscillator',
       };
     }
 
@@ -76,7 +76,7 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Amplitude of the LFO signal (controls internal GainNode).' }
         ]),
         logicCode: "",
-        compactRenderer: OscillatorCompactRenderer,
+        compactRendererId: 'oscillator',
       };
     }
 
