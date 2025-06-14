@@ -144,7 +144,7 @@ export class AudioNodeManager {
                         // The actual call to audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode is expected to be within audioEngineService.addManagedAudioWorkletNode
                         // For now, we assume addManagedAudioWorkletNode in AudioEngineService does the right thing.
                         // The plan asks to log the decision, the actual call is below this logging block.
-                        const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition);
+                        const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
 
                         if (setupSuccess) {
                             this.updateInstance(instance.instanceId, currentInst => ({

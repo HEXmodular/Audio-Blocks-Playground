@@ -5,6 +5,7 @@ import { AudioEngineService } from '@services/AudioEngineService';
 import { ConnectionState } from '@services/ConnectionState';
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
+import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock'; // Added import
 import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria';
 
 
@@ -98,7 +99,7 @@ export class BlockInstanceController {
             } else if (
                 definition?.id.startsWith('native-') ||
                 definition?.id === GainControlNativeBlock.getDefinition().id ||
-                definition?.id === AudioEngineService.getAudioOutputDefinition().id ||
+                definition?.id === AudioOutputNativeBlock.getDefinition().id || // Changed to AudioOutputNativeBlock
                 definition?.id === OscilloscopeNativeBlock.getDefinition().id
             ) {
                 this.audioEngineService.removeNativeNode(instanceId);

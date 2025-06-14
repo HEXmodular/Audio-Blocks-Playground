@@ -16,6 +16,7 @@ import {
 // Removed direct imports of BlockDefinition constants
 
 import { CreatableNode } from '@services/native-blocks/CreatableNode';
+import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock'; // Added import
 import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
 import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
 import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
@@ -74,6 +75,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(EnvelopeNativeBlock.getAREnvelopeDefinition().id, new EnvelopeNativeBlock(context));
         this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock(context));
         this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock(context));
+        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock(context)); // Added handler
     }
 
     public _setAudioContext(newContext: AudioContext | null): void {

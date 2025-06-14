@@ -13,7 +13,8 @@ import {
     ManagedNativeNodeInfo,  // Import from common
     ManagedLyriaServiceInfo // Import from common
 } from '@interfaces/common';
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Added
+// import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Removed
+// import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock'; // Removed as unused
 
 export interface ActiveWebAudioConnection {
   connectionId: string;
@@ -103,12 +104,19 @@ export class AudioGraphConnectorService {
         //     targetAudioParam = toNativeInfo.allpassInternalNodes.feedbackGain.gain;
         //     targetAudioNode = toNativeInfo.allpassInternalNodes.feedbackGain;
         // }
-      } else {
-        if (toWorkletInfo) {
-            targetAudioNode = (toDef.id === AUDIO_OUTPUT_BLOCK_DEFINITION.id && toWorkletInfo.inputGainNode)
-                ? toWorkletInfo.inputGainNode
-                : toWorkletInfo.node;
-        } else if (toNativeInfo) {
+      } else { // Not an audioParamTarget
+        if (toWorkletInfo) { // If the target is a worklet-based block
+            // Removed special handling for old AUDIO_OUTPUT_BLOCK_DEFINITION.id
+            targetAudioNode = toWorkletInfo.node;
+        } else if (toNativeInfo) { // If the target is a native-based block
+            // For AudioOutputNativeBlock, toNativeInfo.nodeForInputConnections is its internalGainNode.
+            // This also applies to other native blocks.
+            // The AllpassFilterNativeBlock might have more complex internal routing needs,
+            // but its basic input should also be nodeForInputConnections.
+            // For now, using the general case:
+            targetAudioNode = toNativeInfo.nodeForInputConnections;
+            // TODO: Review if AllpassFilterNativeBlock or other native blocks need more specific connection logic here.
+            // The previously commented out Allpass logic:
             // if (toDef.id === AllpassFilterNativeBlock.getDefinition().id && toNativeInfo.allpassInternalNodes) {
             //     if (sourceAudioNode && toNativeInfo.allpassInternalNodes.inputGain1 && toNativeInfo.allpassInternalNodes.inputPassthroughNode) {
             //         try {
@@ -117,7 +125,7 @@ export class AudioGraphConnectorService {
             //             sourceAudioNode.connect(toNativeInfo.allpassInternalNodes.inputPassthroughNode);
             //             newActiveConnections.set(`${conn.id}-path2`, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: toNativeInfo.allpassInternalNodes.inputPassthroughNode });
             //         } catch (e) { console.error(`[AudioGraphConnectorService Conn] Error connecting to Allpass internal for ${conn.id}: ${(e as Error).message}`); }
-            //         targetAudioNode = null;
+            //         targetAudioNode = null; // Set to null because connections are handled, or this indicates a multi-input node.
             //     }
             // } else {
             //      targetAudioNode = toNativeInfo.nodeForInputConnections;

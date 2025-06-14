@@ -40,11 +40,12 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   // onUpdateInstance, // Removed
   // onDeleteInstance, // Removed
   // allInstances, // Removed
+  blockInstances, // Added blockInstances to destructuring
   connections,
   onClosePanel,
   onUpdateConnections,
   getAnalyserNodeForInstance,
-  // blockInstances prop is now destructured here but not used in this snippet directly for replacement
+  // blockInstances prop is now destructured here
 }) => {
   const blockStateManager = BlockStateManager.getInstance();
   // const blockInstances = blockStateManager.getBlockInstances(); // REMOVED - will use prop
@@ -515,9 +516,9 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   };
 
   const renderConnectionsView = () => {
-    const findConnectedBlockName = (instanceId: string) => blockInstances.find(b => b.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances
+    const findConnectedBlockName = (instanceId: string) => blockInstances.find((b: BlockInstance) => b.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
-        const instance = blockInstances.find(b => b.instanceId === instanceId); // Use context blockInstances
+        const instance = blockInstances.find((b: BlockInstance) => b.instanceId === instanceId); // Use context blockInstances, added type for b
         if (!instance) return undefined;
         const def = getDefinitionById(instance.definitionId); // Use context function
         if (!def) return undefined;

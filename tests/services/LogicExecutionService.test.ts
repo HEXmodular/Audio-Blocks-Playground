@@ -45,7 +45,8 @@ describe('LogicExecutionService', () => {
         setIntervalSpy = jest.spyOn(global, 'setInterval');
         clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
-        mockBlockStateManager = new BlockStateManager(jest.fn(), jest.fn()) as jest.Mocked<BlockStateManager>;
+        // Use 'as any' to bypass private constructor check for the mocked class
+        mockBlockStateManager = new (BlockStateManager as any)(jest.fn(), jest.fn()) as jest.Mocked<BlockStateManager>;
         mockGetDefinitionForBlock = jest.fn();
 
         mockAudioEngine = {

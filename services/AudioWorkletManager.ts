@@ -15,7 +15,7 @@ import {
 } from '@interfaces/common';
 import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
-const SYSTEM_AUDIO_OUTPUT_ID = 'system-audio-output-v1'; // Added constant
+// const SYSTEM_AUDIO_OUTPUT_ID = 'system-audio-output-v1'; // Removed constant
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
     // OSCILLATOR_BLOCK_DEFINITION,
@@ -210,7 +210,7 @@ try {
   public async setupManagedAudioWorkletNode(
     instanceId: string,
     definition: BlockDefinition,
-    // initialParams: BlockParameter[]
+    _initialParams: BlockParameter[] // Prefixed with underscore as it's not used in placeholder
   ): Promise<boolean> {
     if (!this.audioContext || this.audioContext.state !== 'running' || !this.isAudioWorkletSystemReady) {
       console.warn(`[AudioWorkletManager] setupManagedAudioWorkletNode called for ${instanceId}`, {
@@ -315,8 +315,29 @@ try {
     //   this.setAudioInitializationError(`WorkletNode Error: ${procNameForError} - ${e.message.substring(0, 100)}`);
     //   return false;
     // }
-    console.warn(`[AudioWorkletManager] setupManagedAudioWorkletNode ${definition.audioWorkletProcessorName} not found`, definition)
-    return false
+
+    // Simplified setupManagedAudioWorkletNode:
+    // The entire try-catch block that created the AudioWorkletNode and potentially an inputGainNode
+    // has been commented out in the provided source.
+    // Assuming the goal is to make this function generic and remove specific SYSTEM_AUDIO_OUTPUT_ID handling,
+    // the logic for creating 'newNode' and setting it in 'managedWorkletNodesRef' would be here,
+    // but without the 'inputGainNodeForOutputBlock' part.
+
+    // Since the original code for creating newNode and setting it in the map is commented out,
+    // I will proceed with the understanding that the commented out section is the target for removal
+    // of special audio output handling. The console.warn and 'return false' will remain as a placeholder
+    // for the actual generic node creation logic that should exist.
+
+    console.warn(`[AudioWorkletManager] setupManagedAudioWorkletNode for ${definition.audioWorkletProcessorName} (instance ${instanceId}) needs generic implementation. Currently a placeholder.`, definition);
+    // Placeholder for generic node creation:
+    // try {
+    //   const newNode = new AudioWorkletNode(this.audioContext!, definition.audioWorkletProcessorName!, workletNodeOptions);
+    //   newNode.port.onmessage = (event) => { /* ... */ };
+    //   this.managedWorkletNodesRef.set(instanceId, { node: newNode, definition, instanceId /*, inputGainNode: null (or undefined) */ });
+    //   this.onStateChangeForReRender();
+    //   return true;
+    // } catch (e) { /* ... */ return false; }
+    return false;
   }
 
   public updateManagedAudioWorkletNodeParams(instanceId: string, parameters: BlockParameter[]): void {
@@ -326,11 +347,8 @@ try {
     parameters.forEach(param => {
       const audioParam = info.node.parameters.get(param.id);
       if (audioParam && typeof param.currentValue === 'number') {
-        if (info.definition.id === SYSTEM_AUDIO_OUTPUT_ID && param.id === 'volume' && info.inputGainNode) { // Changed
-          info.inputGainNode.gain.setTargetAtTime(Number(param.currentValue), this.audioContext!.currentTime, 0.01);
-        } else {
-          audioParam.setTargetAtTime(Number(param.currentValue), this.audioContext!.currentTime, 0.01);
-        }
+        // Removed special handling for SYSTEM_AUDIO_OUTPUT_ID and info.inputGainNode
+        audioParam.setTargetAtTime(Number(param.currentValue), this.audioContext!.currentTime, 0.01);
       }
     });
   }

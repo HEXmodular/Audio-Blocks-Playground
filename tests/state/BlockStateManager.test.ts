@@ -1,11 +1,12 @@
 import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager';
-import { BlockDefinition } from '@interfaces/common'; // Removed unused BlockInstance
+import { BlockDefinition, BlockInstance } from '@interfaces/common'; // Added BlockInstance
 // import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking - Removed
-import { AudioEngineService } from '../../services/AudioEngineService'; // Added
+// import { AudioEngineService } from '../../services/AudioEngineService'; // No longer needed for getAudioOutputDefinition
+import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock'; // Added
 
 // Minimal mock for CORE_BLOCK_DEFINITIONS_ARRAY to avoid import issues in test
 const MOCK_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [
-  AudioEngineService.getAudioOutputDefinition(), // Changed
+  AudioOutputNativeBlock.getDefinition(), // Changed
   // Add any other essential definitions if their structure is specifically needed by BSM constructor logic beyond just being an array.
   // For these tests, primarily focusing on save/load mechanics, a simple array with one item should suffice.
 ];
@@ -62,7 +63,7 @@ describe('BlockStateManager Debouncing and Batching', () => {
   });
 
   test('constructor should save instances and definitions immediately (internal methods)', () => {
-    new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
+    new (BlockStateManager as any)(onDefinitionsChangeCallback, onInstancesChangeCallback);
 
     // Check that setItem was called for both definitions and instances by constructor's internal direct saves.
     // The exact content of definitions might include AI generated flags etc., so expect.any(String) is safer.
@@ -77,11 +78,11 @@ describe('BlockStateManager Debouncing and Batching', () => {
   });
 
   test('_saveInstancesToLocalStorage should be debounced', () => {
-    const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
+    const bsm = new (BlockStateManager as any)(onDefinitionsChangeCallback, onInstancesChangeCallback);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor
 
-    bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
-    bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
+    bsm.addBlockInstance(AudioOutputNativeBlock.getDefinition()); // Changed
+    bsm.addBlockInstance(AudioOutputNativeBlock.getDefinition()); // Changed
 
     expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
 
@@ -92,7 +93,7 @@ describe('BlockStateManager Debouncing and Batching', () => {
   });
 
   test('_saveDefinitionsToLocalStorage should be debounced', () => {
-    const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
+    const bsm = new (BlockStateManager as any)(onDefinitionsChangeCallback, onInstancesChangeCallback);
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor
 
     const newDef1: BlockDefinition = { id: 'test-def-1', name: 'Test Def 1', inputs: [], outputs: [], parameters: [], logicCode: '', runsAtAudioRate: false, isAiGenerated: true, initialPrompt: "Test prompt 1" };
@@ -110,8 +111,8 @@ describe('BlockStateManager Debouncing and Batching', () => {
   });
 
   test('updateMultipleBlockInstances should call _onInstancesChangeCallback once and trigger debounced save', () => {
-    const bsm = new BlockStateManager(onDefinitionsChangeCallback, onInstancesChangeCallback);
-    const initialInstance = bsm.addBlockInstance(AudioEngineService.getAudioOutputDefinition()); // Changed
+    const bsm = new (BlockStateManager as any)(onDefinitionsChangeCallback, onInstancesChangeCallback);
+    const initialInstance = bsm.addBlockInstance(AudioOutputNativeBlock.getDefinition()); // Changed
     mockLocalStorage.setItem.mockClear(); // Clear calls from constructor & addBlockInstance's initial save
     onInstancesChangeCallback.mockClear();
 
@@ -131,7 +132,7 @@ describe('BlockStateManager Debouncing and Batching', () => {
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith('audioBlocks_instances', expect.any(String));
 
     const instances = bsm.getBlockInstances();
-    const updatedInstance = instances.find(inst => inst.instanceId === initialInstance.instanceId);
+    const updatedInstance = instances.find((inst: BlockInstance) => inst.instanceId === initialInstance.instanceId);
     expect(updatedInstance?.name).toBe('New Name 2');
   });
 });

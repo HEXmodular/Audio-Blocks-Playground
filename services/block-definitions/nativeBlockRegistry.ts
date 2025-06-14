@@ -9,9 +9,10 @@ import { EnvelopeNativeBlock } from '../native-blocks/EnvelopeNativeBlock';
 import { OscilloscopeNativeBlock } from '../native-blocks/OscilloscopeNativeBlock';
 import { NumberToConstantAudioNativeBlock } from '../native-blocks/NumberToConstantAudioNativeBlock';
 import { GainControlNativeBlock } from '../native-blocks/GainControlNativeBlock';
+import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock';
 
 // Import services that provide definitions
-import { AudioEngineService } from '../AudioEngineService';
+// import { AudioEngineService } from '../AudioEngineService'; // Removed as no longer needed
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     OscillatorNativeBlock.getOscillatorDefinition(),
@@ -25,5 +26,6 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     OscilloscopeNativeBlock.getDefinition(),
     NumberToConstantAudioNativeBlock.getDefinition(),
     GainControlNativeBlock.getDefinition(),
-    AudioEngineService.getAudioOutputDefinition(),
+    AudioOutputNativeBlock.getDefinition(), // Added new definition
+    // AudioEngineService.getAudioOutputDefinition(), // Removed old definition
 ];

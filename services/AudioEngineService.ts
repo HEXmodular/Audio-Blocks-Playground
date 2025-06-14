@@ -10,7 +10,8 @@
  * This service consolidates functionalities previously handled by multiple hooks or services and serves as the primary audio interface for the application.
  * Responsibilities include global audio toggling, providing a unified API for node management, and interaction, and is exported as a singleton (`audioEngineService`) for global access.
  */
-import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Removed createParameterDefinitions
+// import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // Removed
+import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock'; // Added
 import { AudioContextService } from './AudioContextService';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { AudioWorkletManager } from './AudioWorkletManager';
@@ -46,9 +47,7 @@ export class AudioEngineService {
     private _audioContextService: AudioContextService;
     private _outputWorkletConnections: Map<string, AudioWorkletNode> = new Map();
 
-    public static getAudioOutputDefinition(): BlockDefinition {
-        return AUDIO_OUTPUT_BLOCK_DEFINITION;
-    }
+    // Removed getAudioOutputDefinition static method
 
     public audioWorkletManager: AudioWorkletManager;
     public nativeNodeManager: NativeNodeManager;
@@ -63,8 +62,8 @@ export class AudioEngineService {
         this.lyriaServiceManager = new LyriaServiceManager(this._notifySubscribers.bind(this)); // Pass nulls if constructor expects them
         this.audioGraphConnectorService = new AudioGraphConnectorService();
 
-        // Register the Audio Output definition with the AudioWorkletManager
-        this.audioWorkletManager.registerWorkletDefinition(AudioEngineService.getAudioOutputDefinition());
+        // Removed AudioWorkletManager registration for AudioOutputNativeBlock:
+        // this.audioWorkletManager.registerWorkletDefinition(AudioOutputNativeBlock.getDefinition());
 
         this.initializeBasicAudioContext();
         this.listOutputDevices();
@@ -396,51 +395,56 @@ public setOutputDevice = async (sinkId: string): Promise<void> => {
         if (!definition) {
           return;
         }
-        if (definition.id === AudioEngineService.getAudioOutputDefinition().id) {
-          const workletInfo = this.audioWorkletManager.getManagedNodesMap().get(instance.instanceId);
-          if (workletInfo && workletInfo.node) {
-            const workletNode = workletInfo.node;
-            const isTrackedAsConnected = this._outputWorkletConnections.has(instance.instanceId);
-            if (this._isAudioGloballyEnabled && this._audioContext && this._audioContext.state === 'running') {
-              if (!isTrackedAsConnected) {
-                try {
-                  workletNode.connect(this._masterGainNode!);
-                  this._outputWorkletConnections.set(instance.instanceId, workletNode);
-                  console.log(`AudioEngineService: Connected AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode.`);
-                } catch (e) {
-                  console.error(`AudioEngineService: Error connecting AUDIO_OUTPUT worklet '${instance.instanceId}' to masterGainNode:`, e);
-                }
+        // Handle AudioOutputNativeBlock specifically for master gain connection
+        if (definition.id === AudioOutputNativeBlock.getDefinition().id) {
+          const nativeNodeInfo = this.nativeNodeManager.getManagedNodesMap().get(instance.instanceId);
+          const mainOutputNode = nativeNodeInfo?.mainProcessingNode; // This is the GainNode for AudioOutputNativeBlock
+
+          if (mainOutputNode && this._masterGainNode) {
+            // Always attempt to disconnect first to prevent duplicate connections
+            try {
+              mainOutputNode.disconnect(this._masterGainNode);
+            } catch (e) {
+              // Ignore if not connected or already disconnected
+            }
+
+            if (this._isAudioGloballyEnabled && this._audioContext?.state === 'running') {
+              try {
+                mainOutputNode.connect(this._masterGainNode);
+                console.log(`AudioEngineService: Connected AudioOutputNativeBlock (GainNode) '${instance.instanceId}' to masterGainNode.`);
+              } catch (e) {
+                console.error(`AudioEngineService: Error connecting AudioOutputNativeBlock (GainNode) '${instance.instanceId}' to masterGainNode:`, e);
               }
             } else {
-              if (isTrackedAsConnected) {
-                try {
-                  workletNode.disconnect(this._masterGainNode!);
-                  this._outputWorkletConnections.delete(instance.instanceId);
-                  console.log(`AudioEngineService: Disconnected AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode.`);
-                } catch (e) {
-                  console.error(`AudioEngineService: Error disconnecting AUDIO_OUTPUT worklet '${instance.instanceId}' from masterGainNode:`, e);
-                }
-              }
+              console.log(`AudioEngineService: Ensured AudioOutputNativeBlock (GainNode) '${instance.instanceId}' is disconnected (audio not enabled/running).`);
             }
           }
+          // Remove from _outputWorkletConnections if it was ever there (e.g. before this refactor)
+          if (this._outputWorkletConnections.has(instance.instanceId)) {
+            this._outputWorkletConnections.delete(instance.instanceId);
+            console.log(`AudioEngineService: Removed AudioOutputNativeBlock instance '${instance.instanceId}' from _outputWorkletConnections tracking.`);
+          }
         }
+        // NOTE: Other block types that might be worklets and output directly would need their own handling
+        // to be added to _outputWorkletConnections if they are intended as global outputs.
+        // Currently, no other block type is explicitly managed this way for master gain output.
       });
-      const currentOutputInstanceIds = new Set(
-        blockInstances
-          .filter(instance => {
-            const def = getDefinitionForBlock(instance);
-            return def && def.id === AudioEngineService.getAudioOutputDefinition().id;
-          })
-          .map(instance => instance.instanceId)
-      );
-      this._outputWorkletConnections.forEach((node, instanceId) => {
-        if (!currentOutputInstanceIds.has(instanceId)) {
+
+      // Cleanup for _outputWorkletConnections:
+      // This map should now only contain true AudioWorkletNodes that are global outputs.
+      // (Currently, after the refactor, no block type is actively added to this map as a worklet output.)
+      // This loop will remove any node from _outputWorkletConnections if its instanceId is no longer in the current blockInstances.
+      const activeBlockInstanceIds = new Set(blockInstances.map(inst => inst.instanceId));
+      this._outputWorkletConnections.forEach((workletNode, instanceId) => {
+        if (!activeBlockInstanceIds.has(instanceId)) {
           try {
-            node.disconnect(this._masterGainNode!);
+            if (this._masterGainNode) {
+              workletNode.disconnect(this._masterGainNode);
+            }
             this._outputWorkletConnections.delete(instanceId);
-            console.log(`AudioEngineService: Cleaned up stale AUDIO_OUTPUT connection for '${instanceId}'.`);
+            console.log(`AudioEngineService: Cleaned up stale AudioWorkletNode connection from _outputWorkletConnections for '${instanceId}'.`);
           } catch (e) {
-            console.error(`AudioEngineService: Error cleaning up stale AUDIO_OUTPUT connection for '${instanceId}':`, e);
+            console.error(`AudioEngineService: Error cleaning up stale AudioWorkletNode connection for '${instanceId}':`, e);
           }
         }
       });

@@ -28,83 +28,6 @@ export const createParameterDefinitions = (
   });
 };
 
-// Moved from AudioEngineService.ts to break circular dependency
-const SAMPLE_BUFFER_PROCESSOR_NAME = 'sample-buffer-processor';
-const SAMPLE_BUFFER_WORKLET_CODE = `
-    class SampleBufferProcessor extends AudioWorkletProcessor {
-      static get parameterDescriptors() {
-        return [];
-      }
-
-      constructor(options) {
-        super(options);
-        this.instanceId = options?.processorOptions?.instanceId || 'UnknownSampleBufferWorklet';
-        this.recentSamples = new Float32Array(1024); // Store last 1024 samples
-        this.recentSamplesWritePtr = 0;
-
-        this.port.onmessage = (event) => {
-          if (event.data?.type === 'GET_RECENT_SAMPLES') {
-            const orderedSamples = new Float32Array(this.recentSamples.length);
-            let readPtr = this.recentSamplesWritePtr;
-            for (let i = 0; i < this.recentSamples.length; i++) {
-              orderedSamples[i] = this.recentSamples[readPtr];
-              readPtr = (readPtr + 1) % this.recentSamples.length;
-            }
-            this.port.postMessage({ type: 'RECENT_SAMPLES_DATA', samples: orderedSamples });
-          }
-        };
-      }
-
-      process(inputs, outputs, parameters) {
-        const input = inputs[0];
-        const output = outputs[0];
-
-        if (input && input.length > 0 && output && output.length > 0) {
-          const inputChannel = input[0];
-          const outputChannel = output[0];
-          if (inputChannel && outputChannel) {
-            for (let i = 0; i < outputChannel.length; ++i) {
-              const sample = inputChannel[i] !== undefined ? inputChannel[i] : 0;
-              outputChannel[i] = sample;
-              this.recentSamples[this.recentSamplesWritePtr] = sample;
-              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
-            }
-          }
-        } else if (output && output.length > 0) {
-          const outputChannel = output[0];
-          if (outputChannel) {
-            for (let i = 0; i < outputChannel.length; ++i) {
-              outputChannel[i] = 0;
-              this.recentSamples[this.recentSamplesWritePtr] = 0;
-              this.recentSamplesWritePtr = (this.recentSamplesWritePtr + 1) % this.recentSamples.length;
-            }
-          }
-        }
-        return true;
-      }
-    }
-    // IMPORTANT: The registerProcessor call will be done by the host environment (useAudioEngine)
-    `;
-
-export const AUDIO_OUTPUT_BLOCK_DEFINITION: BlockDefinition = {
-    id: 'system-audio-output-v1',
-    name: 'Audio Output',
-    description: 'Plays the incoming audio signal. Contains an internal GainNode for volume control which then feeds a SampleBufferProcessor AudioWorklet (acting as a sink). The input port connects to this internal GainNode.',
-    runsAtAudioRate: true,
-    inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume GainNode.' }
-    ],
-    outputs: [],
-    parameters: createParameterDefinitions([
-        { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal GainNode AudioParam)' }
-    ]),
-    logicCode: "", // No specific main-thread logic code, it's a sink with an AudioWorklet.
-    audioWorkletProcessorName: SAMPLE_BUFFER_PROCESSOR_NAME,
-    audioWorkletCode: SAMPLE_BUFFER_WORKLET_CODE,
-    isAiGenerated: false, // This is a system block
-    initialPrompt: '', // Not applicable
-};
-
 // NATIVE_LOGIC_CODE_PLACEHOLDER has been removed as it's no longer used by the refactored native block definitions.
 
 export const BPM_FRACTIONS = [
@@ -254,6 +177,5 @@ Ensure 'fixedLogicCodeTests' is a string containing the test code. Only provide 
 
 
 export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
-  AUDIO_OUTPUT_BLOCK_DEFINITION, // Added this
   MANUAL_GATE_BLOCK_DEFINITION,
 ];
