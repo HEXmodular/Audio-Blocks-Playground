@@ -1,8 +1,9 @@
 
 
-import React, { useMemo, useCallback } from 'react';
-import { PlusIcon, PlayIcon, StopIcon, BeakerIcon, SmallTrashIcon } from '@icons/icons'; 
+import React, { useMemo, useCallback, useState } from 'react'; // Added useState
+import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons'; // Removed SmallTrashIcon
 import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
+import AddBlockModal from './AddBlockModal'; // Import AddBlockModal
 import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
 import { AudioEngineService } from '@services/AudioEngineService';
 import { BlockStateManager } from '../state/BlockStateManager'; // Ensure this is present
@@ -28,7 +29,7 @@ interface ToolbarProps {
   onToggleTestRunner: () => void;
   // allBlockDefinitions and onDeleteBlockDefinition removed from props
   // onExportWorkspace and onImportWorkspace are now fully internal
-  coreDefinitionIds: Set<string>;
+  // coreDefinitionIds: Set<string>; // Removed unused prop
   availableOutputDevices: MediaDeviceInfo[];
   // selectedSinkId is already listed in the new props
   onSetOutputDevice: (sinkId: string) => Promise<boolean>;
@@ -53,7 +54,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onToggleTestRunner,
   // onExportWorkspaceProp, // Removed
   // onImportWorkspaceProp, // Removed
-  coreDefinitionIds,
+  // coreDefinitionIds, // Removed from destructuring
   availableOutputDevices,
   onSetOutputDevice,
 }) => {
@@ -86,7 +87,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setSelectedInstanceId
   ]);
 
-  const [isAddBlockMenuOpen, setIsAddBlockMenuOpen] = React.useState(false);
+  const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false); // New state for modal
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Import function now internal to Toolbar
@@ -103,14 +104,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   // handleExportClick is removed, logic inlined in button onClick
 
-  const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => {
-    e.stopPropagation(); // Prevent block add
-    // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
-    if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-      // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
-      setIsAddBlockMenuOpen(false); // Close menu after action
-    }
-  };
+  // const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => { // Removed unused function
+  //   e.stopPropagation(); // Prevent block add
+  //   // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
+  //   if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
+  //     // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
+  //     // setIsAddBlockMenuOpen(false); // This state is removed
+  //   }
+  // };
   
   const handleBpmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseInt(e.target.value, 10);
@@ -129,58 +130,34 @@ const Toolbar: React.FC<ToolbarProps> = ({
   return (
     <div className="bg-gray-800 p-2 shadow-md flex items-center space-x-2 fixed top-0 left-0 right-0 z-20 h-14">
       <div className="text-xl font-semibold text-sky-400">AudioBlocks</div>
+      {/* Add Block Button - Toggles Modal */}
       <div className="relative">
         <button
-          onClick={() => setIsAddBlockMenuOpen(!isAddBlockMenuOpen)}
+          onClick={() => setIsAddBlockModalOpen(true)} // Toggle modal
           className="flex items-center bg-sky-500 hover:bg-sky-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors"
-          aria-haspopup="true"
-          aria-expanded={isAddBlockMenuOpen}
         >
           <PlusIcon className="w-4 h-4 mr-1" />
           Add Block
         </button>
-        {isAddBlockMenuOpen && (
-          <div className="absolute left-0 mt-2 w-72 bg-gray-700 border border-gray-600 rounded-md shadow-lg py-1 z-30 max-h-96 overflow-y-auto">
-            {appBlockDefinitionsFromCtx.map((def: BlockDefinition) => { // Use prop and add type
-              const isCoreDefinition = coreDefinitionIds.has(def.id);
-              return (
-                <div key={def.id} className="flex items-center justify-between hover:bg-gray-600 group">
-                  <button
-                    onClick={() => {
-                      onAddBlockFromDefinition(def);
-                      setIsAddBlockMenuOpen(false);
-                    }}
-                    className="flex-grow text-left px-4 py-2 text-sm text-gray-200 group-hover:text-sky-300 transition-colors"
-                    title={def.description}
-                  >
-                    {def.name}
-                    {def.description && <span className="block text-xs text-gray-400 truncate">({def.description.substring(0,30)}{def.description.length > 30 ? '...' : ''})</span>}
-                  </button>
-                  {!isCoreDefinition && (
-                    <button
-                      onClick={(e) => handleDeleteDefinition(e, def.id)}
-                      title={`Delete definition: ${def.name}`}
-                      className="p-2 text-gray-500 hover:text-red-400 opacity-50 group-hover:opacity-100 transition-opacity mr-2"
-                      aria-label={`Delete block definition ${def.name}`}
-                    >
-                      <SmallTrashIcon className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-             <button
-                onClick={() => {
-                  onToggleGeminiPanel();
-                  setIsAddBlockMenuOpen(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-sky-400 hover:bg-gray-600 hover:text-sky-300 transition-colors border-t border-gray-600 sticky bottom-0 bg-gray-700"
-              >
-                ✨ Create with AI...
-              </button>
-          </div>
-        )}
       </div>
+
+      {/* AddBlockModal */}
+      {isAddBlockModalOpen && (
+        <AddBlockModal
+          appBlockDefinitionsFromCtx={appBlockDefinitionsFromCtx}
+          onAddBlockFromDefinition={(definition) => {
+            onAddBlockFromDefinition(definition);
+            setIsAddBlockModalOpen(false); // Close modal after adding
+          }}
+          onToggleGeminiPanel={() => {
+            onToggleGeminiPanel();
+            // Optionally close the modal when opening Gemini panel
+            // setIsAddBlockModalOpen(false);
+          }}
+          onClose={() => setIsAddBlockModalOpen(false)}
+        />
+      )}
+
       <button
         onClick={onToggleGlobalAudio}
         title={isAudioGloballyEnabled ? "Stop Audio Engine" : "Start Audio Engine"}
