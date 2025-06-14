@@ -7,15 +7,11 @@
  */
 
 // Base64 decoding utility
-export function decode(base64String: string): Uint8Array {
+export function decode(base64String: string): Uint8Array
+{
   try {
     const binaryString = window.atob(base64String);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
+    return Uint8Array.from(binaryString, char => char.charCodeAt(0));
   } catch (e) {
     console.error("Failed to decode base64 string:", e);
     return new Uint8Array(0); // Return empty array on error
@@ -34,21 +30,24 @@ export async function decodeAudioData(
     sampleRate,
   );
 
+  const invDivisor = 1 / 32768.0;
   const dataInt16 = new Int16Array(data.buffer);
-  const l = dataInt16.length;
-  const dataFloat32 = new Float32Array(l);
-  for (let i = 0; i < l; i++) {
-    dataFloat32[i] = dataInt16[i] / 32768.0;
-  }
+  const dataFloat32 = Float32Array.from(dataInt16, val => val * invDivisor) //new Float32Array(l);
+
   // Extract interleaved channels
   if (numChannels === 0) {
     buffer.copyToChannel(dataFloat32, 0);
   } else {
+    let channelsData = Array.from({ length: numChannels }, () => new Float32Array(dataFloat32.length / numChannels));
+
+    for (let i = 0; i < dataFloat32.length; i++) {
+      const channelIndex = i % numChannels;
+      const bufferIndex = Math.floor(i / numChannels);
+      channelsData[channelIndex][bufferIndex] = dataFloat32[i];
+    }
+
     for (let i = 0; i < numChannels; i++) {
-      const channel = dataFloat32.filter(
-        (_, index) => index % numChannels === i,
-      );
-      buffer.copyToChannel(channel, i);
+      buffer.copyToChannel(channelsData[i], i);
     }
   }
 
