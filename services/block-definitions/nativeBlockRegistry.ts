@@ -10,6 +10,7 @@ import { OscilloscopeNativeBlock } from '../native-blocks/OscilloscopeNativeBloc
 import { NumberToConstantAudioNativeBlock } from '../native-blocks/NumberToConstantAudioNativeBlock';
 import { GainControlNativeBlock } from '../native-blocks/GainControlNativeBlock';
 import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock';
+import { LyriaMasterBlock } from '../lyria-blocks/LyriaMaster';
 
 // Import services that provide definitions
 // import { AudioEngineService } from '../AudioEngineService'; // Removed as no longer needed
@@ -27,5 +28,6 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     NumberToConstantAudioNativeBlock.getDefinition(),
     GainControlNativeBlock.getDefinition(),
     AudioOutputNativeBlock.getDefinition(), // Added new definition
+    LyriaMasterBlock.getDefinition(),
     // AudioEngineService.getAudioOutputDefinition(), // Removed old definition
 ];
