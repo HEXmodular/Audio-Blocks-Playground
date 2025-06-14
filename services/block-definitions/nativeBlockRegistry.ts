@@ -11,6 +11,7 @@ import { NumberToConstantAudioNativeBlock } from '../native-blocks/NumberToConst
 import { GainControlNativeBlock } from '../native-blocks/GainControlNativeBlock';
 import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock';
 import { LyriaMasterBlock } from '../lyria-blocks/LyriaMaster';
+import { ManualGateNativeBlock } from '../native-blocks/ManualGateNativeBlock';
 
 // Import services that provide definitions
 // import { AudioEngineService } from '../AudioEngineService'; // Removed as no longer needed
@@ -31,3 +32,22 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     LyriaMasterBlock.getDefinition(),
     // AudioEngineService.getAudioOutputDefinition(), // Removed old definition
 ];
+
+// Map of native block IDs to their class constructors
+// This allows for dynamic instantiation of native blocks
+export const NATIVE_BLOCK_MAP = {
+    [OscillatorNativeBlock.getOscillatorDefinition().id]: OscillatorNativeBlock,
+    [OscillatorNativeBlock.getLfoDefinition().id]: OscillatorNativeBlock, // Assuming LFO uses the same class
+    [OscillatorNativeBlock.getLfoBpmSyncDefinition().id]: OscillatorNativeBlock, // Assuming LFO BPM Sync uses the same class
+    [BiquadFilterNativeBlock.getDefinition().id]: BiquadFilterNativeBlock,
+    [DelayNativeBlock.getDefinition().id]: DelayNativeBlock,
+    [AllpassFilterNativeBlock.getDefinition().id]: AllpassFilterNativeBlock,
+    [EnvelopeNativeBlock.getADEnvelopeDefinition().id]: EnvelopeNativeBlock, // Assuming AD Envelope uses the same class
+    [EnvelopeNativeBlock.getAREnvelopeDefinition().id]: EnvelopeNativeBlock, // Assuming AR Envelope uses the same class
+    [OscilloscopeNativeBlock.getDefinition().id]: OscilloscopeNativeBlock,
+    [NumberToConstantAudioNativeBlock.getDefinition().id]: NumberToConstantAudioNativeBlock,
+    [GainControlNativeBlock.getDefinition().id]: GainControlNativeBlock,
+    [AudioOutputNativeBlock.getDefinition().id]: AudioOutputNativeBlock,
+    [LyriaMasterBlock.getDefinition().id]: LyriaMasterBlock, // Though LyriaMasterBlock is special, including it for completeness
+    [ManualGateNativeBlock.getDefinition().id]: ManualGateNativeBlock,
+};
