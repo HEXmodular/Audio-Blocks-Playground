@@ -43,21 +43,7 @@ export class BlockInstanceController {
         const globalBpm = this.getGlobalBpm();
 
         if (newInstance && definition.runsAtAudioRate && this.audioEngineService.audioContext && this.audioEngineService.audioContext.state === 'running') {
-            if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
-                const setupPromise = this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(
-                    newInstance.instanceId,
-                    definition,
-                    (msg) => this.blockStateManager.addLogToBlockInstance(newInstance.instanceId, msg)
-                ) || Promise.resolve(false);
-
-                setupPromise.then(success => {
-                    this.blockStateManager.updateBlockInstance(newInstance.instanceId, currentInst => ({
-                        ...currentInst,
-                        internalState: { ...currentInst.internalState, lyriaServiceReady: !!success, needsAudioNodeSetup: !success },
-                        error: success ? null : "Lyria Service setup failed."
-                    }));
-                });
-            } else if (definition.audioWorkletProcessorName && this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady) {
+            if (definition.audioWorkletProcessorName && this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady) {
                 // The addManagedAudioWorkletNode method is now async and returns a boolean
                 const success = await this.audioEngineService.addManagedAudioWorkletNode(newInstance.instanceId, definition, newInstance.parameters);
                 if (success) {

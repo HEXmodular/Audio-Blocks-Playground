@@ -22,33 +22,35 @@ export function decode(base64String: string): Uint8Array {
   }
 }
 
-// Web Audio API's decodeAudioData wrapped in a promise
 export async function decodeAudioData(
-  audioData: ArrayBuffer | Uint8Array,
-  audioContext: AudioContext,
-  sampleRate: number, // Target sample rate
-  numberOfChannels: number // Target number of channels
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
 ): Promise<AudioBuffer> {
-  // If input is Uint8Array, we need its underlying ArrayBuffer
-  const bufferToDecode = audioData instanceof Uint8Array ? audioData.buffer : audioData;
-  
-  try {
-    const decodedBuffer = await audioContext.decodeAudioData(bufferToDecode);
-    
-    // Basic check, Lyria service should provide data at correct sampleRate/channels.
-    // If not, resampling/rechanneling would be needed here, which is complex.
-    // For now, assume it matches.
-    if (decodedBuffer.sampleRate !== sampleRate) {
-        console.warn(`LiveMusicService: Decoded audio sample rate ${decodedBuffer.sampleRate} does not match target ${sampleRate}. Playback issues may occur.`);
-    }
-    if (decodedBuffer.numberOfChannels !== numberOfChannels) {
-        console.warn(`LiveMusicService: Decoded audio channels ${decodedBuffer.numberOfChannels} does not match target ${numberOfChannels}. Playback issues may occur.`);
-    }
-    return decodedBuffer;
+  const buffer = ctx.createBuffer(
+    numChannels,
+    data.length / 2 / numChannels,
+    sampleRate,
+  );
 
-  } catch (e) {
-    console.error("Error decoding audio data:", e);
-    // Return a very short silent buffer on error to prevent crashes downstream
-    return audioContext.createBuffer(numberOfChannels, 1, sampleRate);
+  const dataInt16 = new Int16Array(data.buffer);
+  const l = dataInt16.length;
+  const dataFloat32 = new Float32Array(l);
+  for (let i = 0; i < l; i++) {
+    dataFloat32[i] = dataInt16[i] / 32768.0;
   }
+  // Extract interleaved channels
+  if (numChannels === 0) {
+    buffer.copyToChannel(dataFloat32, 0);
+  } else {
+    for (let i = 0; i < numChannels; i++) {
+      const channel = dataFloat32.filter(
+        (_, index) => index % numChannels === i,
+      );
+      buffer.copyToChannel(channel, i);
+    }
+  }
+
+  return buffer;
 }

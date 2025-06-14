@@ -110,7 +110,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         };
 
         try {
-            const service = new LiveMusicService(process.env.API_KEY!, this.audioContext, serviceCallbacks, initialMusicConfig);
+            const service = LiveMusicService.getInstance(process.env.API_KEY!, this.audioContext, serviceCallbacks, initialMusicConfig);
             const lyriaOutputNode = service.getOutputNode();
             if (this.masterGainNode) {
                 lyriaOutputNode.connect(this.masterGainNode);

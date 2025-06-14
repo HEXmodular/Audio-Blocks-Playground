@@ -94,42 +94,7 @@ export class AudioNodeManager {
             const isAudioContextRunning = audioContextCurrent.state === 'running';
 
             if (isAudioContextRunning && isAudioGloballyEnabled) {
-                // Setup Lyria Service
-                if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
-                    // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call lyriaServiceManager.setupLyriaService for ${instance.instanceId}`);
-                    if (!instance.internalState.lyriaServiceReady || instance.internalState.needsAudioNodeSetup) {
-                        this.addLog(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
-                        console.log(instance.instanceId, "Lyria service setup initiated by AudioNodeManager.");
-                        this.audioEngineService.lyriaServiceManager.setupLyriaServiceForInstance?.(instance.instanceId, definition, (msg) => {
-                            this.addLog(instance.instanceId, msg);
-                            console.log(instance.instanceId, msg);
-                        })
-                            .then(success => {
-                                this.updateInstance(instance.instanceId, currentInst => ({
-                                    ...currentInst,
-                                    internalState: {
-                                        ...currentInst.internalState,
-                                        lyriaServiceReady: !!success,
-                                        needsAudioNodeSetup: !success,
-                                        // Reset loggedAudioSystemNotActive on successful setup
-                                        loggedAudioSystemNotActive: success ? false : currentInst.internalState.loggedAudioSystemNotActive,
-                                    },
-                                    error: success ? null : "Lyria Service setup failed."
-                                }));
-                                if (success) this.addLog(instance.instanceId, "Lyria service ready.");
-                                else {
-                                    this.addLog(instance.instanceId, "Lyria service setup failed.", "error");
-                                    console.error(instance.instanceId, "Lyria service setup failed.", "error");
-                                }
-                            }).catch(err => {
-                                this.addLog(instance.instanceId, `Lyria service setup error: ${(err as Error).message}`, "error");
-                                console.error(instance.instanceId, `Lyria service setup error: ${(err as Error).message}`, "error");
-                                this.updateInstance(instance.instanceId, { error: "Lyria service setup error." });
-                            });
-                    }
-                }
-                // Setup AudioWorklet Node
-                else if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Added audioWorkletCode check for consistency
+                if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Added audioWorkletCode check for consistency
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioWorkletManager.setupManagedAudioWorkletNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
                         // Reset loggedWorkletSystemNotReady if it was previously set, as we are now ready
@@ -177,7 +142,7 @@ export class AudioNodeManager {
                 }
                 // Setup Native Audio Node
                 // Assuming isNativeNodeDefinition can be implemented by checking !definition.audioWorkletProcessorName and not Lyria
-                else if (!definition.audioWorkletProcessorName && definition.id !== LyriaMasterBlock.getDefinition().id) { // Changed // Basic check for native
+                else if (!definition.audioWorkletProcessorName) { // Changed // Basic check for native
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioEngineService.addNativeNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");

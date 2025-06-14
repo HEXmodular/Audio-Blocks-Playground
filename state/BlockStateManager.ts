@@ -340,32 +340,6 @@ export class BlockStateManager {
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
             initialInternalState.needsAudioNodeSetup = false;
         }
-        if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
-            // For Lyria, ensure specific fields are there, respecting loaded values for new flags
-            initialInternalState = {
-                lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
-                reconnectRequest: false, configUpdateNeeded: false, promptsUpdateNeeded: false, trackMuteUpdateNeeded: false,
-                autoPlayInitiated: false,
-                // Preserve already spread initialInternalState which includes new flags and any other loaded state
-                ...initialInternalState,
-                // Explicitly set Lyria specific defaults if not loaded, but new flags are already handled
-                lastScale: initialInternalState.lastScale ?? definition.parameters.find(p=>p.id === 'scale')?.defaultValue,
-                lastBrightness: initialInternalState.lastBrightness ?? definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
-                lastDensity: initialInternalState.lastDensity ?? definition.parameters.find(p=>p.id === 'density')?.defaultValue,
-                lastSeed: initialInternalState.lastSeed ?? definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
-                lastTemperature: initialInternalState.lastTemperature ?? definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
-                lastGuidanceScale: initialInternalState.lastGuidanceScale ?? definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
-                lastTopK: initialInternalState.lastTopK ?? definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
-                lastBpm: initialInternalState.lastBpm ?? definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-                lastEffectivePrompts: initialInternalState.lastEffectivePrompts || [],
-                wasPausedDueToGateLow: initialInternalState.wasPausedDueToGateLow || false,
-                prevStopTrigger: initialInternalState.prevStopTrigger || false,
-                prevReconnectTrigger: initialInternalState.prevReconnectTrigger || false,
-                lastMuteBass: initialInternalState.lastMuteBass || false,
-                lastMuteDrums: initialInternalState.lastMuteDrums || false,
-                lastOnlyBassDrums: initialInternalState.lastOnlyBassDrums || false,
-            };
-        }
       }
       const { currentView, ...restOfLoadedInst } = loadedInst;
 

@@ -57,6 +57,7 @@ export interface LiveMusicServiceCallbacks {
 // Scale and MusicGenerationMode are now locally defined and exported.
 // Fix: Explicitly re-export WeightedPrompt type for use in other modules.
 export type { LiveMusicGenerationConfig, WeightedPrompt };
+export { PlaybackState }; // Re-export PlaybackState
 
 
 export const DEFAULT_MUSIC_GENERATION_CONFIG: LiveMusicGenerationConfig = {
@@ -75,12 +76,14 @@ export const DEFAULT_MUSIC_GENERATION_CONFIG: LiveMusicGenerationConfig = {
 };
 
 export class LiveMusicService {
+  private static instance: LiveMusicService | null = null;
+
   private ai: GoogleGenAI;
   private session: LiveMusicSession | null = null;
   private audioContext: AudioContext;
   private outputNode: GainNode;
-  private nextStartTime = 0;
-  private readonly bufferTime = 2; // Audio buffer in seconds for network latency
+  // private nextStartTime = 0; // Removed as playback scheduling is delegated
+  // private readonly bufferTime = 2; // Removed as buffering logic is delegated
   private connectionError = false;
   private currentPlaybackState: PlaybackState = PlaybackState.STOPPED; // Use enum
   private musicConfig: LiveMusicGenerationConfig; // This uses @google/genai type
@@ -95,7 +98,7 @@ export class LiveMusicService {
   private isReconnecting = false; // Flag to manage reconnect state
 
 
-  constructor(
+  private constructor(
     apiKey: string,
     audioCtx: AudioContext,
     callbacks: LiveMusicServiceCallbacks,
@@ -117,6 +120,29 @@ export class LiveMusicService {
     if (initialMode) {
         this.localMusicMode = initialMode;
     }
+  }
+
+  public static getInstance(
+    apiKey: string,
+    audioCtx: AudioContext,
+    callbacks: LiveMusicServiceCallbacks,
+    initialConfig?: Partial<LiveMusicGenerationConfig>,
+    initialMode?: MusicGenerationMode
+  ): LiveMusicService {
+    if (LiveMusicService.instance === null) {
+      LiveMusicService.instance = new LiveMusicService(
+        apiKey,
+        audioCtx,
+        callbacks,
+        initialConfig,
+        initialMode
+      );
+    } else {
+      console.warn(
+        "[LiveMusicService getInstance] An instance already exists. New parameters are being ignored."
+      );
+    }
+    return LiveMusicService.instance;
   }
 
   private setPlaybackState(newState: PlaybackState) {
@@ -254,7 +280,7 @@ export class LiveMusicService {
 
   private async _handleAudioChunksMessage(audioChunks: NonNullable<NonNullable<LiveMusicServerMessage['serverContent']>['audioChunks']>) {
     if (audioChunks.length > 0) {
-      console.log(`[LiveMusicService _handleAudioChunksMessage] Received ${audioChunks.length} audio chunk(s). Current playback state: ${this.currentPlaybackState}`);
+      // console.log(`[LiveMusicService _handleAudioChunksMessage] Received ${audioChunks.length} audio chunk(s). Current playback state: ${this.currentPlaybackState}`);
       if (this.currentPlaybackState === PlaybackState.PAUSED || this.currentPlaybackState === PlaybackState.STOPPED) {
         console.log(`[LiveMusicService _handleAudioChunksMessage] Discarding audio chunk because playback state is ${this.currentPlaybackState}.`);
         return;
@@ -267,6 +293,14 @@ export class LiveMusicService {
           return;
         }
         const decodedBytes = decode(audioData);
+        if (!decodedBytes) {
+          console.error(`[LiveMusicService] decode audio failed`, {audioData, decodedBytes})
+        }
+
+        if (decodedBytes.byteLength === 0) {
+          console.error(`[LiveMusicService] decode audio failed no bytes`, {audioData, decodedBytes})
+        }
+
         const audioBuffer = await decodeAudioData(
           decodedBytes,
           this.audioContext,
@@ -274,35 +308,25 @@ export class LiveMusicService {
           2,
         );
 
-        console.log(`[LiveMusicService _handleAudioChunksMessage] Decoded audio buffer. Duration: ${audioBuffer.duration.toFixed(3)}s. Channels: ${audioBuffer.numberOfChannels}, Sample Rate: ${audioBuffer.sampleRate}`);
+        // console.log(`[LiveMusicService _handleAudioChunksMessage] Decoded audio buffer. Duration: ${(audioBuffer.duration * 1000).toFixed(3)}ms. Channels: ${audioBuffer.numberOfChannels}, Sample Rate: ${audioBuffer.sampleRate}`, {audioBuffer});
 
         if (this.callbacks.onAudioBufferProcessed) {
           const config = this.getCurrentMusicGenerationConfig();
           this.callbacks.onAudioBufferProcessed(audioBuffer, config.bpm ?? DEFAULT_MUSIC_GENERATION_CONFIG.bpm ?? 120);
         }
 
-        const source = this.audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(this.outputNode);
+        // Playback scheduling and source node creation are now delegated to the consumer.
+        // The service's responsibility ends with providing the decoded AudioBuffer.
 
-        const currentTime = this.audioContext.currentTime;
-        if (this.nextStartTime === 0) {
-          this.nextStartTime = currentTime + this.bufferTime;
-          console.log(`[LiveMusicService _handleAudioChunksMessage] First chunk. Scheduling to start at: ${this.nextStartTime.toFixed(3)} (current: ${currentTime.toFixed(3)})`);
-        } else if (this.nextStartTime < currentTime) {
-          console.warn(`[LiveMusicService _handleAudioChunksMessage] Buffer underrun. NextStartTime: ${this.nextStartTime.toFixed(3)}, CurrentTime: ${currentTime.toFixed(3)}. Re-buffering.`);
-          this.setPlaybackState(PlaybackState.LOADING); // Indicate re-buffering
-          this.nextStartTime = currentTime + this.bufferTime;
-          this.callbacks.onError('Audio buffer underrun, re-buffering.');
-        }
-
-        source.start(this.nextStartTime);
-
+        // Example of how the service might indicate it's actively sending data,
+        // but the consumer would manage its own detailed PLAYING vs. BUFFERING state.
         if (this.currentPlaybackState === PlaybackState.LOADING) {
-            this.setPlaybackState(PlaybackState.PLAYING);
+            // Consider if this state change is still appropriate here or if
+            // PlaybackState.PLAYING for the service should mean "actively streaming/connected"
+            // rather than "audio is making sound".
+            // For now, we'll keep it to show the service is "active".
+             this.setPlaybackState(PlaybackState.PLAYING);
         }
-        console.log(`[LiveMusicService _handleAudioChunksMessage] Scheduled audio chunk to play at ${this.nextStartTime.toFixed(3)}. Next chunk will start at ${ (this.nextStartTime + audioBuffer.duration).toFixed(3)}.`);
-        this.nextStartTime += audioBuffer.duration;
 
       } catch (decodeError: any) {
         this.callbacks.onError(`Error processing received audio data: ${decodeError.message}`);
@@ -511,7 +535,7 @@ export class LiveMusicService {
         console.log(`[LiveMusicService play] Calling session.play(). Current state before session.play(): ${this.currentPlaybackState}`);
         this.session.play();
         this.setPlaybackState(PlaybackState.LOADING); // Now waiting for audio chunks
-        this.nextStartTime = 0; // Reset for buffering
+        // this.nextStartTime = 0; // Removed as scheduling is delegated
         this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
         this.outputNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Start from 0 for fade-in
         this.outputNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.2);
@@ -566,7 +590,7 @@ export class LiveMusicService {
             console.warn("[LiveMusicService pause] Error manipulating gain on outputNode:", e.message);
         }
     }
-    this.nextStartTime = 0;
+    // this.nextStartTime = 0; // Removed as scheduling is delegated
   }
 
   private stopInternally(shouldStopSession: boolean) {
@@ -593,7 +617,7 @@ export class LiveMusicService {
              console.warn("[LiveMusicService stopInternally] Error manipulating gain on outputNode:", e.message);
         }
     }
-    this.nextStartTime = 0;
+    // this.nextStartTime = 0; // Removed as scheduling is delegated
 
     if (wasPlayingOrLoading) {
         this.resetOutputNode();
