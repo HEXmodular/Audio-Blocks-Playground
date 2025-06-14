@@ -12,6 +12,7 @@ import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNat
 import { parseFrequencyInput } from '@utils/noteUtils';
 // import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 import { BlockStateManager } from '../state/BlockStateManager';
+import { audioEngineService } from '@/services/AudioEngineService';
 
 
 interface BlockDetailPanelProps {
@@ -20,7 +21,6 @@ interface BlockDetailPanelProps {
   connections: Connection[];
   onClosePanel: () => void;
   onUpdateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
-  getAnalyserNodeForInstance: (instanceId: string) => AnalyserNode | null;
 }
 
 const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean => {
@@ -36,19 +36,12 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
 
 const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   blockInstance,
-  // getBlockDefinition, // Removed
-  // onUpdateInstance, // Removed
-  // onDeleteInstance, // Removed
-  // allInstances, // Removed
-  blockInstances, // Added blockInstances to destructuring
+  blockInstances, 
   connections,
   onClosePanel,
   onUpdateConnections,
-  getAnalyserNodeForInstance,
-  // blockInstances prop is now destructured here
 }) => {
   const blockStateManager = BlockStateManager.getInstance();
-  // const blockInstances = blockStateManager.getBlockInstances(); // REMOVED - will use prop
   const getDefinitionById = (definitionId: string): BlockDefinition | undefined => blockStateManager.getDefinitionForBlock(definitionId);
   const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager);
   const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager);
@@ -381,7 +374,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
 
     let oscilloscopeUI = null;
     if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
-      const analyserNode = getAnalyserNodeForInstance(blockInstance.instanceId);
+      const analyserNode = audioEngineService.nativeNodeManager.getAnalyserNodeForInstance(blockInstance.instanceId)
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 

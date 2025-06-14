@@ -78,6 +78,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock(context)); // Added handler
     }
 
+    // этот блок был добавлен недавно для исправление работы осцилоскопа, тут может быть дичь
     public _setAudioContext(newContext: AudioContext | null): void {
         const oldContext = this.audioContext;
         if (oldContext !== newContext) {

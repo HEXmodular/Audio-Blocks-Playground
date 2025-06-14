@@ -332,7 +332,6 @@ const App: React.FC = () => {
           connections={connections}
           onClosePanel={() => setSelectedInstanceId(null)}
           onUpdateConnections={connectionState.updateConnections}
-          getAnalyserNodeForInstance={audioEngineService.nativeNodeManager.getAnalyserNodeForInstance}
         />
       )}
       <GeminiChatPanel

@@ -41,9 +41,6 @@ export class AudioEngineService {
     private _audioInitializationError: string | null = null;
     private _availableOutputDevices: OutputDevice[] = [];
     private _selectedSinkId: string | null = null;
-    private _updateCounter = 0;
-    // private _audioContextState: AudioContextState | null = null; // Removed unused member
-
     private _subscribers: (() => void)[] = [];
     private _audioContextService: AudioContextService;
     private _outputWorkletConnections: Map<string, AudioWorkletNode> = new Map();
@@ -81,7 +78,7 @@ export class AudioEngineService {
     }
 
     private _notifySubscribers(): void {
-        this._updateCounter++;
+        // this._updateCounter++;
         this._subscribers.forEach(sub => {
             try {
                 sub();
@@ -124,7 +121,7 @@ export class AudioEngineService {
             selectedSinkId: this._selectedSinkId,
             audioContextState: this._audioContext?.state ?? null,
             sampleRate: this.getSampleRate(),
-            updateCounter: this._updateCounter,
+            // updateCounter: this._updateCounter,
         };
     }
 
