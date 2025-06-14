@@ -99,7 +99,7 @@ export class OscillatorNativeBlock implements CreatableNode {
         oscillatorNode.start();
 
         const paramTargetsForCv = new Map<string, AudioParam>();
-        paramTargetsForCv.set('frequency', oscillatorNode.frequency);
+        paramTargetsForCv.set('frequency', oscillatorNode.detune);
         // If gain were CV controllable on this block type directly:
         // paramTargetsForCv.set('gain', gainNode.gain);
 
@@ -151,6 +151,7 @@ export class OscillatorNativeBlock implements CreatableNode {
         _currentInputs?: Record<string, any>,
         currentBpm?: number
     ): void {
+      // console.log("[Oscillator Native Block] updateNodeParams", nodeInfo);
         if (!this.context || !(nodeInfo.mainProcessingNode instanceof OscillatorNode) || !nodeInfo.internalGainNode) return;
 
         const oscillatorNode = nodeInfo.mainProcessingNode;

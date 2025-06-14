@@ -132,9 +132,10 @@ export class AudioGraphConnectorService {
             // }
         }
       }
-
+      // console.log(`[AudioGraphConnectorService] trying to connect`, {sourceAudioNode, targetAudioParam, targetAudioNode});
       if (sourceAudioNode && targetAudioParam && targetAudioNode) {
         try {
+          console.log(`[AudioGraphConnectorService] connected 1`, {sourceAudioNode, targetAudioParam, targetAudioNode});
           sourceAudioNode.connect(targetAudioParam);
           newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNode, targetParam: targetAudioParam });
         } catch (e) {
@@ -142,6 +143,7 @@ export class AudioGraphConnectorService {
         }
       } else if (sourceAudioNode && targetAudioNode) {
         try {
+          console.log(`[AudioGraphConnectorService] connected 2`, {sourceAudioNode, targetAudioParam, targetAudioNode});
           sourceAudioNode.connect(targetAudioNode);
           newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceAudioNode, targetNode: targetAudioNode });
         } catch (e) {

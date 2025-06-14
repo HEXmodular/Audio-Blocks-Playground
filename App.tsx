@@ -215,7 +215,7 @@ const App: React.FC = () => {
     );
   }, [
     // audioNodeManager,
-    // appBlockInstances, // Use new state
+    appBlockInstances, // Use new state
     connections,
     globalBpm,
   ]);

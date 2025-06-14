@@ -122,6 +122,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   }
 
   const handleParameterChange = (paramId: string, value: any) => {
+    // console.log("handleParameterChange", {paramId, value});
     updateBlockInstance(blockInstance.instanceId, (prevInstance) => { // Use context function
         const updatedParams = prevInstance.parameters.map(p =>
             p.id === paramId ? { ...p, currentValue: value } : p
