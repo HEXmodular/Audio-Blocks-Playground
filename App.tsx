@@ -309,7 +309,7 @@ const App: React.FC = () => {
           />
         </svg>
 
-        {appBlockInstances.map(instance => (
+        {appBlockInstances.filter(instance => instance).map(instance => (
           <BlockInstanceComponent
             key={instance.instanceId}
             blockInstance={instance}
