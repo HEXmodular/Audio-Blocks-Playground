@@ -60,7 +60,7 @@ export interface BlockDefinition {
   inputs: BlockPort[];
   outputs: BlockPort[];
   parameters: BlockParameterDefinition[]; 
-  logicCode: string; 
+  logicCode?: string;
   initialPrompt?: string;
   runsAtAudioRate?: boolean; 
   audioWorkletProcessorName?: string; 
@@ -235,6 +235,7 @@ export interface ManagedNativeNodeInfo {
     definition: BlockDefinition;
     instanceId: string;
     constantSourceValueNode?: ConstantSourceNode;
+    internalState?: any; // Added internalState
 }
 
 export interface ManagedLyriaServiceInfo {

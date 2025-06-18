@@ -5,6 +5,36 @@ import { CreatableNode } from './CreatableNode';
 export class EnvelopeNativeBlock implements CreatableNode {
     private context: AudioContext;
 
+    private _handleADEnvelopeLogic(inputs: Record<string, any>, internalState: any): any {
+      const triggerInputVal = inputs.trigger_in;
+      let newInternalState = { ...internalState };
+      if (triggerInputVal === true && (internalState.prevTriggerState === false || internalState.prevTriggerState === undefined || internalState.prevTriggerState === null)) {
+        newInternalState.envelopeNeedsTriggering = true;
+        (globalThis as any).__custom_block_logger__('AD Envelope trigger detected. Setting envelopeNeedsTriggering to true.');
+      }
+      newInternalState.prevTriggerState = triggerInputVal;
+      return newInternalState;
+    }
+
+    private _handleAREnvelopeLogic(inputs: Record<string, any>, internalState: any): any {
+      const gateInputVal = !!inputs.gate_in;
+      let newInternalState = { ...internalState };
+      if (gateInputVal === true && (internalState.prevGateState === false || internalState.prevGateState === undefined)) {
+        newInternalState.gateStateChangedToHigh = true;
+        newInternalState.gateStateChangedToLow = false;
+        (globalThis as any).__custom_block_logger__('AR Envelope gate became HIGH. Setting gateStateChangedToHigh.');
+      } else if (gateInputVal === false && internalState.prevGateState === true) {
+        newInternalState.gateStateChangedToLow = true;
+        newInternalState.gateStateChangedToHigh = false;
+        (globalThis as any).__custom_block_logger__('AR Envelope gate became LOW. Setting gateStateChangedToLow.');
+      } else {
+        newInternalState.gateStateChangedToHigh = false;
+        newInternalState.gateStateChangedToLow = false;
+      }
+      newInternalState.prevGateState = gateInputVal;
+      return newInternalState;
+    }
+
     static getADEnvelopeDefinition(): BlockDefinition {
       return {
         id: 'native-ad-envelope-v1',
@@ -18,16 +48,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
           { id: 'decayTime', name: 'Decay Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.3, description: 'Envelope decay time in seconds.' },
           { id: 'peakLevel', name: 'Peak Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Peak level of the envelope.' }
         ]),
-        logicCode: `
-const triggerInputVal = inputs.trigger_in;
-let newInternalState = { ...internalState };
-if (triggerInputVal === true && (internalState.prevTriggerState === false || internalState.prevTriggerState === undefined || internalState.prevTriggerState === null)) {
-  newInternalState.envelopeNeedsTriggering = true;
-  __custom_block_logger__('AD Envelope trigger detected. Setting envelopeNeedsTriggering to true.');
-}
-newInternalState.prevTriggerState = triggerInputVal;
-return newInternalState;
-        `.trim(),
+        // logicCode removed
       };
     }
 
@@ -44,24 +65,7 @@ return newInternalState;
           { id: 'releaseTime', name: 'Release Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.5, description: 'Envelope release time in seconds.' },
           { id: 'sustainLevel', name: 'Sustain Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 0.7, description: 'Sustain level of the envelope (when gate is high).' }
         ]),
-        logicCode: `
-const gateInputVal = !!inputs.gate_in;
-let newInternalState = { ...internalState };
-if (gateInputVal === true && (internalState.prevGateState === false || internalState.prevGateState === undefined)) {
-  newInternalState.gateStateChangedToHigh = true;
-  newInternalState.gateStateChangedToLow = false;
-  __custom_block_logger__('AR Envelope gate became HIGH. Setting gateStateChangedToHigh.');
-} else if (gateInputVal === false && internalState.prevGateState === true) {
-  newInternalState.gateStateChangedToLow = true;
-  newInternalState.gateStateChangedToHigh = false;
-  __custom_block_logger__('AR Envelope gate became LOW. Setting gateStateChangedToLow.');
-} else {
-  newInternalState.gateStateChangedToHigh = false;
-  newInternalState.gateStateChangedToLow = false;
-}
-newInternalState.prevGateState = gateInputVal;
-return newInternalState;
-        `.trim(),
+        // logicCode removed
       };
     }
 
@@ -100,18 +104,29 @@ return newInternalState;
     }
 
     updateNodeParams(
-        _nodeInfo: ManagedNativeNodeInfo,
+        nodeInfo: ManagedNativeNodeInfo,
         _parameters: BlockParameter[],
-        _currentInputs?: Record<string, any>,
-        _currentBpm?: number
-    ): void {
-        // For AD/AR envelopes driven by ConstantSourceNode, parameter changes (like attackTime, decayTime)
-        // don't directly set AudioParams here. Instead, the block's logicCode interprets these
-        // parameters and then calls specific methods on AudioEngineService/NativeNodeManager
-        // (e.g., triggerNativeNodeEnvelope) which then perform the AudioParam automations.
-        // So, this updateNodeParams might be a no-op for pure envelope parameters.
-        // If there were other continuous AudioParams (e.g. a 'depth' control on the envelope output), they'd be handled here.
-        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${_nodeInfo.instanceId}, but typically no direct AudioParam automation here.`);
+        currentInputs?: Record<string, any>,
+        _currentBpm?: number,
+        internalState?: any // Added internalState as parameter
+    ): any { // Changed return type to any
+        let newInternalState = internalState || nodeInfo.internalState || {}; // Retrieve internalState
+
+        if (currentInputs) {
+            if (nodeInfo.definition.id === 'native-ad-envelope-v1') {
+                newInternalState = this._handleADEnvelopeLogic(currentInputs, newInternalState);
+            } else if (nodeInfo.definition.id === 'native-ar-envelope-v1') {
+                newInternalState = this._handleAREnvelopeLogic(currentInputs, newInternalState);
+            }
+        }
+
+        // Update the internal state in nodeInfo if it's being managed there
+        if (nodeInfo.internalState) {
+            nodeInfo.internalState = newInternalState;
+        }
+
+        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${nodeInfo.instanceId}. New state:`, newInternalState);
+        return newInternalState; // Return the updated internalState
     }
 
     connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
