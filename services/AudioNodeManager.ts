@@ -91,9 +91,10 @@ export class AudioNodeManager {
                 continue;
             }
 
-            const isAudioContextRunning = audioContextCurrent.state === 'running';
+            // Use Tone.getContext() for state checking, assuming AudioContextService has initialized it.
+            const isToneContextRunning = Tone.getContext() && Tone.getContext().state === 'running';
 
-            if (isAudioContextRunning && isAudioGloballyEnabled) {
+            if (isToneContextRunning && isAudioGloballyEnabled) {
                 if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Added audioWorkletCode check for consistency
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioWorkletManager.setupManagedAudioWorkletNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
@@ -194,7 +195,8 @@ export class AudioNodeManager {
         connections: Connection[],
         globalBpm: number
     ) {
-        if (!this.audioEngineService.audioContext || this.audioEngineService.audioContext.state !== 'running') return;
+        // Check Tone.js context state
+        if (!Tone.getContext() || Tone.getContext().state !== 'running') return;
 
         blockInstances.forEach(instance => {
             const definition = this.getDefinition(instance);
@@ -234,7 +236,9 @@ export class AudioNodeManager {
         connections: Connection[],
         isAudioGloballyEnabled: boolean,
     ) {
-        if (!this.audioEngineService.audioContext || !this.audioEngineService.lyriaServiceManager) return;
+        // Check Tone.js context state for Lyria Service updates, as it might interact with audio scheduling
+        if (!Tone.getContext() || !this.audioEngineService.lyriaServiceManager) return;
+
 
         blockInstances.forEach(instance => {
             const definition = this.getDefinition(instance);
@@ -317,7 +321,8 @@ export class AudioNodeManager {
         blockInstances: BlockInstance[],
         isAudioGloballyEnabled: boolean
     ) {
-        if (!this.audioEngineService.audioContext) return;
+        // Check Tone.js context state for updating graph connections
+        if (!Tone.getContext()) return;
         if (isAudioGloballyEnabled) {
             this.audioEngineService.updateAudioGraphConnections(connections, blockInstances, (inst) => this.getDefinition(inst));
         } else {

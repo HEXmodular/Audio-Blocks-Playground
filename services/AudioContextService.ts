@@ -1,217 +1,89 @@
-/**
- * This service is responsible for managing the core Web Audio API `AudioContext`.
- * It handles the initialization, lifecycle (suspend, resume, close), and configuration of the audio context.
- * The service provides access to the `AudioContext` instance, its state, and the master gain node for global volume control.
- * Additionally, it offers utilities for querying available audio output devices and setting the preferred output device (sinkId) if supported by the browser.
- * This service acts as a foundational layer for any audio processing or playback within the application.
- */
-import { AudioContextState, OutputDevice } from '@interfaces/common'; // Assuming AudioContextState is here or define locally
+import * as Tone from 'tone';
 
-// Define AudioContextState if not available from types.ts
-// export type AudioContextState = 'suspended' | 'running' | 'closed' | 'interrupted';
+class AudioContextService {
+  private static instance: AudioContextService;
+  // Store the global Tone.js context instance
+  private audioContext: Tone.Context | null = null;
 
-
-export interface InitAudioResult {
-  context: AudioContext | null;
-  contextJustResumed?: boolean;
-}
-
-export class AudioContextService {
-  private context: AudioContext | null = null;
-  private masterGainNode: GainNode | null = null;
-  private onContextStateChange: (newState: AudioContextState) => void; // Callback for state changes
-
-  constructor(
-    onContextStateChange: (newState: AudioContextState) => void
-  ) {
-    this.onContextStateChange = onContextStateChange;
-    console.log('[AudioContextService] Initialized');
+  private constructor() {
+    // Private constructor
   }
 
-  public getAudioContext(): AudioContext | null {
-    return this.context;
+  public static getInstance(): AudioContextService {
+    if (!AudioContextService.instance) {
+      AudioContextService.instance = new AudioContextService();
+    }
+    return AudioContextService.instance;
   }
 
-  public getMasterGainNode(): GainNode | null {
-    return this.masterGainNode;
+  public async getAudioContext(): Promise<Tone.Context> {
+    if (!this.audioContext || this.audioContext.state !== 'running') {
+      await this.initializeAudioContext();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return this.audioContext!;
+  }
+
+  public async initializeAudioContext(): Promise<void> {
+    // Check if Tone.context is already available and running
+    if (Tone.context && Tone.context.state === 'running') {
+      this.audioContext = Tone.context;
+      console.log('Tone.js AudioContext is already running.');
+      return;
+    }
+
+    try {
+      // Tone.start() initializes and starts the global audio context.
+      // It needs to be triggered by a user gesture.
+      await Tone.start();
+      this.audioContext = Tone.context; // Assign the global context
+      console.log('Tone.js AudioContext started successfully via Tone.start().');
+
+      // Ensure the context is indeed running (Tone.start() should handle this)
+      if (this.audioContext.state !== 'running') {
+        // This block might be redundant if Tone.start() guarantees a running state
+        // or throws an error. However, it's a good safeguard.
+        console.warn('Tone.context state is not "running" after Tone.start(). Attempting to resume.');
+        await this.audioContext.resume();
+        console.log('Tone.context resumed.');
+      }
+
+      // Additional check, primarily for development/debugging
+      if (this.audioContext.state !== 'running') {
+        console.error('Failed to start or resume Tone.context. Current state:', this.audioContext.state);
+        throw new Error(`Tone.context failed to reach "running" state. Current state: ${this.audioContext.state}`);
+      }
+
+    } catch (error) {
+      console.error('Error initializing Tone.js AudioContext with Tone.start():', error);
+      // If Tone.start() fails, it might be because it wasn't called from a user gesture.
+      // In a real application, this needs to be handled gracefully, often by prompting the user to click a button.
+      throw error;
+    }
   }
 
   public getContextState(): AudioContextState | null {
-    return this.context?.state ?? null;
-  }
-
-  private setContext(newContext: AudioContext | null) {
-    if (this.context && this.context !== newContext) {
-        // Clean up old context listeners if any were attached directly by the service
-        if (this.context.onstatechange) {
-            this.context.onstatechange = null;
-        }
-    }
-
-    this.context = newContext;
-
-    if (newContext) {
-        newContext.onstatechange = () => {
-            console.log(`[AudioContextService] AudioContext state changed to: ${newContext.state}`);
-            this.onContextStateChange(newContext.state);
-        };
-    }
-  }
-
-  public async initialize(resumeContext: boolean = false): Promise<InitAudioResult> {
-    let contextJustResumed = false;
-    // let errorMessage: string | null = null; // Removed as it was unused
-
-    if (this.context && this.context.state === 'closed') {
-      console.log("[AudioContextService Init] Existing AudioContext was 'closed'. Cleaning up and creating new one.");
-      await this.cleanupContext(); // Ensure previous context is fully cleaned if closed
-      this.setContext(null); // Force creation of a new context by nullifying current
-      this.masterGainNode = null;
-    }
-
-    if (this.context) {
-      console.log(`[AudioContextService Init] Existing AudioContext found (state: ${this.context.state}).`);
-      if (this.context.state === 'suspended' && resumeContext) {
-        console.log("[AudioContextService Init] Attempting to resume existing suspended context...");
-        try {
-          await this.context.resume();
-          contextJustResumed = true;
-          console.log(`[AudioContextService Init] Resume attempt finished. Context state: ${this.context.state}.`);
-        } catch (resumeError) {
-          console.error(`[AudioContextService Init Error] Error resuming existing context: ${(resumeError as Error).message}`);
-          // errorMessage = `Error resuming context: ${(resumeError as Error).message}`; // Unused variable
-        }
-      }
-    } else {
-      console.log("[AudioContextService Init] No existing AudioContext or was closed. Creating new.");
-      try {
-        const newContext = new AudioContext();
-        console.log(`[AudioContextService Init] New AudioContext created (initial state: ${newContext.state}).`);
-
-        this.setContext(newContext); // This also sets up onstatechange
-
-        if (this.masterGainNode) {
-            try { this.masterGainNode.disconnect(); } catch(e) { /* ignore */ }
-        }
-        this.masterGainNode = newContext.createGain();
-        this.masterGainNode.connect(newContext.destination);
-        console.log("[AudioContextService Init] Master gain node created and connected.");
-
-
-        if (newContext.state === 'suspended' && resumeContext) {
-          // Do not resume here on initial creation if it's suspended.
-          // The first resume should be triggered by a user gesture.
-          // We will still set contextJustResumed to false as it wasn't resumed by this path.
-          console.log("[AudioContextService Init] New context is suspended. User gesture will be needed to resume.");
-          contextJustResumed = false;
-        }
-      } catch (creationError) {
-        const msg = `Critical Error initializing new AudioContext: ${(creationError as Error).message}`;
-        console.error(`[AudioContextService Init Critical Error] ${msg}`);
-        // errorMessage = msg; // Unused variable
-        if (this.context) await this.cleanupContext(); // Clean up partially initialized context
-        this.setContext(null);
-        this.masterGainNode = null;
-      }
-    }
-
-    // If there was an error, the context might be null or in a bad state.
-    // The hook will be responsible for setting its own error state based on this result.
-    return {
-        context: this.context,
-        contextJustResumed: contextJustResumed && this.context?.state === 'running',
-        // errorMessage: errorMessage // Optionally return error message directly
-    };
-  }
-
-  public async suspendContext(): Promise<void> {
-    if (this.context && this.context.state === 'running') {
-      console.log("[AudioContextService] Suspending AudioContext.");
-      await this.context.suspend();
-      console.log(`[AudioContextService] AudioContext suspended. State: ${this.context.state}`);
-    } else {
-      console.warn("[AudioContextService] AudioContext not running or not initialized, cannot suspend.");
-    }
+    return this.audioContext ? this.audioContext.state : null;
   }
 
   public async resumeContext(): Promise<void> {
-    if (this.context && this.context.state === 'suspended') {
-      console.log("[AudioContextService] Resuming AudioContext.");
-      await this.context.resume();
-      console.log(`[AudioContextService] AudioContext resumed. State: ${this.context.state}`);
+    // This method might be called if the context suspends for some reason (e.g., page visibility change)
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+        console.log('Tone.js AudioContext resumed successfully.');
+      } catch (error) {
+        console.error('Error resuming Tone.js AudioContext:', error);
+        throw error;
+      }
+    } else if (this.audioContext && this.audioContext.state === 'running') {
+      console.log('Tone.js AudioContext is already running.');
     } else {
-      console.warn("[AudioContextService] AudioContext not suspended or not initialized, cannot resume.");
-    }
-  }
-
-  public getSampleRate(): number | null {
-    return this.context?.sampleRate || null;
-  }
-
-  public async cleanupContext(): Promise<void> {
-    console.log("[AudioContextService] Cleaning up AudioContext.");
-    if (this.masterGainNode) {
-        try { this.masterGainNode.disconnect(); } catch(e) { /* ignore */ }
-        this.masterGainNode = null;
-    }
-    if (this.context) {
-        if (this.context.onstatechange) {
-            this.context.onstatechange = null; // Clear listener
-        }
-        if (this.context.state !== 'closed') {
-            try {
-                await this.context.close();
-                console.log("[AudioContextService] AudioContext closed.");
-            } catch (e) {
-                console.error(`[AudioContextService] Error closing AudioContext: ${(e as Error).message}`);
-            }
-        }
-        this.setContext(null);
-    }
-  }
-
-  public async getAvailableOutputDevices(): Promise<OutputDevice[]> {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        console.warn('[AudioContextService] enumerateDevices() not supported.');
-        return [];
-    }
-    try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        return devices.filter(device => device.kind === 'audiooutput').map(device => {
-            const outputDevice: OutputDevice = {
-                deviceId: device.deviceId,
-                groupId: device.groupId,
-                kind: 'audiooutput', // Already filtered so kind is 'audiooutput'
-                label: device.label || `Output device ${devices.filter(d => d.kind === 'audiooutput').indexOf(device) + 1}`,
-                toJSON: device.toJSON.bind(device) // MediaDeviceInfo guarantees toJSON
-            };
-            return outputDevice;
-        });
-    } catch (err) {
-        console.error('[AudioContextService] Error listing output devices:', err);
-        return [];
-    }
-  }
-
-  public canChangeOutputDevice(): boolean {
-    return !!(this.context && typeof (this.context as any).setSinkId === 'function');
-  }
-
-  public async setSinkId(sinkId: string): Promise<void> {
-    if (!this.context) {
-        console.warn('[AudioContextService] AudioContext not available, cannot set sink ID.');
-        return Promise.reject('AudioContext not available');
-    }
-    if (typeof (this.context as any).setSinkId !== 'function') {
-        console.warn('[AudioContextService] AudioContext.setSinkId is not supported by this browser.');
-        return Promise.reject('setSinkId not supported');
-    }
-    try {
-        await (this.context as any).setSinkId(sinkId);
-        console.log(`[AudioContextService] Output device set to: ${sinkId}`);
-    } catch (error) {
-        console.error('[AudioContextService] Error setting output device:', error);
-        throw error; // Re-throw the error to be handled by the caller
+      console.warn('No valid Tone.js AudioContext to resume, or context is not suspended.');
+      // Optionally, try to initialize if no context exists
+      // await this.initializeAudioContext();
     }
   }
 }
+
+export default AudioContextService.getInstance();

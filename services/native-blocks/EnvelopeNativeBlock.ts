@@ -1,139 +1,160 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
-import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
+import * as Tone from 'tone';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+import { createParameterDefinitions } from '../../constants/constants';
 import { CreatableNode } from './CreatableNode';
 
+export interface ManagedEnvelopeNodeInfo extends OriginalManagedNativeNodeInfo {
+  toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
+  // Internal state for gate logic
+  prevGateState?: boolean;
+}
+
 export class EnvelopeNativeBlock implements CreatableNode {
-    private context: AudioContext;
+    // Context is assumed to be managed globally
 
-    private _handleADEnvelopeLogic(inputs: Record<string, any>, internalState: any): any {
-      const triggerInputVal = inputs.trigger_in;
-      let newInternalState = { ...internalState };
-      if (triggerInputVal === true && (internalState.prevTriggerState === false || internalState.prevTriggerState === undefined || internalState.prevTriggerState === null)) {
-        newInternalState.envelopeNeedsTriggering = true;
-        (globalThis as any).__custom_block_logger__('AD Envelope trigger detected. Setting envelopeNeedsTriggering to true.');
-      }
-      newInternalState.prevTriggerState = triggerInputVal;
-      return newInternalState;
-    }
-
-    private _handleAREnvelopeLogic(inputs: Record<string, any>, internalState: any): any {
-      const gateInputVal = !!inputs.gate_in;
-      let newInternalState = { ...internalState };
-      if (gateInputVal === true && (internalState.prevGateState === false || internalState.prevGateState === undefined)) {
-        newInternalState.gateStateChangedToHigh = true;
-        newInternalState.gateStateChangedToLow = false;
-        (globalThis as any).__custom_block_logger__('AR Envelope gate became HIGH. Setting gateStateChangedToHigh.');
-      } else if (gateInputVal === false && internalState.prevGateState === true) {
-        newInternalState.gateStateChangedToLow = true;
-        newInternalState.gateStateChangedToHigh = false;
-        (globalThis as any).__custom_block_logger__('AR Envelope gate became LOW. Setting gateStateChangedToLow.');
-      } else {
-        newInternalState.gateStateChangedToHigh = false;
-        newInternalState.gateStateChangedToLow = false;
-      }
-      newInternalState.prevGateState = gateInputVal;
-      return newInternalState;
-    }
-
-    static getADEnvelopeDefinition(): BlockDefinition {
+    static getDefinition(): BlockDefinition { // Unified ADSR Envelope Definition
       return {
-        id: 'native-ad-envelope-v1',
-        name: 'AD Envelope (Native)',
-        description: 'Attack-Decay envelope generator using a native ConstantSourceNode and AudioParam automation. Triggered by input signal.',
-        runsAtAudioRate: true,
-        inputs: [ { id: 'trigger_in', name: 'Trigger', type: 'trigger', description: 'Triggers the envelope.' } ],
-        outputs: [ { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Peak Level).' } ],
+        id: 'tone-adsr-envelope-v1',
+        name: 'ADSR Envelope (Tone)',
+        description: 'Attack-Decay-Sustain-Release envelope generator using Tone.AmplitudeEnvelope. Shapes an incoming audio signal or outputs a CV signal if no audio is input. Triggered by a gate signal.',
+        runsAtAudioRate: true, // The envelope output is audio rate
+        inputs: [
+          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to be enveloped. If not connected, outputs a CV signal (0-1).', isOptional: true },
+          { id: 'gate_in', name: 'Gate', type: 'gate', description: 'Controls the envelope: attack/decay/sustain (gate high), release (gate low).' },
+          // Optional CV inputs for ADSR parameters
+          { id: 'attack_cv_in', name: 'Attack CV', type: 'audio', description: 'Modulates attack time.', audioParamTarget: 'attack', isOptional: true },
+          { id: 'decay_cv_in', name: 'Decay CV', type: 'audio', description: 'Modulates decay time.', audioParamTarget: 'decay', isOptional: true },
+          { id: 'sustain_cv_in', name: 'Sustain CV', type: 'audio', description: 'Modulates sustain level.', audioParamTarget: 'sustain', isOptional: true },
+          { id: 'release_cv_in', name: 'Release CV', type: 'audio', description: 'Modulates release time.', audioParamTarget: 'release', isOptional: true },
+        ],
+        outputs: [
+          { id: 'audio_out', name: 'Output', type: 'audio', description: 'Enveloped audio signal or CV signal.' }
+        ],
         parameters: createParameterDefinitions([
-          { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
-          { id: 'decayTime', name: 'Decay Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.3, description: 'Envelope decay time in seconds.' },
-          { id: 'peakLevel', name: 'Peak Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 1, description: 'Peak level of the envelope.' }
+          { id: 'attack', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
+          { id: 'decay', name: 'Decay Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.2, description: 'Envelope decay time in seconds.' },
+          { id: 'sustain', name: 'Sustain Level', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Envelope sustain level (0 to 1).' },
+          { id: 'release', name: 'Release Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.5, description: 'Envelope release time in seconds.' },
+          // Example for attack curve, could add for decay/release too
+          { id: 'attackCurve', name: 'Attack Curve', type: 'select',
+            options: Tone.Envelope.Curve.map(c => ({value: c, label: c.charAt(0).toUpperCase() + c.slice(1)})),
+            defaultValue: 'linear', description: 'Shape of the attack curve.'}
         ]),
-        // logicCode removed
+        logicCode: "", // No custom logic code for this native block
       };
     }
 
-    static getAREnvelopeDefinition(): BlockDefinition {
-      return {
-        id: 'native-ar-envelope-v1',
-        name: 'AR Envelope (Native)',
-        description: 'Attack-Release envelope generator using a native ConstantSourceNode and AudioParam automation. Controlled by a gate input.',
-        runsAtAudioRate: true,
-        inputs: [ { id: 'gate_in', name: 'Gate', type: 'gate', description: 'Controls the envelope state (high for attack/sustain, low for release).' } ],
-        outputs: [ { id: 'audio_out', name: 'Envelope Output', type: 'audio', description: 'The envelope signal (0 to Sustain Level).' } ],
-        parameters: createParameterDefinitions([
-          { id: 'attackTime', name: 'Attack Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.1, description: 'Envelope attack time in seconds.' },
-          { id: 'releaseTime', name: 'Release Time (s)', type: 'slider', min: 0.001, max: 5, step: 0.001, defaultValue: 0.5, description: 'Envelope release time in seconds.' },
-          { id: 'sustainLevel', name: 'Sustain Level', type: 'slider', min: 0, max: 10, step: 0.1, defaultValue: 0.7, description: 'Sustain level of the envelope (when gate is high).' }
-        ]),
-        // logicCode removed
-      };
+    constructor() {
+        // Global Tone.context is assumed
     }
 
-    constructor(context: AudioContext) {
-        this.context = context;
-    }
-
-    setAudioContext(context: AudioContext | null): void {
-        this.context = context!;
+    setAudioContext(_context: Tone.Context | null): void {
+        // May not be needed
     }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        _initialParams: BlockParameter[] // initialParams might be used if envelope has initial settings not covered by ADSR values
-    ): ManagedNativeNodeInfo {
-        if (!this.context) throw new Error("AudioContext not initialized");
-        const constSourceNode = this.context.createConstantSource();
-        constSourceNode.offset.value = 0; // Envelopes typically start at 0
-        constSourceNode.start(); // Start the source so it can be ramped
+        initialParams: BlockParameter[]
+    ): ManagedEnvelopeNodeInfo {
+        if (Tone.getContext().state !== 'running') {
+            console.warn('Tone.js context is not running. Envelope may not function correctly.');
+        }
 
-        // No direct AudioParam targets for CV for typical AD/AR envelopes via ConstantSourceNode offset automation.
-        // CV inputs would typically go into the 'trigger_in' or 'gate_in' of the block's logic.
-        const paramTargetsForCv = new Map<string, AudioParam>();
+        const initialAttack = initialParams.find(p => p.id === 'attack')?.currentValue as Tone.Unit.Time ?? 0.1;
+        const initialDecay = initialParams.find(p => p.id === 'decay')?.currentValue as Tone.Unit.Time ?? 0.2;
+        const initialSustain = initialParams.find(p => p.id === 'sustain')?.currentValue as Tone.Unit.NormalRange ?? 0.7;
+        const initialRelease = initialParams.find(p => p.id === 'release')?.currentValue as Tone.Unit.Time ?? 0.5;
+
+        const toneAmplitudeEnvelope = new Tone.AmplitudeEnvelope({
+            attack: initialAttack,
+            decay: initialDecay,
+            sustain: initialSustain,
+            release: initialRelease,
+        });
+
+        const initialAttackCurve = initialParams.find(p => p.id === 'attackCurve')?.currentValue as Tone.EnvelopeCurve;
+        if (initialAttackCurve) {
+            toneAmplitudeEnvelope.attackCurve = initialAttackCurve;
+        }
+        // Similar for decayCurve, releaseCurve if added as params
+
+        const paramTargetsForCv = new Map<string, Tone.Param | Tone.Signal<any>>();
+        paramTargetsForCv.set('attack', toneAmplitudeEnvelope.attack);
+        paramTargetsForCv.set('decay', toneAmplitudeEnvelope.decay);
+        paramTargetsForCv.set('sustain', toneAmplitudeEnvelope.sustain);
+        paramTargetsForCv.set('release', toneAmplitudeEnvelope.release);
 
         return {
-            node: constSourceNode, // The ConstantSourceNode is the output and what gets parameters automated
-            nodeForInputConnections: constSourceNode, // Not typical for an envelope source, but for consistency
-            nodeForOutputConnections: constSourceNode,
-            mainProcessingNode: constSourceNode,
+            toneAmplitudeEnvelope,
+            nodeForInputConnections: toneAmplitudeEnvelope, // Audio signal goes into the envelope itself
+            nodeForOutputConnections: toneAmplitudeEnvelope, // Enveloped signal comes out
             paramTargetsForCv,
             definition,
             instanceId,
-            constantSourceValueNode: constSourceNode, // Specific for NativeNodeManager to control
+            prevGateState: false, // Initialize internal state for gate tracking
+            node: undefined,
+            mainProcessingNode: undefined,
         };
     }
 
     updateNodeParams(
-        nodeInfo: ManagedNativeNodeInfo,
-        _parameters: BlockParameter[],
+        nodeInfo: ManagedEnvelopeNodeInfo,
+        parameters: BlockParameter[],
         currentInputs?: Record<string, any>,
-        _currentBpm?: number,
-        internalState?: any // Added internalState as parameter
-    ): any { // Changed return type to any
-        let newInternalState = internalState || nodeInfo.internalState || {}; // Retrieve internalState
+        _currentBpm?: number
+        // internalState is now part of nodeInfo (as prevGateState)
+    ): void { // Return type void as internal state is managed within nodeInfo
+        if (!nodeInfo.toneAmplitudeEnvelope) {
+            console.warn('Tone.AmplitudeEnvelope not found in nodeInfo for EnvelopeNativeBlock', nodeInfo);
+            return;
+        }
+        const envelope = nodeInfo.toneAmplitudeEnvelope;
+        const context = Tone.getContext();
 
-        if (currentInputs) {
-            if (nodeInfo.definition.id === 'native-ad-envelope-v1') {
-                newInternalState = this._handleADEnvelopeLogic(currentInputs, newInternalState);
-            } else if (nodeInfo.definition.id === 'native-ar-envelope-v1') {
-                newInternalState = this._handleAREnvelopeLogic(currentInputs, newInternalState);
+        // Update envelope parameters (ADSR values, curves)
+        parameters.forEach(param => {
+            switch (param.id) {
+                case 'attack':
+                    envelope.attack = Number(param.currentValue) as Tone.Unit.Time; break;
+                case 'decay':
+                    envelope.decay = Number(param.currentValue) as Tone.Unit.Time; break;
+                case 'sustain':
+                    envelope.sustain = Number(param.currentValue) as Tone.Unit.NormalRange; break;
+                case 'release':
+                    envelope.release = Number(param.currentValue) as Tone.Unit.Time; break;
+                case 'attackCurve':
+                    envelope.attackCurve = param.currentValue as Tone.EnvelopeCurve; break;
+                // Add decayCurve, releaseCurve if implemented
             }
-        }
+        });
 
-        // Update the internal state in nodeInfo if it's being managed there
-        if (nodeInfo.internalState) {
-            nodeInfo.internalState = newInternalState;
-        }
+        // Handle gate input
+        if (currentInputs && typeof currentInputs.gate_in !== 'undefined') {
+            const gateInputVal = !!currentInputs.gate_in; // Ensure boolean
+            const now = context.currentTime;
 
-        // console.log(`EnvelopeNativeBlock.updateNodeParams called for ${nodeInfo.instanceId}. New state:`, newInternalState);
-        return newInternalState; // Return the updated internalState
+            if (gateInputVal === true && !nodeInfo.prevGateState) { // Gate rising edge
+                envelope.triggerAttack(now);
+            } else if (gateInputVal === false && nodeInfo.prevGateState) { // Gate falling edge
+                envelope.triggerRelease(now);
+            }
+            nodeInfo.prevGateState = gateInputVal; // Update previous gate state
+        }
     }
 
-    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
-        console.warn(`EnvelopeNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
+    dispose(nodeInfo: ManagedEnvelopeNodeInfo): void {
+        if (nodeInfo.toneAmplitudeEnvelope) {
+            nodeInfo.toneAmplitudeEnvelope.dispose();
+            console.log(`Disposed Tone.AmplitudeEnvelope node for instanceId: ${nodeInfo.instanceId}`);
+        }
     }
 
-    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
-        console.warn(`EnvelopeNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+    connect(_destination: Tone.ToneAudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
+        console.warn(`EnvelopeNativeBlock.connect called. Connections typically managed by AudioGraphConnectorService.`);
+    }
+
+    disconnect(_destination?: Tone.ToneAudioNode | AudioParam | number, _output?: number, _input?: number): void {
+        console.warn(`EnvelopeNativeBlock.disconnect called. Connections typically managed by AudioGraphConnectorService.`);
     }
 }

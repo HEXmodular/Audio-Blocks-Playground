@@ -44,105 +44,107 @@ export interface INativeNodeManager {
 export class NativeNodeManager implements INativeNodeManager {
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
     private blockHandlers: Map<string, CreatableNode>;
-    private audioContext: AudioContext | null;
+    // audioContext is no longer directly passed or stored here in the same way,
+    // as Tone.js manages its own context, accessible via Tone.getContext().
+    // We might still need to react to global AudioContext state changes from AudioContextService.
+    // private audioContext: AudioContext | null;
     private readonly onStateChangeForReRender: () => void;
 
     constructor(
-        audioContext: AudioContext | null,
+        _audioContext: AudioContext | null, // Kept for signature compatibility, but will use Tone.getContext()
         onStateChangeForReRender: () => void,
     ) {
-        this.audioContext = audioContext;
+        // this.audioContext = audioContext; // Not storing it directly
         this.onStateChangeForReRender = onStateChangeForReRender;
         this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
         this.blockHandlers = new Map<string, CreatableNode>();
-        if (this.audioContext) {
-            this.initializeBlockHandlers(this.audioContext);
-        }
+        // Initialize handlers without passing context, as they are now Tone.js based
+        // and will use Tone.getContext() or be context-agnostic.
+        this.initializeBlockHandlers();
     }
 
-    private initializeBlockHandlers(context: AudioContext): void {
-        this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock(context));
-        this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock(context));
-        this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock(context));
-        this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock(context));
-        this.blockHandlers.set(OscilloscopeNativeBlock.getDefinition().id, new OscilloscopeNativeBlock(context));
-        this.blockHandlers.set(EnvelopeNativeBlock.getADEnvelopeDefinition().id, new EnvelopeNativeBlock(context));
-        this.blockHandlers.set(EnvelopeNativeBlock.getAREnvelopeDefinition().id, new EnvelopeNativeBlock(context));
-        this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock(context));
-        this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock(context));
-        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock(context)); // Added handler
-        this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock(context)); // Added handler
-        this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock(context));
+    private initializeBlockHandlers(): void {
+        // Block constructors are now context-agnostic or use Tone.getContext()
+        this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
+        this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
+        this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
+        this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
+        this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
+        this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
+        this.blockHandlers.set(OscilloscopeNativeBlock.getDefinition().id, new OscilloscopeNativeBlock()); // Oscilloscope might still need context for AnalyserNode
+        // EnvelopeNativeBlock now has a single getDefinition method
+        this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
+        this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock()); // Assuming this will be refactored or is context-agnostic
+        this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock()); // Assuming this will be refactored
+        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
+        this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock()); // Lyria blocks might have their own context needs
+        this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
     }
 
-    // этот блок был добавлен недавно для исправление работы осцилоскопа, тут может быть дичь
+    // This method needs to be re-evaluated. Tone.js manages its own context.
+    // The primary concern is if the global Tone.context itself is reset or changes instance,
+    // which is not typical during a session.
+    // For now, we assume Tone.js context is stable once initialized by AudioContextService.
     public _setAudioContext(newContext: AudioContext | null): void {
-        const oldContext = this.audioContext;
-        if (oldContext !== newContext) {
-            if (this.managedNativeNodesRef.size > 0 && oldContext) { // Only remove if there was an old context
-                console.log("[NativeManager] AudioContext changed/nulled. Removing all existing managed native nodes that depended on the old context.", true);
-                this.removeAllManagedNativeNodes(); // This should ideally only remove nodes tied to the old context
-            }
-            this.audioContext = newContext;
-            if (this.audioContext) {
-                if (this.blockHandlers.size === 0) {
-                    this.initializeBlockHandlers(this.audioContext);
-                } else {
-                    for (const handler of this.blockHandlers.values()) {
-                        handler.setAudioContext(this.audioContext);
-                    }
-                }
-            } else {
-                // Context is null, ensure handlers know
-                for (const handler of this.blockHandlers.values()) {
-                    handler.setAudioContext(null);
-                }
-            }
-            this.onStateChangeForReRender(); // Initial re-render due to context change
+        const oldContextIsToneContext = Tone.getContext() && Tone.getContext().rawContext === this.getRawAudioContext();
 
-            // If new context is ready, try to initialize previously failed oscilloscopes
-            if (this.audioContext && this.audioContext.state === 'running') {
+        if (this.getRawAudioContext() !== newContext) { // Check if the raw context is different
+            if (this.managedNativeNodesRef.size > 0 && oldContextIsToneContext) {
+                console.warn("[NativeManager] AudioContext changed/nulled. Removing all existing managed Tone.js based nodes.", true);
+                this.removeAllManagedNativeNodes();
+            }
+
+            // If newContext is provided and different, it implies Tone.setContext(newContext) was called elsewhere.
+            // Or, if newContext is null, it implies Tone.context might be unusable.
+            // Block handlers generally don't need explicit context setting anymore.
+            // Oscilloscope might be an exception if it still uses a raw AnalyserNode.
+            if (newContext) {
+                if (this.blockHandlers.size === 0) {
+                    this.initializeBlockHandlers(); // Re-initialize if empty (e.g. first setup)
+                }
+                const oscilloscopeHandler = this.blockHandlers.get(OscilloscopeNativeBlock.getDefinition().id) as OscilloscopeNativeBlock | undefined;
+                oscilloscopeHandler?.setAudioContext(newContext); // Oscilloscope might still need this
+            } else {
+                 const oscilloscopeHandler = this.blockHandlers.get(OscilloscopeNativeBlock.getDefinition().id) as OscilloscopeNativeBlock | undefined;
+                oscilloscopeHandler?.setAudioContext(null);
+            }
+
+            this.onStateChangeForReRender();
+
+            if (newContext && newContext.state === 'running') {
                 console.log("[NativeManager] Audio context is now running. Checking for uninitialized Oscilloscope nodes.");
+                // ... (rest of oscilloscope re-initialization logic - may need adjustment)
+                // This logic for oscilloscope re-init is complex and might need a rethink
+                // if OscilloscopeNativeBlock is also fully refactored for Tone.js (e.g. using Tone.Analyser).
+                // For now, keeping it similar but acknowledging it's a special case.
                 for (const [instanceId, nodeInfo] of this.managedNativeNodesRef.entries()) {
                     if (nodeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nodeInfo.mainProcessingNode === null) {
-                        console.log(`[NativeManager] Attempting to initialize AnalyserNode for Oscilloscope instance '${instanceId}'.`);
+                        console.log(`[NativeManager] Attempting to re-initialize AnalyserNode for Oscilloscope instance '${instanceId}'.`);
                         const handler = this.blockHandlers.get(nodeInfo.definition.id) as OscilloscopeNativeBlock | undefined;
                         if (handler) {
-                            // Ensure handler has the current context (should be already set, but good practice)
-                            handler.setAudioContext(this.audioContext);
-
+                            handler.setAudioContext(newContext); // Ensure it has the new context
                             const paramsFromDefinition: BlockParameter[] = nodeInfo.definition.parameters.map(pDef => ({
                                 id: pDef.id,
                                 name: pDef.name,
                                 type: pDef.type,
-                                defaultValue: pDef.defaultValue, // Must include defaultValue
-                                currentValue: pDef.defaultValue, // Set currentValue from definition's default
-                                // Optional properties from BlockParameterBase / BlockParameterDefinition
+                                defaultValue: pDef.defaultValue,
+                                currentValue: pDef.defaultValue,
                                 options: pDef.options,
                                 min: pDef.min,
                                 max: pDef.max,
                                 step: pDef.step,
                                 description: pDef.description,
-                                steps: pDef.steps, // Assuming 'steps' might be part of your BlockParameterBase
-                                isFrequency: pDef.isFrequency, // Assuming 'isFrequency' might be part of BlockParameterBase
-                                // Properties like unit, isFilename, filenameFilter, runsAtAudioRate, canBeOverriddenByCv
-                                // were causing errors because they are not in the provided BlockParameterBase.
-                                // If they are needed, BlockParameterBase in common.ts must be updated.
-                                // For now, they are omitted to align with the provided interface.
+                                steps: pDef.steps,
+                                isFrequency: pDef.isFrequency,
                             }));
 
                             const newNodeInfo = handler.createNode(instanceId, nodeInfo.definition, paramsFromDefinition);
-                            if (newNodeInfo && newNodeInfo.mainProcessingNode) {
+                            if (newNodeInfo && (newNodeInfo.mainProcessingNode || newNodeInfo.toneAnalyser)) { // Check for Tone.Analyser if Oscilloscope is refactored
                                 this.managedNativeNodesRef.set(instanceId, newNodeInfo);
-                                console.log(`[NativeManager] Successfully initialized AnalyserNode for Oscilloscope instance '${instanceId}'.`);
-                                // Potentially need to re-apply current parameters if they differ from defaults
-                                // For now, this re-creation uses defaults.
-                                // this.updateManagedNativeNodeParams(instanceId, paramsFromDefinition); // Re-apply (default) params
-                                this.onStateChangeForReRender(); // Trigger UI update
+                                console.log(`[NativeManager] Successfully re-initialized Oscilloscope instance '${instanceId}'.`);
+                                this.onStateChangeForReRender();
                             } else {
-                                console.warn(`[NativeManager] Failed to initialize AnalyserNode for Oscilloscope instance '${instanceId}' even though context is ready.`);
+                                console.warn(`[NativeManager] Failed to re-initialize Oscilloscope instance '${instanceId}' even though context is ready.`);
                             }
                         } else {
                             console.warn(`[NativeManager] Could not find handler for Oscilloscope instance '${instanceId}' during re-initialization.`);
@@ -153,38 +155,55 @@ export class NativeNodeManager implements INativeNodeManager {
         }
     }
 
+
+    // Helper to get the raw AudioContext from Tone.js's context
+    private getRawAudioContext(): AudioContext | null {
+        if (Tone && Tone.getContext && Tone.getContext().rawContext) {
+            return Tone.getContext().rawContext;
+        }
+        return null;
+    }
+
     public async setupManagedNativeNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
         currentBpm: number = 120
     ): Promise<boolean> {
-        // Special handling for Oscilloscope: it can be "created" (handler instantiated) even if context is not running.
-        // The handler's createNode will return null nodes if context is not ready.
-        if (definition.id !== OscilloscopeNativeBlock.getDefinition().id) {
-            if (!this.audioContext || this.audioContext.state !== 'running') {
-                console.warn(`[NativeManager Setup] Cannot setup '${definition.name}' (ID: ${instanceId}): Audio system not ready.`);
-                return false;
+        const toneContext = Tone.getContext();
+        // Oscilloscope might be a special case if it still uses a raw AnalyserNode not managed by Tone.js context state in the same way.
+        // For most Tone.js nodes, they are created fine, but won't process audio until Tone.start() is called.
+        if (definition.id !== OscilloscopeNativeBlock.getDefinition().id) { // Assuming Oscilloscope might still need special context handling
+            if (!toneContext || toneContext.state !== 'running') {
+                console.warn(`[NativeManager Setup] Tone.js context not running. Node for '${definition.name}' (ID: ${instanceId}) will be created but may not process audio until context starts.`);
+                // We allow creation, as Tone.js nodes can be instantiated before context is 'running'.
+                // The actual audio processing will wait for Tone.start().
             }
         } else {
-            // For Oscilloscope, if context is not running, we still proceed but log it.
-            // The OscilloscopeNativeBlock itself will handle the null context.
-            if (!this.audioContext || this.audioContext.state !== 'running') {
-                console.warn(`[NativeManager Setup] Audio system not ready for Oscilloscope '${definition.name}' (ID: ${instanceId}). Node will be created without an AnalyserNode initially.`);
-            }
+             if (!toneContext || toneContext.state !== 'running') {
+                 console.warn(`[NativeManager Setup] Tone.js context not running for Oscilloscope '${definition.name}' (ID: ${instanceId}). AnalyserNode might not be available initially.`);
+             }
         }
 
         if (this.managedNativeNodesRef.has(instanceId)) {
-            console.warn(`[NativeManager Setup] Native node for ID '${instanceId}' already exists. Skipping.`, true);
+            console.warn(`[NativeManager Setup] Node for ID '${instanceId}' already exists. Skipping creation, but will ensure params are up-to-date.`);
+            // Still update params in case they changed while the node "didn't exist" from manager's perspective
+            this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
             return true;
         }
         try {
             const handler = this.blockHandlers.get(definition.id);
             if (handler) {
+                // Ensure handler's internal context (if any, like for Oscilloscope) is up-to-date
+                // For most Tone-based blocks, setAudioContext is a no-op or ensures Tone.getContext() is used.
+                handler.setAudioContext(this.getRawAudioContext());
+
                 const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
                 this.managedNativeNodesRef.set(instanceId, nodeInfo);
+                // updateManagedNativeNodeParams is often called inside createNode in the refactored blocks,
+                // but calling it here ensures consistency if some blocks don't.
                 this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
-                console.log(`[NativeManager Setup] Native node for '${definition.name}' (ID: ${instanceId}) created via handler.`);
+                console.log(`[NativeManager Setup] Tone.js based node for '${definition.name}' (ID: ${instanceId}) created/managed via handler.`);
                 this.onStateChangeForReRender();
                 return true;
             } else {
@@ -192,9 +211,9 @@ export class NativeNodeManager implements INativeNodeManager {
                 return false;
             }
         } catch (e) {
-            const errorMsg = `Failed to construct native node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
+            const errorMsg = `Failed to construct Tone.js based node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
             console.error(errorMsg, e);
-            console.log(errorMsg, true);
+            // console.log(errorMsg, true); // Avoid duplicate logging if error is rethrown by callee
             return false;
         }
     }
@@ -205,102 +224,101 @@ export class NativeNodeManager implements INativeNodeManager {
         currentInputs?: Record<string, any>,
         currentBpm: number = 120
     ): void {
-        if (!this.audioContext || this.audioContext.state !== 'running') return;
+        const toneContext = Tone.getContext();
+        if (!toneContext || toneContext.state !== 'running') {
+            // Allow param updates even if context is not 'running', as Tone.js nodes store these values.
+            // console.warn(`[NativeManager Update] Tone.js context not 'running'. Parameter updates for '${instanceId}' will be applied but might not take effect immediately.`);
+        }
         const info = this.managedNativeNodesRef.get(instanceId);
-        if (!info) return;
-        const handler = this.blockHandlers.get(info.definition.id);
-        if (handler) {
-            handler.updateNodeParams(info, parameters, currentInputs, currentBpm);
+        if (!info) {
+            // console.warn(`[NativeManager Update] No node info found for ID '${instanceId}'.`);
             return;
         }
-        console.warn(`[NativeManager Update] No handler found for definition ID '${info.definition.id}'. Update failed.`);
-    }
-
-    public triggerNativeNodeEnvelope(instanceId: string, attackTime: number, decayTime: number, peakLevel: number): void {
-        if (!this.audioContext || this.audioContext.state !== 'running') return;
-        const info = this.managedNativeNodesRef.get(instanceId);
-        if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
-        const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
-        const now = this.audioContext.currentTime;
-        constSourceNode.offset.cancelScheduledValues(now);
-        constSourceNode.offset.setValueAtTime(0, now);
-        constSourceNode.offset.linearRampToValueAtTime(peakLevel, now + attackTime);
-        constSourceNode.offset.linearRampToValueAtTime(0, now + attackTime + decayTime);
-    }
-
-    public triggerNativeNodeAttackHold(instanceId: string, attackTime: number, sustainLevel: number): void {
-        if (!this.audioContext || this.audioContext.state !== 'running') return;
-        const info = this.managedNativeNodesRef.get(instanceId);
-        if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
-        const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
-        const now = this.audioContext.currentTime;
-        constSourceNode.offset.cancelScheduledValues(now);
-        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now);
-        constSourceNode.offset.linearRampToValueAtTime(sustainLevel, now + attackTime);
-    }
-
-    public triggerNativeNodeRelease(instanceId: string, releaseTime: number): void {
-        if (!this.audioContext || this.audioContext.state !== 'running') return;
-        const info = this.managedNativeNodesRef.get(instanceId);
-        if (!info || !info.mainProcessingNode || !(info.mainProcessingNode instanceof ConstantSourceNode)) return;
-        const constSourceNode = info.mainProcessingNode as ConstantSourceNode;
-        const now = this.audioContext.currentTime;
-        constSourceNode.offset.cancelScheduledValues(now);
-        constSourceNode.offset.setValueAtTime(constSourceNode.offset.value, now);
-        constSourceNode.offset.linearRampToValueAtTime(0, now + releaseTime);
-    }
-
-    public removeManagedNativeNode(instanceId: string): void {
-        const info = this.managedNativeNodesRef.get(instanceId);
-        if (info) {
-            try {
-                if (info.nodeForOutputConnections) {
-                    info.nodeForOutputConnections.disconnect();
-                }
-                if (info.mainProcessingNode && info.mainProcessingNode !== info.nodeForOutputConnections && info.mainProcessingNode !== info.nodeForInputConnections) {
-                    info.mainProcessingNode.disconnect();
-                    if (info.mainProcessingNode instanceof OscillatorNode || info.mainProcessingNode instanceof ConstantSourceNode) {
-                        try { (info.mainProcessingNode as OscillatorNode | ConstantSourceNode).stop(); } catch (e) { /* already stopped */ }
-                    }
-                }
-                if (info.nodeForInputConnections && info.nodeForInputConnections !== info.nodeForOutputConnections && info.nodeForInputConnections !== info.mainProcessingNode) {
-                    info.nodeForInputConnections.disconnect();
-                }
-                if (info.internalGainNode) info.internalGainNode.disconnect();
-                if (info.allpassInternalNodes) Object.values(info.allpassInternalNodes).forEach(node => node.disconnect());
-                if (info.constantSourceValueNode) {
-                    info.constantSourceValueNode.disconnect();
-                    try { info.constantSourceValueNode.stop(); } catch (e) { /* already stopped */ }
-                }
-            } catch (e) {
-                console.log(`[NativeManager Remove] Error disconnecting native node for '${instanceId}': ${(e as Error).message}`, true);
-            }
-            this.managedNativeNodesRef.delete(instanceId);
-            console.log(`[NativeManager Remove] Removed native node for instance '${instanceId}'.`, true);
-            this.onStateChangeForReRender();
+        const handler = this.blockHandlers.get(info.definition.id);
+        if (handler) {
+            // Ensure handler context is set, especially for blocks like Oscilloscope
+            handler.setAudioContext(this.getRawAudioContext());
+            handler.updateNodeParams(info, parameters, currentInputs, currentBpm);
+        } else {
+            console.warn(`[NativeManager Update] No handler found for definition ID '${info.definition.id}'. Update failed for '${instanceId}'.`);
         }
     }
 
+    // Obsolete envelope trigger methods - remove them
+    // public triggerNativeNodeEnvelope(...)
+    // public triggerNativeNodeAttackHold(...)
+    // public triggerNativeNodeRelease(...)
+
+    public removeManagedNativeNode(instanceId: string): void {
+        const nodeInfo = this.managedNativeNodesRef.get(instanceId);
+        if (nodeInfo) {
+            const handler = this.blockHandlers.get(nodeInfo.definition.id);
+            if (handler && typeof (handler as any).dispose === 'function') {
+                try {
+                    (handler as any).dispose(nodeInfo); // Call dispose on the handler, passing nodeInfo
+                    console.log(`[NativeManager Remove] Disposed node for instance '${instanceId}' via handler.`);
+                } catch (e) {
+                    console.error(`[NativeManager Remove] Error disposing node for '${instanceId}' via handler: ${(e as Error).message}`, e);
+                }
+            } else {
+                // Fallback for nodes that might not have a handler or specific dispose on handler (should not happen for refactored blocks)
+                console.warn(`[NativeManager Remove] No handler with dispose method found for '${instanceId}'. Manually attempting to dispose contained Tone.js nodes.`);
+                // Attempt to dispose known Tone.js objects if they exist directly on nodeInfo
+                const knownToneFields = ['toneOscillator', 'toneGain', 'toneFilter', 'toneFeedbackDelay', 'toneAmplitudeEnvelope', 'toneAnalyser'];
+                for (const field of knownToneFields) {
+                    if ((nodeInfo as any)[field] && typeof (nodeInfo as any)[field].dispose === 'function') {
+                        try {
+                            (nodeInfo as any)[field].dispose();
+                            console.log(`[NativeManager Remove] Fallback: Disposed ${field} for instance '${instanceId}'.`);
+                        } catch (e) {
+                             console.error(`[NativeManager Remove] Fallback: Error disposing ${field} for '${instanceId}': ${(e as Error).message}`);
+                        }
+                    }
+                }
+                 // Also disconnect nodeForOutputConnections and nodeForInputConnections if they are Tone.js nodes
+                if (nodeInfo.nodeForOutputConnections && typeof (nodeInfo.nodeForOutputConnections as any).disconnect === 'function') {
+                    try { (nodeInfo.nodeForOutputConnections as any).disconnect(); } catch(e) {/*ignore*/}
+                }
+                if (nodeInfo.nodeForInputConnections && typeof (nodeInfo.nodeForInputConnections as any).disconnect === 'function') {
+                   try { (nodeInfo.nodeForInputConnections as any).disconnect(); } catch(e) {/*ignore*/}
+                }
+            }
+            this.managedNativeNodesRef.delete(instanceId);
+            this.onStateChangeForReRender();
+        } else {
+            // console.warn(`[NativeManager Remove] No node info found for ID '${instanceId}'. Nothing to remove.`);
+        }
+    }
+
+
     public removeAllManagedNativeNodes(): void {
-        this.managedNativeNodesRef.forEach((_, instanceId) => {
+        // Create a list of instance IDs to remove to avoid issues with modifying the map while iterating
+        const instanceIdsToRemove = Array.from(this.managedNativeNodesRef.keys());
+        instanceIdsToRemove.forEach(instanceId => {
             this.removeManagedNativeNode(instanceId);
         });
-        console.log("[NativeManager] All managed native nodes removed.", true);
+        console.log("[NativeManager] All managed native (Tone.js based) nodes removed attempt completed.", true);
     }
 
     public getAnalyserNodeForInstance = (instanceId: string): AnalyserNode | null => {
-        const nativeInfo = this.managedNativeNodesRef.get(instanceId);
-
-        if (!this?.managedNativeNodesRef) {
-            return null;
-        }
-        if (nativeInfo && nativeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id && nativeInfo.mainProcessingNode instanceof AnalyserNode) {
-            return nativeInfo.mainProcessingNode;
+        const nodeInfo = this.managedNativeNodesRef.get(instanceId);
+        // This needs to be updated if OscilloscopeNativeBlock is refactored to use Tone.Analyser
+        if (nodeInfo && nodeInfo.definition.id === OscilloscopeNativeBlock.getDefinition().id) {
+            if (nodeInfo.mainProcessingNode instanceof AnalyserNode) { // Legacy check
+                return nodeInfo.mainProcessingNode;
+            }
+            if ((nodeInfo as any).toneAnalyser && (nodeInfo as any).toneAnalyser instanceof Tone.Analyser) {
+                // If Oscilloscope uses Tone.Analyser, this method might need to return Tone.Analyser or adapt.
+                // For now, assuming it might still expose a raw AnalyserNode if that's how it's implemented.
+                // Or, this method becomes less relevant if UI consumes Tone.Analyser directly.
+                console.warn("[NativeManager] getAnalyserNodeForInstance: Oscilloscope seems to use Tone.Analyser. Returning null for raw AnalyserNode.");
+                return null;
+            }
         }
         return null;
     }
 
-    public getManagedNodesMap(): Map<string, ManagedNativeNodeInfo> {
+     public getManagedNodesMap(): Map<string, ManagedNativeNodeInfo> {
         return this.managedNativeNodesRef;
     }
 

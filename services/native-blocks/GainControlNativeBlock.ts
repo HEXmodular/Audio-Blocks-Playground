@@ -1,38 +1,45 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
+import * as Tone from 'tone';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
 import { CreatableNode } from './CreatableNode';
 import { createParameterDefinitions } from '@constants/constants';
-// import GainCompactRenderer from './renderers/GainCompactRenderer'; // Removed
+
+// Define a more specific type for the managed node info
+export interface ManagedGainNodeInfo extends OriginalManagedNativeNodeInfo {
+  toneGain?: Tone.Gain;
+}
 
 export class GainControlNativeBlock implements CreatableNode {
-    private context: AudioContext | null;
+    // Context is assumed to be managed globally by AudioContextService
+    // private context: Tone.Context | null = null; // Not storing context
 
     public static getDefinition(): BlockDefinition {
       return {
-        id: 'native-gain-v1',
-        name: 'Gain Control (Native)',
-        description: 'A native Web Audio API GainNode. Controls signal amplitude. Audio path is managed by Web Audio graph connections.',
+        id: 'tone-gain-v1', // Changed ID
+        name: 'Gain Control (Tone)', // Changed name
+        description: 'A Tone.Gain node. Controls signal amplitude.',
         runsAtAudioRate: true,
         inputs: [
-          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to native GainNode input in Web Audio graph.' },
-          { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain AudioParam directly in Web Audio graph.', audioParamTarget: 'gain' }
+          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Gain input.' },
+          { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain (Tone.Param).', audioParamTarget: 'gain' }
         ],
         outputs: [
-          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from native GainNode in Web Audio graph.' }
+          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.Gain.' }
         ],
         parameters: createParameterDefinitions([
-          { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (AudioParam).' }
+          // Tone.Gain's gain is a linear value. The existing range 0-2 is fine.
+          { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (linear gain).' }
         ]),
-        logicCode: "", // Ensure this is an empty string
-        compactRendererId: 'gain',
+        logicCode: "",
+        compactRendererId: 'gain', // Assuming a generic renderer can be adapted
       };
     }
 
-    constructor(context: AudioContext | null) {
-        this.context = context;
+    constructor() {
+        // Global Tone.context is assumed.
     }
 
-    setAudioContext(context: AudioContext | null): void {
-        this.context = context;
+    setAudioContext(_context: Tone.Context | null): void {
+        // This method may not be strictly necessary if relying on global Tone.context
     }
 
     createNode(
@@ -40,47 +47,75 @@ export class GainControlNativeBlock implements CreatableNode {
         definition: BlockDefinition,
         initialParams: BlockParameter[],
         _currentBpm?: number
-    ): ManagedNativeNodeInfo {
-        if (!this.context) throw new Error("AudioContext not initialized for GainControlNativeBlock");
-        const gainNode = this.context.createGain();
+    ): ManagedGainNodeInfo {
+        if (Tone.getContext().state !== 'running') {
+            console.warn('Tone.js context is not running. Gain node may not function correctly until context is started.');
+        }
 
-        const gainParam = initialParams.find(p => p.id === 'gain');
-        gainNode.gain.value = gainParam ? Number(gainParam.currentValue) : 1;
+        const toneGain = new Tone.Gain();
 
-        const paramTargetsForCv = new Map<string, AudioParam>();
-        paramTargetsForCv.set('gain', gainNode.gain);
+        // Apply initial parameters
+        this.updateNodeParams(
+            {
+                definition,
+                instanceId,
+                toneGain,
+                nodeForInputConnections: toneGain, // Input connects to the gain node itself
+                nodeForOutputConnections: toneGain, // Output is from the gain node itself
+                paramTargetsForCv: new Map<string, Tone.Param<"gain">>([['gain', toneGain.gain]]),
+                 // Deprecated/unused from OriginalManagedNativeNodeInfo:
+                node: undefined,
+                mainProcessingNode: undefined,
+            } as ManagedGainNodeInfo, // Type assertion
+            initialParams
+        );
 
         return {
-            node: gainNode,
-            nodeForInputConnections: gainNode,
-            nodeForOutputConnections: gainNode,
-            mainProcessingNode: gainNode,
-            paramTargetsForCv,
+            toneGain,
+            // For compatibility with graph connection logic
+            nodeForInputConnections: toneGain,
+            nodeForOutputConnections: toneGain,
+            paramTargetsForCv: new Map<string, Tone.Param<"gain">>([['gain', toneGain.gain]]),
             definition,
             instanceId,
+            node: undefined, // No direct equivalent to the old 'node'
+            mainProcessingNode: undefined, // No direct equivalent
         };
     }
 
     updateNodeParams(
-        nodeInfo: ManagedNativeNodeInfo,
+        nodeInfo: ManagedGainNodeInfo,
         parameters: BlockParameter[],
-        _currentInputs?: Record<string, any>,
+        _currentInputs?: Record<string, any>, // CV inputs are handled by direct connection
         _currentBpm?: number
     ): void {
-        if (!this.context || !(nodeInfo.mainProcessingNode instanceof GainNode)) return;
-        const gainNode = nodeInfo.mainProcessingNode;
+        if (!nodeInfo.toneGain) {
+            console.warn('Tone.Gain node not found in nodeInfo for GainControlNativeBlock', nodeInfo);
+            return;
+        }
+        const toneGain = nodeInfo.toneGain;
+        const context = Tone.getContext();
 
         const gainParam = parameters.find(p => p.id === 'gain');
-        if (gainParam && gainNode.gain) {
-            gainNode.gain.setTargetAtTime(Number(gainParam.currentValue), this.context.currentTime, 0.01);
+        if (gainParam && toneGain.gain) {
+            const targetGain = Number(gainParam.currentValue);
+            // toneGain.gain.value = targetGain; // Immediate change
+            toneGain.gain.setTargetAtTime(targetGain, context.currentTime, 0.01);
         }
     }
 
-    connect(_destination: AudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
-        console.warn(`GainControlNativeBlock.connect called directly on instance. This should be handled by AudioGraphConnectorService.`);
+    dispose(nodeInfo: ManagedGainNodeInfo): void {
+        if (nodeInfo.toneGain) {
+            nodeInfo.toneGain.dispose();
+            console.log(`Disposed Tone.Gain node for instanceId: ${nodeInfo.instanceId}`);
+        }
     }
 
-    disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
-        console.warn(`GainControlNativeBlock.disconnect called directly on instance. This should be handled by AudioGraphConnectorService or by the manager's removeManagedNativeNode.`);
+    connect(_destination: Tone.ToneAudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
+        console.warn(`GainControlNativeBlock.connect called. Connections typically managed by AudioGraphConnectorService.`);
+    }
+
+    disconnect(_destination?: Tone.ToneAudioNode | AudioParam | number, _output?: number, _input?: number): void {
+        console.warn(`GainControlNativeBlock.disconnect called. Connections typically managed by AudioGraphConnectorService.`);
     }
 }
