@@ -6,6 +6,7 @@ import type { WeightedPrompt as GenAIWeightedPrompt, LiveMusicGenerationConfig a
 // However, the error messages imply @google/genai/dist/genai.Scale is a concrete type. So trying to re-export it.
 import { Scale as GenAIScale } from '@google/genai'; // Attempting to import as a value/enum.
 import { LiveMusicService } from '@services/LiveMusicService'; // Ensure this is the actual class
+import * as Tone from 'tone'; // Added Tone import
 
 // Re-export for easier usage within the app if needed directly
 export type WeightedPrompt = GenAIWeightedPrompt;
@@ -225,17 +226,26 @@ export interface AllpassInternalNodes {
 }
 
 export interface ManagedNativeNodeInfo {
-    node: AudioNode | null;
-    nodeForInputConnections: AudioNode | null;
-    nodeForOutputConnections: AudioNode | null;
-    mainProcessingNode?: AudioNode | null;
-    internalGainNode?: GainNode;
-    allpassInternalNodes?: AllpassInternalNodes | null;
-    paramTargetsForCv?: Map<string, AudioParam>;
+    node: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null; // Broader type for node
+    nodeForInputConnections: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
+    nodeForOutputConnections: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
+    mainProcessingNode?: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null; // Broader type
+    internalGainNode?: GainNode | Tone.Gain; // Can be native or Tone.Gain
+    allpassInternalNodes?: AllpassInternalNodes | null; // This would also need Tone.js types if Allpass refactored
+    paramTargetsForCv?: Map<string, AudioParam | Tone.Param | Tone.Signal<any>>; // Broader type
     definition: BlockDefinition;
     instanceId: string;
-    constantSourceValueNode?: ConstantSourceNode;
-    internalState?: any; // Added internalState
+    constantSourceValueNode?: ConstantSourceNode; // Likely to be replaced if block using it is refactored
+    internalState?: any;
+
+    // Add specific Tone.js node references, used by refactored blocks
+    toneOscillator?: Tone.Oscillator;
+    toneGain?: Tone.Gain;
+    toneFilter?: Tone.Filter;
+    toneFeedbackDelay?: Tone.FeedbackDelay;
+    toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
+    toneAnalyser?: Tone.Analyser;
+    // Add other specific Tone.js node types as needed by other blocks
 }
 
 export interface ManagedLyriaServiceInfo {

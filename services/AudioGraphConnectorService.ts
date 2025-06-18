@@ -5,10 +5,6 @@
  * It maintains a record of active connections and intelligently updates them, only making necessary changes to reflect the current graph structure provided by the application.
  * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
  */
-import {
-    Connection,
-    BlockInstance,
-    BlockDefinition,
 import * as Tone from 'tone'; // Import Tone
 import {
     Connection,

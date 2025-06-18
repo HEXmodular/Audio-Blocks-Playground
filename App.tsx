@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import * as Tone from 'tone'; // Added Tone import
 import { BlockInstance, Connection, PendingConnection, BlockDefinition } from '@interfaces/common';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
@@ -17,7 +18,7 @@ import BlockDetailPanel from '@components/BlockDetailPanel';
 
 // import { useBlockState } from '@context/BlockStateContext'; // Removed
 import { BlockStateManager } from './state/BlockStateManager'; // Added
-import { audioEngineService } from '@services/AudioEngineService';
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
 import { ConnectionDragHandler } from '@utils/ConnectionDragHandler';
 import { ConnectionState } from '@services/ConnectionState';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
@@ -54,7 +55,7 @@ const App: React.FC = () => {
 
 
   const globalAudioStateSyncer = useMemo(() => {
-    return new GlobalAudioStateSyncer(audioEngineService);
+    return new GlobalAudioStateSyncer(AudioEngineServiceInstance);
   }, []);
 
   const [syncedGlobalAudioState, setSyncedGlobalAudioState] = useState<GlobalAudioState>(globalAudioStateSyncer.currentState);
@@ -113,7 +114,7 @@ const App: React.FC = () => {
     if (!ctxBlockStateManager || !connectionState) return null;
     return new BlockInstanceController(
       ctxBlockStateManager,
-      audioEngineService,
+      AudioEngineServiceInstance,
       connectionState,
       setSelectedInstanceId,
       () => globalBpm,
@@ -158,19 +159,20 @@ const App: React.FC = () => {
 
   const audioNodeManager = useMemo(() => {
     if (!ctxBlockStateManager || !ctxGetDefinitionById) return null;
-    return new AudioNodeManager(audioEngineService, ctxBlockStateManager, ctxGetDefinitionById);
+    return new AudioNodeManager(AudioEngineServiceInstance, ctxBlockStateManager, ctxGetDefinitionById);
   }, [ctxBlockStateManager, ctxGetDefinitionById]);
 
   useEffect(() => {
-    if (!audioNodeManager || !audioEngineService.audioContext) return;
+    // Use Tone.getContext() for checks related to audio context readiness
+    if (!audioNodeManager || !Tone.getContext()) return;
     const setupNodes = async () => {
       try {
         await audioNodeManager.processAudioNodeSetupAndTeardown(
           appBlockInstances, // Use new state
           globalBpm,
           syncedGlobalAudioState.isAudioGloballyEnabled,
-          audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
-          audioEngineService.audioContext
+          AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady,
+          Tone.getContext().rawContext instanceof AudioContext ? Tone.getContext().rawContext : null
         );
       } catch (error) {
         console.error("Error during processAudioNodeSetupAndTeardown:", error);
@@ -183,8 +185,8 @@ const App: React.FC = () => {
     // appBlockInstances, // Use new state
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
-    audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
-    audioEngineService.audioContext,
+    AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady, // Assuming audioWorkletManager is a property
+    AudioEngineServiceInstance.context, // Assuming AudioEngineService stores the Tone.Context as 'context'
   ]);
 
   // useEffect(() => {
@@ -201,10 +203,10 @@ const App: React.FC = () => {
   // },[syncedGlobalAudioState.isAudioGloballyEnabled])
   // useEffect(() => {
   //   console.log("syncedGlobalAudioState.isAudioGloballyEnabled changed");
-  // },[audioEngineService.audioWorkletManager.isAudioWorkletSystemReady])
+  // },[AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady]) // Assuming audioWorkletManager is a property
   // useEffect(() => {
   //   console.log("audioEngineService.audioContext changed");
-  // },[audioEngineService.audioContext])
+  // },[AudioEngineServiceInstance.context]) // Assuming AudioEngineService stores the Tone.Context as 'context'
 
   useEffect(() => {
     if (!audioNodeManager) return;
@@ -252,7 +254,8 @@ const App: React.FC = () => {
     return appBlockInstances.find(b => b?.instanceId === selectedInstanceId) || null;
   }, [appBlockInstances, selectedInstanceId]); // Use new state
 
-  if (!syncedGlobalAudioState.audioContextState && audioEngineService.audioContext === null) {
+  // Check based on Tone.getContext()
+  if (!syncedGlobalAudioState.audioContextState && !Tone.getContext()) {
     return (
       <div className="flex flex-col h-screen bg-gray-900 text-gray-100 items-center justify-center">
         Loading Audio Engine...
@@ -271,14 +274,14 @@ const App: React.FC = () => {
         onAddBlockFromDefinition={blockInstanceController?.addBlockFromDefinition!}
         onToggleGeminiPanel={() => setIsGeminiPanelOpen(!isGeminiPanelOpen)}
         isGeminiPanelOpen={isGeminiPanelOpen}
-        onToggleGlobalAudio={audioEngineService.toggleGlobalAudio}
+        onToggleGlobalAudio={AudioEngineServiceInstance.toggleGlobalAudio} // Assuming this method exists
         isAudioGloballyEnabled={syncedGlobalAudioState.isAudioGloballyEnabled}
         onToggleTestRunner={() => setIsTestRunnerOpen(!isTestRunnerOpen)}
         // coreDefinitionIds={coreDefinitionIds} // Removed prop
         availableOutputDevices={syncedGlobalAudioState.availableOutputDevices}
         onSetOutputDevice={async (sinkId: string): Promise<boolean> => {
           try {
-            await audioEngineService.setOutputDevice(sinkId);
+            await AudioEngineServiceInstance.setOutputDevice(sinkId); // Assuming this method exists
             return true;
           } catch (error) {
             console.error("Failed to set output device from Toolbar:", error);
@@ -291,7 +294,7 @@ const App: React.FC = () => {
         connections={connections}
         globalBpm={globalBpm}
         selectedSinkId={syncedGlobalAudioState.selectedSinkId || ""}
-        audioEngineService={audioEngineService}
+        audioEngineService={AudioEngineServiceInstance}
         ctxBlockStateManager={ctxBlockStateManager}
         connectionState={connectionState}
         setGlobalBpm={setGlobalBpm}

@@ -7,7 +7,7 @@
  */
 import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common';
 import { BlockStateManager } from '@state/BlockStateManager';
-import { audioEngineService } from '@services/AudioEngineService'; // Use the singleton
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import, use the singleton
 import { LogicExecutionService } from '@services/LogicExecutionService'; // Corrected path
 
 export class LogicExecutionEngineManager {
@@ -20,7 +20,7 @@ export class LogicExecutionEngineManager {
     this.logicExecutionService = new LogicExecutionService(
       blockStateManager,
       getDefinitionForBlock,
-      audioEngineService // Pass audioEngineService here
+      AudioEngineServiceInstance // Pass AudioEngineServiceInstance here
     );
   }
 
@@ -36,12 +36,12 @@ export class LogicExecutionEngineManager {
       connections,
       globalBpm,
       isAudioGloballyEnabled,
-      audioEngineService
+      AudioEngineServiceInstance
     );
 
     // Manage processing loop based on current audio state
     // This logic is derived from the original useLogicExecutionEngine's useEffect
-    if (isAudioGloballyEnabled && audioEngineService) { // Check audioEngineService
+    if (isAudioGloballyEnabled && AudioEngineServiceInstance) { // Check AudioEngineServiceInstance
       this.logicExecutionService.startProcessingLoop();
     } else {
       this.logicExecutionService.stopProcessingLoop();

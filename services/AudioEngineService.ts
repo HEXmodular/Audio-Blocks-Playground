@@ -1,15 +1,45 @@
 import * as Tone from 'tone';
 import AudioContextService from './AudioContextService';
+import { NativeNodeManager, INativeNodeManager } from './NativeNodeManager';
+import { AudioWorkletManager, IAudioWorkletManager } from './AudioWorkletManager';
+import { LyriaServiceManager, ILyriaServiceManager } from './LyriaServiceManager';
+import { AudioGraphConnectorService } from './AudioGraphConnectorService';
+import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioDevice, AudioEngineState, OutputDevice } from '@interfaces/common';
+
+// Callback for NativeNodeManager to signal UI re-render if necessary
+const onStateChangeForReRender = () => {
+  // This function would typically be connected to a state management system (e.g., Zustand, Redux)
+  // or directly call a React state updater if AudioEngineService were a hook or context.
+  // For now, it's a placeholder.
+  // console.log("NativeNodeManager requested a re-render.");
+};
 
 class AudioEngineService {
   private static instance: AudioEngineService;
-  private context: Tone.Context | null = null;
+  public context: Tone.Context | null = null; // Made public for easier access by other services if needed
   private masterVolume: Tone.Volume | null = null;
-  // Example instrument - can be expanded to manage multiple instruments
-  private synth: Tone.Synth | null = null;
+  private synth: Tone.Synth | null = null; // Example synth
+
+  // Managers - Made public for now, consider getters if more controlled access is needed
+  public nativeNodeManager: INativeNodeManager;
+  public audioWorkletManager: IAudioWorkletManager;
+  public lyriaServiceManager: ILyriaServiceManager;
+  private audioGraphConnectorService: AudioGraphConnectorService;
+
+  // State properties
+  public isAudioGloballyEnabled: boolean = false;
+  public availableOutputDevices: OutputDevice[] = []; // Changed type to OutputDevice[]
+  public selectedSinkId: string | null = 'default'; // Default to 'default'
+  private _audioEngineStateSubscribers: Array<(state: AudioEngineState) => void> = [];
+
 
   private constructor() {
-    // Private constructor
+    // Initialize managers
+    this.nativeNodeManager = new NativeNodeManager(null, onStateChangeForReRender);
+    this.audioWorkletManager = new AudioWorkletManager(null, onStateChangeForReRender); // Added onStateChangeForReRender
+    this.lyriaServiceManager = new LyriaServiceManager(onStateChangeForReRender, null, null); // Pass onStateChangeForReRender and nulls
+    this.audioGraphConnectorService = new AudioGraphConnectorService();
+    this.queryOutputDevices();
   }
 
   public static getInstance(): AudioEngineService {
@@ -21,29 +51,187 @@ class AudioEngineService {
 
   public async initialize(): Promise<void> {
     try {
-      this.context = await AudioContextService.getAudioContext();
+      this.context = await AudioContextService.getAudioContext(); // Ensures Tone.start() is called
+      if (!this.context) {
+        throw new Error("Failed to get Tone.Context from AudioContextService.");
+      }
+      Tone.setContext(this.context); // Ensure all Tone.js components use this context
 
-      // Ensure Tone.Transport is ready. Tone.start() in AudioContextService should handle this.
-      // Accessing it via Tone.getTransport() is standard.
+      const rawCtx = this.context.rawContext instanceof AudioContext ? this.context.rawContext : null;
+      if (!rawCtx && this.context.rawContext) { // If rawContext exists but is not AudioContext (i.e. OfflineAudioContext)
+          console.warn("AudioEngineService: rawContext is OfflineAudioContext, passing null to managers expecting AudioContext.");
+      }
+      this.nativeNodeManager._setAudioContext?.(rawCtx);
+      this.audioWorkletManager.setAudioContext(rawCtx);
+      this.lyriaServiceManager.setAudioContext(this.context); // LyriaServiceManager's setAudioContext can handle Tone.Context or raw
+
       if (!Tone.getTransport()) {
-        // This case should ideally not be reached if AudioContextService.initializeAudioContext was successful
         console.error('Tone.Transport is not available after context initialization.');
         throw new Error('Failed to initialize Tone.Transport.');
       }
 
-      // Setup master volume
-      this.masterVolume = new Tone.Volume(0).toDestination(); // Default volume to 0 (normal)
-
-      // Setup a default synth
+      this.masterVolume = new Tone.Volume(0).connect(Tone.getDestination());
       this.synth = new Tone.Synth().connect(this.masterVolume);
+      this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
 
-      console.log('AudioEngineService initialized successfully.');
+      console.log('AudioEngineService initialized successfully with Tone.js context.');
+      this.publishAudioEngineState();
     } catch (error) {
       console.error('Error initializing AudioEngineService:', error);
-      // Propagate the error to allow the application to handle it, e.g., by showing a UI message.
+      this.isAudioGloballyEnabled = false;
+      this.publishAudioEngineState();
       throw error;
     }
   }
+
+  // --- State Management and Subscription ---
+  public get audioEngineState(): AudioEngineState {
+    return {
+      isAudioGloballyEnabled: this.isAudioGloballyEnabled,
+      audioInitializationError: null, // TODO: Populate this if/when an error occurs
+      availableOutputDevices: this.availableOutputDevices,
+      selectedSinkId: this.selectedSinkId,
+      audioContextState: this.context?.state ?? null,
+      sampleRate: this.context?.sampleRate ?? null,
+      isWorkletSystemReady: this.audioWorkletManager.isAudioWorkletSystemReady,
+    };
+  }
+
+  public subscribe(listener: (state: AudioEngineState) => void): () => void {
+    this._audioEngineStateSubscribers.push(listener);
+    listener(this.audioEngineState); // Immediately notify with current state
+    return () => {
+      this._audioEngineStateSubscribers = this._audioEngineStateSubscribers.filter(l => l !== listener);
+    };
+  }
+
+  private publishAudioEngineState(): void {
+    const state = this.audioEngineState;
+    this._audioEngineStateSubscribers.forEach(listener => listener(state));
+  }
+
+  // --- Method Implementations (selected) ---
+  public async toggleGlobalAudio(): Promise<void> {
+    if (!this.context) {
+      await this.initialize(); // Initialize if not already
+      if (!this.context) { // Still no context after init attempt
+        console.error("Cannot toggle audio: AudioContext not available.");
+        this.isAudioGloballyEnabled = false;
+        this.publishAudioEngineState();
+        return;
+      }
+    }
+
+    if (this.context.state === 'suspended') {
+      await this.context.resume();
+    }
+
+    this.isAudioGloballyEnabled = !this.isAudioGloballyEnabled;
+    if (this.isAudioGloballyEnabled) {
+      // Potentially unmute master output if it was muted when disabled
+      if (this.masterVolume) this.masterVolume.mute = false; // Or restore previous volume
+      console.log("Audio globally enabled.");
+    } else {
+      // Potentially mute master output
+      if (this.masterVolume) this.masterVolume.mute = true;
+      console.log("Audio globally disabled.");
+      // Consider stopping transport, etc.
+      this.stopTransport();
+    }
+    this.publishAudioEngineState();
+  }
+
+  public async setOutputDevice(sinkId: string): Promise<void> {
+    if (this.context && (this.context.rawContext as any).setSinkId) {
+      try {
+        await (this.context.rawContext as any).setSinkId(sinkId);
+        this.selectedSinkId = sinkId;
+        console.log(`Audio output device set to: ${sinkId}`);
+      } catch (error) {
+        console.error(`Error setting audio output device: ${sinkId}`, error);
+        throw error;
+      }
+    } else {
+      console.warn('setSinkId is not supported by this browser or context.');
+      throw new Error('setSinkId not supported.');
+    }
+    this.publishAudioEngineState();
+  }
+
+  private async queryOutputDevices(): Promise<void> {
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.availableOutputDevices = devices.filter(
+                (device): device is OutputDevice => device.kind === 'audiooutput'
+            );
+            if (!this.selectedSinkId && this.availableOutputDevices.length > 0) {
+                // If no sinkId is selected, and we have devices, select the default one.
+                // Or, if current selectedSinkId is not in the new list, reset to default.
+                const defaultDevice = this.availableOutputDevices.find(d => d.deviceId === 'default');
+                this.selectedSinkId = defaultDevice ? 'default' : (this.availableOutputDevices[0]?.deviceId || null);
+            }
+             this.publishAudioEngineState();
+        } catch (error) {
+            console.error("Error enumerating audio devices:", error);
+        }
+    }
+  }
+
+  public removeAllManagedNodes(): void {
+    this.nativeNodeManager.removeAllManagedNativeNodes();
+    this.audioWorkletManager.removeAllManagedAudioWorkletNodes();
+    // Lyria services might need similar cleanup
+    this.lyriaServiceManager.removeAllServices?.();
+    console.log("All managed nodes removed from AudioEngineService.");
+    this.publishAudioEngineState(); // State might change (e.g. if nodes were part of metrics)
+  }
+
+  // --- Delegated methods to NativeNodeManager ---
+  public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
+    return this.nativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
+  }
+  public removeNativeNode(instanceId: string): void {
+    this.nativeNodeManager.removeManagedNativeNode(instanceId);
+  }
+
+  // --- Delegated methods to AudioWorkletManager ---
+  public async addManagedAudioWorkletNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> {
+    return this.audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
+  }
+  public removeManagedAudioWorkletNode(instanceId: string): void {
+    this.audioWorkletManager.removeManagedAudioWorkletNode(instanceId);
+  }
+   public sendManagedAudioWorkletNodeMessage(instanceId: string, message: any): void {
+    this.audioWorkletManager.sendManagedAudioWorkletNodeMessage(instanceId, message);
+  }
+
+  // --- AudioGraphConnectorService related ---
+  public updateAudioGraphConnections(
+    connections: Connection[],
+    blockInstances: BlockInstance[],
+    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
+  ): void {
+    const rawContextForConnector = (this.context?.rawContext instanceof AudioContext) ? this.context.rawContext : null;
+    if (!rawContextForConnector && this.context?.rawContext) {
+        console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
+    }
+    this.audioGraphConnectorService.updateConnections(
+      rawContextForConnector,
+      this.isAudioGloballyEnabled,
+      connections,
+      blockInstances,
+      getDefinitionForBlock,
+      this.audioWorkletManager.getManagedNodesMap(),
+      this.nativeNodeManager.getManagedNodesMap(),
+      this.lyriaServiceManager.getManagedServicesMap()
+    );
+  }
+
+   public getSampleRate(): number | null {
+    return this.context?.sampleRate ?? null;
+  }
+
 
   public playNote(note: string, duration: string, time?: Tone.Unit.Time, velocity?: number): void {
     if (!this.synth) {

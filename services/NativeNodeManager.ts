@@ -5,6 +5,7 @@
  * It maintains a reference to all managed native nodes, including their specific input/output connection points and internal structures (like those for custom all-pass filters), ensuring they are correctly integrated into the audio graph.
  * Key functions also include the proper disconnection and removal of these nodes when blocks are deleted or the audio context changes.
  */
+import * as Tone from 'tone'; // Added Tone import
 import {
     BlockDefinition,
     BlockParameter,
@@ -39,6 +40,9 @@ export interface INativeNodeManager {
     removeNode: (nodeId: string) => void;
     getNodeInfo: (nodeId: string) => ManagedNativeNodeInfo | undefined;
     getAllNodeInfo: () => ManagedNativeNodeInfo[];
+    // Methods called by AudioEngineService
+    _setAudioContext(newContext: AudioContext | null): void; // Ensure this is present
+    getManagedNodesMap(): Map<string, ManagedNativeNodeInfo>; // Ensure this is present
 }
 
 export class NativeNodeManager implements INativeNodeManager {
@@ -64,21 +68,30 @@ export class NativeNodeManager implements INativeNodeManager {
     }
 
     private initializeBlockHandlers(): void {
-        // Block constructors are now context-agnostic or use Tone.getContext()
+        const rawCtx = this.getRawAudioContext();
+
+        // Refactored (Tone.js based) blocks - no context in constructor
         this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
         this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
         this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
         this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
         this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
         this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
-        this.blockHandlers.set(OscilloscopeNativeBlock.getDefinition().id, new OscilloscopeNativeBlock()); // Oscilloscope might still need context for AnalyserNode
-        // EnvelopeNativeBlock now has a single getDefinition method
         this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-        this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock()); // Assuming this will be refactored or is context-agnostic
-        this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock()); // Assuming this will be refactored
         this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
-        this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock()); // Lyria blocks might have their own context needs
-        this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
+
+        // Unrefactored (or partially refactored) blocks that might still need raw AudioContext
+        if (rawCtx) {
+            this.blockHandlers.set(OscilloscopeNativeBlock.getDefinition().id, new OscilloscopeNativeBlock(rawCtx));
+            this.blockHandlers.set(AllpassFilterNativeBlock.getDefinition().id, new AllpassFilterNativeBlock(rawCtx));
+            this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock(rawCtx));
+            this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock(rawCtx));
+            // LyriaMasterBlock might have its own context management or needs specific setup
+            this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock(rawCtx));
+        } else {
+            console.warn("[NativeNodeManager] AudioContext is null, unrefactored native block handlers not initialized.");
+            // Note: Attempting to use these blocks later without a context will likely lead to errors.
+        }
     }
 
     // This method needs to be re-evaluated. Tone.js manages its own context.
@@ -158,8 +171,9 @@ export class NativeNodeManager implements INativeNodeManager {
 
     // Helper to get the raw AudioContext from Tone.js's context
     private getRawAudioContext(): AudioContext | null {
-        if (Tone && Tone.getContext && Tone.getContext().rawContext) {
-            return Tone.getContext().rawContext;
+        const rawCtx = Tone?.getContext()?.rawContext;
+        if (rawCtx instanceof AudioContext) {
+            return rawCtx;
         }
         return null;
     }

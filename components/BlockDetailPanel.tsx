@@ -12,7 +12,7 @@ import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNat
 import { parseFrequencyInput } from '@utils/noteUtils';
 // import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 import { BlockStateManager } from '../state/BlockStateManager';
-import { audioEngineService } from '@/services/AudioEngineService';
+import AudioEngineServiceInstance from '@/services/AudioEngineService'; // Corrected import
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 
 
@@ -205,7 +205,8 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
 
     let oscilloscopeUI = null;
     if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
-      const analyserNode = audioEngineService.nativeNodeManager.getAnalyserNodeForInstance(blockInstance.instanceId)
+      // Assuming nativeNodeManager is a property on AudioEngineServiceInstance, or accessed differently
+      const analyserNode = AudioEngineServiceInstance.nativeNodeManager?.getAnalyserNodeForInstance(blockInstance.instanceId);
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 

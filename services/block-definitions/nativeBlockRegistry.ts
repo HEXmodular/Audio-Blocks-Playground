@@ -23,8 +23,7 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     BiquadFilterNativeBlock.getDefinition(),
     DelayNativeBlock.getDefinition(),
     AllpassFilterNativeBlock.getDefinition(),
-    EnvelopeNativeBlock.getADEnvelopeDefinition(),
-    EnvelopeNativeBlock.getAREnvelopeDefinition(),
+    EnvelopeNativeBlock.getDefinition(), // Corrected to single definition
     OscilloscopeNativeBlock.getDefinition(),
     NumberToConstantAudioNativeBlock.getDefinition(),
     GainControlNativeBlock.getDefinition(),

@@ -1,11 +1,12 @@
 
+import * as Tone from 'tone'; // Added Tone
 import { BlockInstance, Connection, BlockParameter } from '@interfaces/common';
-import { AudioEngineService } from '@services/AudioEngineService';
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
 
 export interface VerifyAudioPathHealthOptions {
   oscillatorInstanceId: string;
   audioOutInstanceId: string;
-  audioEngine: AudioEngineService;
+  audioEngine: typeof AudioEngineServiceInstance; // Corrected type
   blockInstances: BlockInstance[];
   connections: Connection[];
   timeoutMs?: number; // Optional timeout for waiting for samples
@@ -30,7 +31,8 @@ export async function verifyAudioPathHealth(options: VerifyAudioPathHealthOption
   } = options;
 
   // Pre-check 1: Audio System Enabled
-  if (!audioEngine.isAudioGloballyEnabled || !audioEngine.audioContext || audioEngine.audioContext.state !== 'running') {
+  const toneContext = Tone.getContext();
+  if (!audioEngine.isAudioGloballyEnabled || !toneContext || toneContext.state !== 'running') {
     throw new Error('[AudioHealthCheck] Audio system is not globally enabled and running.');
   }
 

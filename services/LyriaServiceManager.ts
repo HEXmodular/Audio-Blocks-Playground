@@ -5,57 +5,90 @@
  * The manager ensures that each Lyria block's audio output is correctly routed and that callbacks are in place to react to changes in the Lyria service's state, triggering application-level updates.
  * It acts as the specialized controller for all Lyria AI-powered music generation blocks within the system.
  */
+import * as Tone from 'tone';
 import {
     BlockDefinition,
     LiveMusicGenerationConfig,
     PlaybackState,
-    ManagedLyriaServiceInfo // Import from common
+    ManagedLyriaServiceInfo
 } from '@interfaces/common';
 import { LiveMusicService, LiveMusicServiceCallbacks, DEFAULT_MUSIC_GENERATION_CONFIG } from '@services/LiveMusicService';
 import { Scale as GenAIScale } from '@google/genai';
-
-// Local definition of ManagedLyriaServiceInfo removed.
 
 export interface ILyriaServiceManager {
     setupLyriaServiceForInstance: (instanceId: string, definition: BlockDefinition, addBlockLog: (message: string) => void) => Promise<boolean>;
     removeLyriaServiceForInstance: (instanceId: string) => void;
     getLyriaServiceInstance: (instanceId: string) => LiveMusicService | null;
     updateLyriaServiceState: (instanceId: string, blockInternalState: Record<string, any>, blockParams: Record<string,any>, blockInputs: Record<string,any>, clearRequestsFn: () => void) => void;
-    removeAllManagedLyriaServices: () => void;
+    removeAllServices(): void;
+    setAudioContext(context: any): void;
+    getManagedServicesMap(): Map<string, ManagedLyriaServiceInfo>;
 }
 
 export class LyriaServiceManager implements ILyriaServiceManager {
     private managedLyriaServiceInstancesRef: Map<string, ManagedLyriaServiceInfo>;
-    private audioContext: AudioContext | null;
+    private audioContext: AudioContext | null = null;
+    private toneContext: Tone.Context | null = null;
     private masterGainNode: GainNode | null;
     private readonly onStateChangeForReRender: () => void;
 
     constructor(
-        // Removed audioContext and masterGainNode from constructor params as they are set via _setAudioContextAndMasterGain
         onStateChangeForReRender: () => void,
-        initialAudioContext: AudioContext | null = null, // Optional initial context
-        initialMasterGainNode: GainNode | null = null    // Optional initial gain
+        initialAudioContext: any = null,
+        initialMasterGainNode: GainNode | null = null
     ) {
-        this.audioContext = initialAudioContext;
-        this.masterGainNode = initialMasterGainNode;
         this.onStateChangeForReRender = onStateChangeForReRender;
+        this.setAudioContext(initialAudioContext);
+        this.masterGainNode = initialMasterGainNode;
         this.managedLyriaServiceInstancesRef = new Map<string, ManagedLyriaServiceInfo>();
     }
 
-    public _setAudioContextAndMasterGain(newContext: AudioContext | null, newMasterGainNode: GainNode | null): void {
-        let contextChanged = false;
-        if (this.audioContext !== newContext) {
-            contextChanged = true;
-            if (this.managedLyriaServiceInstancesRef.size > 0) {
-                console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services.", true);
-                this.removeAllManagedLyriaServices();
+    public setAudioContext(context: any): void {
+        let newRawContext: AudioContext | null = null;
+        let newToneContext: Tone.Context | null = null;
+
+        if (context) {
+            if (context instanceof Tone.Context) {
+                newToneContext = context;
+                newRawContext = context.rawContext instanceof AudioContext ? context.rawContext : null;
+            } else if (context instanceof AudioContext) {
+                newRawContext = context;
+                newToneContext = new Tone.Context(context);
+            } else if (context.rawContext && context.rawContext instanceof AudioContext) {
+                newRawContext = context.rawContext;
+                newToneContext = (typeof context.toDestination === 'function') ? context as Tone.Context : new Tone.Context(newRawContext);
+            } else if (context.rawContext && context.rawContext instanceof OfflineAudioContext) {
+                console.warn("[LyriaServiceManager] Received OfflineAudioContext. Lyria services require a live AudioContext.");
+                newRawContext = null;
+                newToneContext = null;
             }
-            this.audioContext = newContext;
+             else {
+                console.warn("[LyriaServiceManager] Received context that is not directly usable as Tone.Context or AudioContext:", context);
+            }
         }
-        this.masterGainNode = newMasterGainNode;
+
+        let contextChanged = false;
+        if (this.audioContext !== newRawContext) {
+            contextChanged = true;
+            if (this.managedLyriaServiceInstancesRef.size > 0 && this.audioContext ) {
+                console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services tied to the old context.", true);
+                this.removeAllServices();
+            }
+            this.audioContext = newRawContext;
+        }
+        if (this.toneContext !== newToneContext) {
+            contextChanged = true;
+            this.toneContext = newToneContext;
+        }
+
         if (contextChanged) {
             this.onStateChangeForReRender();
         }
+    }
+
+    public _setAudioContextAndMasterGain(newContext: any, newMasterGainNode: GainNode | null): void {
+        this.setAudioContext(newContext);
+        this.masterGainNode = newMasterGainNode;
     }
 
     public async setupLyriaServiceForInstance(
@@ -63,13 +96,12 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         definition: BlockDefinition,
         addBlockLog: (message: string) => void
     ): Promise<boolean> {
-        console.log("setupLyriaServiceForInstance")
         if (!this.audioContext || this.audioContext.state !== 'running') {
             addBlockLog(`[LyriaManager Setup] Lyria Service setup failed: AudioContext not ready (state: ${this.audioContext?.state}).`);
             return false;
         }
         if (typeof process === 'undefined' || !process.env.API_KEY) {
-             addBlockLog("[LyriaManager Setup] Lyria Service setup failed: API_KEY not configured (Note: process.env access from class has limitations).");
+             addBlockLog("[LyriaManager Setup] Lyria Service setup failed: API_KEY not configured."); // Corrected log
             return false;
         }
         if (this.managedLyriaServiceInstancesRef.has(instanceId)) {
@@ -91,7 +123,6 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             onError: (error) => { addBlockLog(`Lyria Service Error: ${error}`); this.onStateChangeForReRender(); },
             onClose: (message) => { addBlockLog(`Lyria Service closed: ${message}`); this.onStateChangeForReRender(); },
             onOutputNodeChanged: (newNode) => {
-                console.log(`[LyriaManager] Lyria Service output node changed for ${instanceId}. Updating connections.`, true);
                 const lyriaServiceInfo = this.managedLyriaServiceInstancesRef.get(instanceId);
                 if (lyriaServiceInfo && this.masterGainNode) {
                     const oldNode = lyriaServiceInfo.outputNode;
@@ -110,12 +141,13 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         };
 
         try {
+            if (!this.audioContext) throw new Error("AudioContext not available for LiveMusicService");
             const service = LiveMusicService.getInstance(process.env.API_KEY!, this.audioContext, serviceCallbacks, initialMusicConfig);
             const lyriaOutputNode = service.getOutputNode();
             if (this.masterGainNode) {
                 lyriaOutputNode.connect(this.masterGainNode);
             }
-            this.managedLyriaServiceInstancesRef.set(instanceId, { instanceId, service, outputNode: lyriaOutputNode, definition }); // Added definition
+            this.managedLyriaServiceInstancesRef.set(instanceId, { instanceId, service, outputNode: lyriaOutputNode, definition });
             addBlockLog("[LyriaManager Setup] Lyria Service initialized and output connected.");
             await service.connect();
             this.onStateChangeForReRender();
@@ -134,7 +166,7 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             try {
                 if (this.masterGainNode && info.outputNode) {
                     try { info.outputNode.disconnect(this.masterGainNode); }
-                    catch (eInnerMaster) { /* console.warn(`[LyriaManager Remove] Inner disconnect error for Lyria output from masterGain: ${eInnerMaster.message}`); */ }
+                    catch (eInnerMaster) { /* console.warn(...) */ }
                 }
                 info.outputNode.disconnect();
             } catch (e) {
@@ -210,14 +242,14 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         this.onStateChangeForReRender();
     }
 
-    public removeAllManagedLyriaServices(): void {
+    public removeAllServices(): void {
         this.managedLyriaServiceInstancesRef.forEach((_, instanceId) => {
             this.removeLyriaServiceForInstance(instanceId);
         });
         console.log("[LyriaManager] All managed Lyria services removed.", true);
     }
 
-    public getManagedInstancesMap(): Map<string, ManagedLyriaServiceInfo> {
+    public getManagedServicesMap(): Map<string, ManagedLyriaServiceInfo> {
         return this.managedLyriaServiceInstancesRef;
     }
 }

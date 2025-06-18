@@ -1,5 +1,6 @@
 import * as Tone from 'tone';
 import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+// AudioParam is a global type
 import { createParameterDefinitions } from '../../constants/constants';
 import { CreatableNode } from './CreatableNode';
 
@@ -8,12 +9,10 @@ export interface ManagedDelayNodeInfo extends OriginalManagedNativeNodeInfo {
 }
 
 export class DelayNativeBlock implements CreatableNode {
-    // Context is assumed to be managed globally
-
     static getDefinition(): BlockDefinition {
       return {
-        id: 'tone-feedback-delay-v1', // Changed ID
-        name: 'Feedback Delay (Tone)', // Changed name
+        id: 'tone-feedback-delay-v1',
+        name: 'Feedback Delay (Tone)',
         description: 'A Tone.FeedbackDelay node, providing delay with feedback and wet/dry mix.',
         runsAtAudioRate: true,
         inputs: [
@@ -26,21 +25,17 @@ export class DelayNativeBlock implements CreatableNode {
           { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.FeedbackDelay.' }
         ],
         parameters: createParameterDefinitions([
-          { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0, max: 5, step: 0.001, defaultValue: 0.25, description: 'Delay time in seconds.' }, // Max matches previous, Tone.FeedbackDelay maxDelay needs to be set
-          { id: 'feedback', name: 'Feedback', type: 'slider', min: 0, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback amount (0 to 0.99).' }, // Max < 1 to prevent runaway
+          { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0, max: 5, step: 0.001, defaultValue: 0.25, description: 'Delay time in seconds.' },
+          { id: 'feedback', name: 'Feedback', type: 'slider', min: 0, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback amount (0 to 0.99).' },
           { id: 'wet', name: 'Wet Mix', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.5, description: 'Wet/dry mix (0 dry, 1 wet).' }
         ]),
         logicCode: "",
       };
     }
 
-    constructor() {
-        // Global Tone.context is assumed
-    }
+    constructor() {}
 
-    setAudioContext(_context: Tone.Context | null): void {
-        // May not be needed
-    }
+    setAudioContext(_context: any): void {}
 
     createNode(
         instanceId: string,
@@ -53,8 +48,7 @@ export class DelayNativeBlock implements CreatableNode {
 
         const initialDelayTime = initialParams.find(p => p.id === 'delayTime')?.currentValue as number ?? 0.25;
         const initialFeedback = initialParams.find(p => p.id === 'feedback')?.currentValue as number ?? 0.5;
-        // Max delay time for Tone.FeedbackDelay constructor. Default is 1s.
-        const maxDelayTime = 5.0; // Match previous native node's max delay capability
+        const maxDelayTime = 5.0;
 
         const toneFeedbackDelay = new Tone.FeedbackDelay({
             delayTime: initialDelayTime,
@@ -62,64 +56,57 @@ export class DelayNativeBlock implements CreatableNode {
             maxDelay: maxDelayTime
         });
 
-        // Set initial wet mix separately as it's not a constructor arg for FeedbackDelay itself
         const initialWet = initialParams.find(p => p.id === 'wet')?.currentValue as number ?? 0.5;
         toneFeedbackDelay.wet.value = initialWet;
 
+        const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
+            ['delayTime', toneFeedbackDelay.delayTime as unknown as Tone.Param<any>],
+            ['feedback', toneFeedbackDelay.feedback],
+            ['wet', toneFeedbackDelay.wet]
+        ]);
 
-        const paramTargetsForCv = new Map<string, Tone.Param | Tone.Signal<any>>();
-        paramTargetsForCv.set('delayTime', toneFeedbackDelay.delayTime);
-        paramTargetsForCv.set('feedback', toneFeedbackDelay.feedback);
-        paramTargetsForCv.set('wet', toneFeedbackDelay.wet);
-
-        // Apply all initial parameters via updateNodeParams to ensure consistency
-        this.updateNodeParams(
-            {
-                definition,
-                instanceId,
-                toneFeedbackDelay,
-                nodeForInputConnections: toneFeedbackDelay,
-                nodeForOutputConnections: toneFeedbackDelay,
-                paramTargetsForCv,
-                node: undefined,
-                mainProcessingNode: undefined,
-            } as ManagedDelayNodeInfo,
-            initialParams
-        );
-
-        return {
-            toneFeedbackDelay,
-            nodeForInputConnections: toneFeedbackDelay,
-            nodeForOutputConnections: toneFeedbackDelay,
-            paramTargetsForCv,
+        const nodeInfo: ManagedDelayNodeInfo = {
             definition,
             instanceId,
-            node: undefined,
-            mainProcessingNode: undefined,
+            toneFeedbackDelay,
+            node: toneFeedbackDelay as unknown as Tone.ToneAudioNode,
+            nodeForInputConnections: toneFeedbackDelay as unknown as Tone.ToneAudioNode,
+            nodeForOutputConnections: toneFeedbackDelay as unknown as Tone.ToneAudioNode,
+            mainProcessingNode: toneFeedbackDelay as unknown as Tone.ToneAudioNode,
+            paramTargetsForCv: specificParamTargetsForCv,
+            internalGainNode: undefined,
+            allpassInternalNodes: undefined,
+            constantSourceValueNode: undefined,
+            internalState: {},
         };
+        this.updateNodeParams(nodeInfo, initialParams);
+
+        return nodeInfo;
     }
 
     updateNodeParams(
         nodeInfo: ManagedDelayNodeInfo,
-        parameters: BlockParameter[]
+        parameters: BlockParameter[],
+        _currentInputs?: Record<string, any>,
+        _currentBpm?: number
     ): void {
         if (!nodeInfo.toneFeedbackDelay) {
             console.warn('Tone.FeedbackDelay node not found in nodeInfo for DelayNativeBlock', nodeInfo);
             return;
         }
-        const toneFeedbackDelay = nodeInfo.toneFeedbackDelay;
+        const currentToneFeedbackDelay = nodeInfo.toneFeedbackDelay;
         const context = Tone.getContext();
 
         parameters.forEach(param => {
             switch (param.id) {
                 case 'delayTime':
-                    toneFeedbackDelay.delayTime.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    currentToneFeedbackDelay.delayTime.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
                     break;
                 case 'feedback':
-                    toneFeedbackDelay.feedback.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    currentToneFeedbackDelay.feedback.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
                     break;
                 case 'wet':
-                    toneFeedbackDelay.wet.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    currentToneFeedbackDelay.wet.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
                     break;
             }
         });
@@ -132,11 +119,11 @@ export class DelayNativeBlock implements CreatableNode {
         }
     }
 
-    connect(_destination: Tone.ToneAudioNode | AudioParam, _outputIndex?: number, _inputIndex?: number): void {
+    connect(_destination: any, _outputIndex?: number, _inputIndex?: number): any {
         console.warn(`DelayNativeBlock.connect called. Connections typically managed by AudioGraphConnectorService.`);
     }
 
-    disconnect(_destination?: Tone.ToneAudioNode | AudioParam | number, _output?: number, _input?: number): void {
+    disconnect(_destination?: any, _output?: number, _input?: number): void {
         console.warn(`DelayNativeBlock.disconnect called. Connections typically managed by AudioGraphConnectorService.`);
     }
 }

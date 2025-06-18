@@ -1,12 +1,12 @@
 
 
 import React, { useMemo, useCallback, useState } from 'react'; // Added useState
-import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons'; // Removed SmallTrashIcon
+import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons';
 import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
-import AddBlockModal from './AddBlockModal'; // Import AddBlockModal
+import AddBlockModal from './AddBlockModal';
 import { WorkspacePersistenceManager } from '@services/WorkspacePersistenceManager';
-import { AudioEngineService } from '@services/AudioEngineService';
-import { BlockStateManager } from '../state/BlockStateManager'; // Ensure this is present
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
+import { BlockStateManager } from '../state/BlockStateManager';
 import { ConnectionState } from '@services/ConnectionState';
 // import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState // Removed
 
@@ -16,7 +16,7 @@ interface ToolbarProps {
   connections: Connection[];
   globalBpm: number;
   selectedSinkId: string;
-  audioEngineService: AudioEngineService;
+  audioEngineService: typeof AudioEngineServiceInstance; // Use type of the instance
   ctxBlockStateManager: BlockStateManager;
   connectionState: ConnectionState;
   setGlobalBpm: (bpm: number) => void;
@@ -116,14 +116,39 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const handleBpmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseInt(e.target.value, 10);
     if (!isNaN(newBpm) && newBpm > 0 && newBpm <= 999) {
-      setGlobalBpm(newBpm); // Use setGlobalBpm
+      setGlobalBpm(newBpm);
+      audioEngineService.setTransportBpm(newBpm); // Also update in engine
     } else if (e.target.value === "") {
-        setGlobalBpm(120);  // Use setGlobalBpm
+        setGlobalBpm(120);
+        audioEngineService.setTransportBpm(120); // Also update in engine
     }
   };
 
   const handleOutputDeviceChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     await onSetOutputDevice(event.target.value);
+  };
+
+  // State for UI, distinct from engine's actual master volume for mute/unmute
+  const [uiMasterVolume, setUiMasterVolume] = useState(0.7);
+  const [isMutedByToolbar, setIsMutedByToolbar] = useState(false);
+
+  const handleMasterVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolumeLinear = parseFloat(event.target.value);
+    setUiMasterVolume(newVolumeLinear);
+    if (!isMutedByToolbar) {
+      // Assuming setMasterVolume in engine takes linear 0-1 and converts to dB or appropriate scale
+      audioEngineService.setMasterVolume(newVolumeLinear);
+    }
+  };
+
+  const toggleMasterMute = () => {
+    const newMuteState = !isMutedByToolbar;
+    setIsMutedByToolbar(newMuteState);
+    if (newMuteState) {
+      audioEngineService.setMasterVolume(-Infinity); // Or a very low dB value
+    } else {
+      audioEngineService.setMasterVolume(uiMasterVolume); // Restore to UI volume
+    }
   };
 
 
@@ -159,23 +184,42 @@ const Toolbar: React.FC<ToolbarProps> = ({
       )}
 
       <button
-        onClick={onToggleGlobalAudio}
-        title={isAudioGloballyEnabled ? "Stop Audio Engine" : "Start Audio Engine"}
+        onClick={onToggleGlobalAudio} // This prop likely triggers a method in App.tsx that calls GlobalAudioStateSyncer
+        title={isAudioGloballyEnabled ? "Stop Audio Transport" : "Start Audio Transport"}
         className={`flex items-center ${
           isAudioGloballyEnabled ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
         } text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2`}
       >
         {isAudioGloballyEnabled ? <StopIcon className="w-4 h-4 mr-1" /> : <PlayIcon className="w-4 h-4 mr-1" />}
-        {isAudioGloballyEnabled ? 'Stop Audio' : 'Start Audio'}
+        {isAudioGloballyEnabled ? 'Stop Transport' : 'Start Transport'}
       </button>
       
+      {/* Master Volume Control (Example) */}
+      <div className="flex items-center ml-2">
+        <label htmlFor="master-volume" className="text-xs text-gray-400 mr-1.5">Vol:</label>
+        <input
+          type="range"
+          id="master-volume"
+          min="0"
+          max="1" // Linear volume for UI
+          step="0.01"
+          value={isMutedByToolbar ? 0 : uiMasterVolume}
+          onChange={handleMasterVolumeChange}
+          className="w-20 h-4 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          disabled={isMutedByToolbar}
+        />
+        <button onClick={toggleMasterMute} className="ml-1.5 text-xs p-1 bg-gray-700 hover:bg-gray-600 rounded">
+            {isMutedByToolbar || uiMasterVolume === 0 ? "Unmute" : "Mute"}
+        </button>
+      </div>
+
       {/* BPM Input */}
       <div className="flex items-center ml-2">
         <label htmlFor="bpm-input" className="text-xs text-gray-400 mr-1.5">BPM:</label>
         <input
           type="number"
           id="bpm-input"
-          value={globalBpm.toString()} // Use globalBpm
+          value={globalBpm.toString()}
           onChange={handleBpmInputChange}
           min="1"
           max="999"

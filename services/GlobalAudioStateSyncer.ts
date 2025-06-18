@@ -6,8 +6,9 @@
  * This allows other application components to easily react to important global audio events without needing to subscribe to the more granular `AudioEngineService` directly.
  */
 // services/GlobalAudioStateSyncer.ts
-import { AudioEngineService } from '@services/AudioEngineService'; // Assuming path
-import { AudioDevice } from '@interfaces/common'; // Assuming path
+import * as Tone from 'tone'; // Added Tone
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
+import { AudioDevice } from '@interfaces/common';
 
 // Define the state structure this class will manage
 export interface GlobalAudioState {
@@ -19,31 +20,30 @@ export interface GlobalAudioState {
 }
 
 export class GlobalAudioStateSyncer {
-  private audioEngineService: AudioEngineService;
+  private audioEngineService: typeof AudioEngineServiceInstance; // Corrected type
   private listeners: Array<(state: GlobalAudioState) => void> = [];
   public currentState: GlobalAudioState;
 
-  constructor(audioEngineService: AudioEngineService) {
-    this.audioEngineService = audioEngineService;
+  constructor(passedAudioEngineService: typeof AudioEngineServiceInstance) { // Corrected param type
+    this.audioEngineService = passedAudioEngineService; // Use passed instance
     this.currentState = {
       isAudioGloballyEnabled: this.audioEngineService.isAudioGloballyEnabled,
       availableOutputDevices: [...this.audioEngineService.availableOutputDevices],
       selectedSinkId: this.audioEngineService.selectedSinkId,
-      audioContextState: this.audioEngineService.audioContext?.state || null,
+      audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
       isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
 
-    this.audioEngineService.subscribe(this.handleAudioEngineChange);
+    this.audioEngineService.subscribe(this.handleAudioEngineChange); // Assuming subscribe method exists on the instance
   }
 
   private handleAudioEngineChange = () => {
     const newEngineState = this.audioEngineService.audioEngineState; // Get the comprehensive state
     const newGlobalState: GlobalAudioState = {
       isAudioGloballyEnabled: newEngineState.isAudioGloballyEnabled,
-      // Ensure a new array instance for availableOutputDevices if changed, or for initial population
       availableOutputDevices: [...newEngineState.availableOutputDevices],
       selectedSinkId: newEngineState.selectedSinkId,
-      audioContextState: newEngineState.audioContextState,
+      audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
       isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
       this.currentState = newGlobalState;

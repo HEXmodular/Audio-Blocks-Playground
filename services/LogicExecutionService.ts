@@ -5,9 +5,10 @@
  * The service runs a processing loop at a regular interval (e.g., every 10ms) to update block states, manage interactions with the `AudioEngine` for certain block types (like triggering envelopes), and ensures that changes are propagated through the graph.
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
+import * as Tone from 'tone'; // Added Tone
 import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; 
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
-import { AudioEngineService } from '@services/AudioEngineService';
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
@@ -63,7 +64,7 @@ function determineExecutionOrder(instances: BlockInstance[], connections: Connec
 export class LogicExecutionService {
   private blockStateManager: BlockStateManager;
   private getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
-  private audioEngine: AudioEngineService | null = null;
+  private audioEngine: typeof AudioEngineServiceInstance | null = null; // Corrected type
 
   private currentBlockInstances: BlockInstance[] = [];
   private currentConnections: Connection[] = [];
@@ -116,7 +117,7 @@ export class LogicExecutionService {
   constructor(
     blockStateManager: BlockStateManager,
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    initialAudioEngine: AudioEngineService | null
+    initialAudioEngine: typeof AudioEngineServiceInstance | null // Corrected type
   ) {
     this.blockStateManager = blockStateManager;
     this.getDefinitionForBlock = getDefinitionForBlock;
@@ -129,7 +130,7 @@ export class LogicExecutionService {
     connections: Connection[],
     globalBpm: number,
     isAudioGloballyEnabled: boolean,
-    audioEngine: AudioEngineService | null
+    audioEngine: typeof AudioEngineServiceInstance | null // Corrected type
   ): void {
     this.currentIsAudioGloballyEnabled = isAudioGloballyEnabled;
     this.currentBlockInstances = blockInstances;
@@ -205,7 +206,7 @@ export class LogicExecutionService {
         this.blockStateManager.addLogToBlockInstance(instance.instanceId, message);
       };
       const postMessageToWorkletInLogic = this.audioEngine
-        ? (message: any) => this.audioEngine?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message)
+        ? (message: any) => this.audioEngine.audioWorkletManager?.sendManagedAudioWorkletNodeMessage(instance.instanceId, message) // Assuming audioWorkletManager property
         : () => console.warn(`[LogicExecutionService] Attempted to post message to worklet for ${instance.instanceId} but audioEngine is null`);
 
       const nextInternalStateOpaque = mainLogicFunction(
@@ -223,14 +224,18 @@ export class LogicExecutionService {
       let newInternalState = { ...(instance.internalState || {}), ...nextInternalStateOpaque };
 
       if (this.audioEngine && this.audioEngine.nativeNodeManager) { // Ensure nativeNodeManager exists
-        if (definition.id.startsWith('native-') && !instance.internalState.needsAudioNodeSetup && this.audioEngine.audioContext) {
-          if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
-            this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(
-              instance.instanceId,
-              instance.parameters,
-              inputValuesForLogic,
-              this.currentGlobalBpm
-            );
+        // Check Tone context state for operations that might depend on it
+        if (definition.id.startsWith('native-') || definition.id.startsWith('tone-')) { // Include new 'tone-' prefix
+          if (!instance.internalState.needsAudioNodeSetup && Tone.getContext()?.state === 'running') {
+            if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) { // This block might need its own Tone.js refactor
+              this.audioEngine.nativeNodeManager.updateManagedNativeNodeParams?.(
+                instance.instanceId,
+                instance.parameters,
+                inputValuesForLogic, // Added missing arguments here
+                this.currentGlobalBpm // Added missing arguments here
+              );
+            }
+            // Other specific native/tone block updates that happen in LogicExecutionService could go here.
           }
         }
       }
@@ -260,9 +265,9 @@ export class LogicExecutionService {
     }
 
     const orderedInstanceIds = determineExecutionOrder(this.currentBlockInstances, this.currentConnections);
-    const sampleRate = this.audioEngine.getSampleRate();
+    const sampleRate = Tone.getContext()?.sampleRate; // Get sampleRate from Tone.context
     const audioContextInfo = {
-      sampleRate: sampleRate || 44100,
+      sampleRate: sampleRate || 44100, // Fallback if context not ready
       bpm: this.currentGlobalBpm,
     };
 

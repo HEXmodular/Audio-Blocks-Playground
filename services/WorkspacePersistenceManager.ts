@@ -6,11 +6,11 @@
  * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
  */
 // services/WorkspacePersistenceManager.ts
-import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common'; // Adjust path
-import { BlockStateManager } from '@state/BlockStateManager'; // Adjust path
-import { AudioEngineService } from '@services/AudioEngineService'; // Adjust path
-import { ConnectionState } from '@services/ConnectionState'; // Adjust path
-import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // Adjust path
+import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
+import { BlockStateManager } from '@state/BlockStateManager';
+import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
+import { ConnectionState } from '@services/ConnectionState';
+import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
 
 export class WorkspacePersistenceManager {
     private getBlockDefinitions: () => BlockDefinition[];
@@ -19,7 +19,7 @@ export class WorkspacePersistenceManager {
     private getGlobalBpm: () => number;
     private getSelectedSinkId: () => string | null;
 
-    private audioEngineService: AudioEngineService;
+    private audioEngineService: typeof AudioEngineServiceInstance; // Corrected type
     private blockStateManager: BlockStateManager;
     private connectionState: ConnectionState;
 
@@ -33,7 +33,7 @@ export class WorkspacePersistenceManager {
         getConnections: () => Connection[],
         getGlobalBpm: () => number,
         getSelectedSinkId: () => string | null,
-        audioEngineService: AudioEngineService,
+        passedAudioEngineService: typeof AudioEngineServiceInstance, // Corrected param type
         blockStateManager: BlockStateManager,
         connectionState: ConnectionState,
         setGlobalBpm: (bpm: number) => void,
@@ -44,7 +44,7 @@ export class WorkspacePersistenceManager {
         this.getConnections = getConnections;
         this.getGlobalBpm = getGlobalBpm;
         this.getSelectedSinkId = getSelectedSinkId;
-        this.audioEngineService = audioEngineService;
+        this.audioEngineService = passedAudioEngineService; // Use passed instance
         this.blockStateManager = blockStateManager;
         this.connectionState = connectionState;
         this.setGlobalBpm = setGlobalBpm;

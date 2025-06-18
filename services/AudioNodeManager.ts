@@ -7,7 +7,8 @@
  * It utilizes a `BlockStateManager` for logging and persisting state changes to block instances, ensuring the application's view of the audio graph remains consistent with the audio engine's state.
  */
 // services/AudioNodeManager.ts
-import { AudioEngineService } from './AudioEngineService';
+import * as Tone from 'tone'; // Added Tone import
+import AudioEngineServiceInstance from './AudioEngineService'; // Corrected import
 import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; 
@@ -16,16 +17,16 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 
 
 export class AudioNodeManager {
-    private audioEngineService: AudioEngineService;
+    private audioEngineService: typeof AudioEngineServiceInstance; // Corrected type
     private blockStateManager: BlockStateManager; // For updating instance state & logging
     private readonly getDefinitionByIdCallback: (definitionId: string) => BlockDefinition | undefined;
 
     constructor(
-        audioEngineService: AudioEngineService,
+        passedAudioEngineService: typeof AudioEngineServiceInstance, // Corrected param type and name
         blockStateManager: BlockStateManager,
         getDefinitionByIdFunc: (definitionId: string) => BlockDefinition | undefined
     ) {
-        this.audioEngineService = audioEngineService;
+        this.audioEngineService = passedAudioEngineService; // Use passed instance
         this.blockStateManager = blockStateManager;
         this.getDefinitionByIdCallback = getDefinitionByIdFunc;
     }
@@ -47,10 +48,43 @@ export class AudioNodeManager {
         globalBpm: number,
         isAudioGloballyEnabled: boolean,
         isWorkletSystemReady: boolean,
-        audioContextCurrent: AudioContext | null
+        audioContextCurrent: any // Changed to any
     ) {
         // console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
-        if (!audioContextCurrent) { // Audio system not ready at all
+        if (!audioContextCurrent || !(audioContextCurrent instanceof AudioContext || typeof audioContextCurrent.rawContext !== 'undefined')) { // More robust check for valid context objects
+            blockInstances.forEach(instance => {
+                // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
+                const definition = this.getDefinition(instance);
+                if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
+                    // Node was set up, but audio context is now gone. Mark for setup and log if not already.
+                    const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
+                    this.updateInstance(instance.instanceId, currentInst => ({
+                        ...currentInst,
+                        internalState: {
+                            ...currentInst.internalState,
+                            needsAudioNodeSetup: true,
+                            lyriaServiceReady: false, // Reset related flags
+                            autoPlayInitiated: false,
+                            loggedAudioSystemNotActive: true // Set the flag
+                        }
+                    }));
+                    if (needsToLog) {
+                        this.addLog(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
+                        console.warn(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
+                    }
+                }
+            });
+            return;
+        }
+
+        // Determine the actual usable AudioContext (native) or null
+        const usableContext: AudioContext | null = (audioContextCurrent instanceof AudioContext)
+            ? audioContextCurrent
+            : ((audioContextCurrent as Tone.Context).rawContext instanceof AudioContext
+                ? (audioContextCurrent as Tone.Context).rawContext
+                : null);
+
+        if (!usableContext) { // If after all checks, we don't have a usable AudioContext
             blockInstances.forEach(instance => {
                 // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
                 const definition = this.getDefinition(instance);
@@ -91,10 +125,10 @@ export class AudioNodeManager {
                 continue;
             }
 
-            // Use Tone.getContext() for state checking, assuming AudioContextService has initialized it.
-            const isToneContextRunning = Tone.getContext() && Tone.getContext().state === 'running';
+            // Use the derived usableContext for state checking
+            const isAudioContextRunning = usableContext && usableContext.state === 'running';
 
-            if (isToneContextRunning && isAudioGloballyEnabled) {
+            if (isAudioContextRunning && isAudioGloballyEnabled) {
                 if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Added audioWorkletCode check for consistency
                     // console.log(`[AudioNodeManager DEBUG]   Decision: Will attempt to call audioWorkletManager.setupManagedAudioWorkletNode for ${instance.instanceId}`);
                     if (instance.internalState.needsAudioNodeSetup && isWorkletSystemReady) {
