@@ -113,12 +113,12 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
 
-  if (!blockDefinition) {
+  if (!blockDefinition && blockInstance) {
   const errorBlockHeight = calculateBlockHeight(false);
     return (
         <div 
             style={{ 
-                transform: `translate(${blockInstance.position.x}px, ${blockInstance.position.y}px)`,
+                transform: `translate(${blockInstance.position?.x}px, ${blockInstance?.position?.y}px)`,
                 width: `${COMPACT_BLOCK_WIDTH}px`,
                 height: `${errorBlockHeight}px`,
             }}

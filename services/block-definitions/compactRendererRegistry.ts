@@ -4,6 +4,7 @@ import type { CompactRendererProps } from '@interfaces/common';
 // Import the actual renderer components
 import OscillatorCompactRenderer from '../native-blocks/renderers/OscillatorCompactRenderer';
 import GainCompactRenderer from '../native-blocks/renderers/GainCompactRenderer';
+import ManualGateRenderer from '../native-blocks/renderers/ManualGateRenderer';
 // Import DefaultCompactRenderer if you decide to register it, though current plan uses it as a direct fallback.
 // import DefaultCompactRenderer from '@components/block-renderers/DefaultCompactRenderer';
 
@@ -15,6 +16,7 @@ export interface CompactRendererRegistry {
 export const compactRendererRegistry: CompactRendererRegistry = {
   'oscillator': OscillatorCompactRenderer, // Using simple IDs like 'oscillator'
   'gain': GainCompactRenderer,
+  'manual-gate': ManualGateRenderer,
   // If you wanted to register the default, it might be:
   // 'default': DefaultCompactRenderer,
 };

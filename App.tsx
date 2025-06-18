@@ -249,7 +249,7 @@ const App: React.FC = () => {
   ]);
 
   const selectedBlockInstance = useMemo(() => {
-    return appBlockInstances.find(b => b.instanceId === selectedInstanceId) || null;
+    return appBlockInstances.find(b => b?.instanceId === selectedInstanceId) || null;
   }, [appBlockInstances, selectedInstanceId]); // Use new state
 
   if (!syncedGlobalAudioState.audioContextState && audioEngineService.audioContext === null) {

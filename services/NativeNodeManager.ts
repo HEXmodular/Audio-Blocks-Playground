@@ -25,6 +25,7 @@ import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock
 import { AllpassFilterNativeBlock } from '@services/native-blocks/AllpassFilterNativeBlock';
 import { NumberToConstantAudioNativeBlock } from '@services/native-blocks/NumberToConstantAudioNativeBlock';
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster';
+import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
 
 
 export interface INativeNodeManager {
@@ -73,7 +74,7 @@ export class NativeNodeManager implements INativeNodeManager {
         this.blockHandlers.set(NumberToConstantAudioNativeBlock.getDefinition().id, new NumberToConstantAudioNativeBlock(context));
         this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock(context)); // Added handler
         this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock(context)); // Added handler
-
+        this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock(context));
     }
 
     // этот блок был добавлен недавно для исправление работы осцилоскопа, тут может быть дичь

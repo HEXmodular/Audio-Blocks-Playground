@@ -124,78 +124,6 @@ export class BlockStateManager {
     this._saveInstancesToLocalStorageInternal();   // Save once on init
   }
 
-  private _handleRule110ParameterAdjustment(updatedInstance: BlockInstance, previousInstance: BlockInstance): BlockInstance {
-    const definition = this._blockDefinitions.find(d => d.id === updatedInstance.definitionId);
-    // Ensure definition is found and it's a Rule 110 type block
-    if (!definition || (definition.id !== RULE_110_BLOCK_DEFINITION.id && definition.id !== RULE_110_OSCILLATOR_BLOCK_DEFINITION.id)) {
-      return updatedInstance; // Return as is if not Rule 110 or no definition
-    }
-
-    const newCoreLengthParam = updatedInstance.parameters.find(p => p.id === 'core_length');
-    const oldCoreLengthParam = previousInstance.parameters.find(p => p.id === 'core_length');
-
-    if (newCoreLengthParam && oldCoreLengthParam && newCoreLengthParam.currentValue !== oldCoreLengthParam.currentValue) {
-      const oldCL = Number(oldCoreLengthParam.currentValue);
-      const newCL = Number(newCoreLengthParam.currentValue);
-      const patternParamInstance = updatedInstance.parameters.find(p => p.id === 'initial_pattern_plus_boundaries');
-
-      if (patternParamInstance && Array.isArray(patternParamInstance.currentValue)) {
-        let modifiedPatternArrayValue = [...(patternParamInstance.currentValue as boolean[])];
-        const idxOldR = oldCL + 1; // Index of the old Right Boundary
-        const idxNewR = newCL + 1; // Index of the new Right Boundary
-        const currentPatternLength = modifiedPatternArrayValue.length;
-        const finalPatternLength = patternParamInstance.steps || 18; // Max possible length
-
-        // Ensure array is long enough to avoid out-of-bounds, fill with false if necessary
-        if (currentPatternLength < finalPatternLength) {
-          modifiedPatternArrayValue = [
-            ...modifiedPatternArrayValue,
-            ...Array(finalPatternLength - currentPatternLength).fill(false),
-          ];
-        }
-
-        if (idxOldR !== idxNewR) { // Only adjust if core_length actually changed where boundaries shift
-            const stateAtOldR = (idxOldR < currentPatternLength && idxOldR >=0) ? modifiedPatternArrayValue[idxOldR] : false;
-
-            if (newCL > oldCL) { // Core length increased, R-boundary moved right
-                // Shift elements from newR to the right, to make space for the new R-boundary value
-                for (let i = Math.min(finalPatternLength - 1, currentPatternLength -1 + (newCL - oldCL)); i > idxNewR; i--) {
-                    if (i - (newCL-oldCL) >=0) {
-                        modifiedPatternArrayValue[i] = modifiedPatternArrayValue[i - (newCL - oldCL)];
-                    } else {
-                        modifiedPatternArrayValue[i] = false;
-                    }
-                }
-                if(idxNewR < finalPatternLength) modifiedPatternArrayValue[idxNewR] = stateAtOldR;
-
-                for (let i = idxOldR; i < idxNewR; i++) {
-                    if (i !== idxOldR && i < finalPatternLength) {
-                         modifiedPatternArrayValue[i] = false;
-                    }
-                }
-                 if (idxOldR < idxNewR && idxOldR !== (idxNewR - (newCL-oldCL)) && idxOldR < finalPatternLength) {
-                    modifiedPatternArrayValue[idxOldR] = false;
-                 }
-
-            } else { // Core length decreased, R-boundary moved left
-               if(idxNewR < finalPatternLength) modifiedPatternArrayValue[idxNewR] = stateAtOldR;
-
-               for (let i = idxNewR + 1; i <= idxOldR && i < finalPatternLength; i++) {
-                  modifiedPatternArrayValue[i] = false;
-               }
-            }
-        }
-
-        updatedInstance.parameters = updatedInstance.parameters.map(p =>
-          p.id === 'initial_pattern_plus_boundaries'
-            ? { ...p, currentValue: modifiedPatternArrayValue.slice(0, finalPatternLength) }
-            : p
-        );
-        console.log(`BlockStateManager: Rule 110 type block (${updatedInstance.instanceId}, def: ${definition.id}): Adjusted initial_pattern_plus_boundaries for core_length change from ${oldCL} to ${newCL}.`);
-      }
-    }
-    return updatedInstance;
-  }
 
   private _loadDefinitions(): BlockDefinition[] {
     let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
@@ -269,6 +197,7 @@ export class BlockStateManager {
       let rendererComponent; // Variable to hold the resolved component
       if (def.compactRendererId) {
         rendererComponent = compactRendererRegistry[def.compactRendererId];
+        // console.log(`[BlockStateManager]`, {rendererComponent});
         if (!rendererComponent) {
           console.warn(`BlockStateManager: Compact renderer for ID '${def.compactRendererId}' not found in registry for definition '${def.id}'.`);
         }
@@ -280,6 +209,7 @@ export class BlockStateManager {
         return paramDef as BlockParameterDefinition;
       });
 
+      // console.log({rendererComponent});
       return {
         ...def,
         parameters: parametersWithoutCurrentValue,
@@ -298,7 +228,7 @@ export class BlockStateManager {
     }
 
     return rawInstances.map((loadedInst: any) => {
-      const definition = definitions.find(def => def.id === loadedInst.definitionId);
+      const definition = definitions.find(def => def.id === loadedInst?.definitionId);
       const initialOutputs: Record<string, any> = {};
       if (definition) {
         definition.outputs.forEach(outPort => {
@@ -310,7 +240,7 @@ export class BlockStateManager {
       if (definition) {
         const paramsFromDef = deepCopyParametersAndEnsureTypes(definition.parameters);
         instanceParams = paramsFromDef.map(defParamCopy => {
-          const savedInstParam = loadedInst.parameters?.find((p: any) => p.id === defParamCopy.id);
+          const savedInstParam = loadedInst?.parameters?.find((p: any) => p.id === defParamCopy.id);
           if (savedInstParam && savedInstParam.currentValue !== undefined) {
             let rehydratedCurrentValue = savedInstParam.currentValue;
             // Type coercion for loaded parameter values
@@ -340,15 +270,15 @@ export class BlockStateManager {
           return defParamCopy;
         });
       } else {
-        instanceParams = loadedInst.parameters || [];
-        console.warn(`BlockStateManager: Definition for instance ${loadedInst.name} (ID: ${loadedInst.definitionId}) not found during instance processing. Parameters might be incorrect.`);
+        instanceParams = loadedInst?.parameters || [];
+        console.warn(`BlockStateManager: Definition for instance ${loadedInst?.name} (ID: ${loadedInst?.definitionId}) not found during instance processing. Parameters might be incorrect.`);
       }
 
       let initialInternalState: BlockInstance['internalState'] = {
-        ...(loadedInst.internalState || {}), // Spread existing internal state first
-        // Initialize new flags, defaulting to false if not present in loadedInst.internalState
-        loggedWorkletSystemNotReady: loadedInst.internalState?.loggedWorkletSystemNotReady || false,
-        loggedAudioSystemNotActive: loadedInst.internalState?.loggedAudioSystemNotActive || false,
+        ...(loadedInst?.internalState || {}), // Spread existing internal state first
+        // Initialize new flags, defaulting to false if not present in loadedInst?.internalState
+        loggedWorkletSystemNotReady: loadedInst?.internalState?.loggedWorkletSystemNotReady || false,
+        loggedAudioSystemNotActive: loadedInst?.internalState?.loggedAudioSystemNotActive || false,
       };
       if (definition) {
         initialInternalState.needsAudioNodeSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LyriaMasterBlock.getDefinition().id); // Changed
@@ -356,17 +286,30 @@ export class BlockStateManager {
             initialInternalState.needsAudioNodeSetup = false;
         }
       }
+
+      if (!loadedInst) {
+        return {
+          parameters: instanceParams,
+          internalState: initialInternalState, // This now includes the initialized logging flags
+          lastRunOutputs: loadedInst?.lastRunOutputs || initialOutputs,
+          logs: loadedInst?.logs || [],
+          modificationPrompts: loadedInst?.modificationPrompts || [],
+          audioWorkletNodeId: undefined,
+          lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
+        } as BlockInstance;
+      }
+
       const { currentView, ...restOfLoadedInst } = loadedInst;
 
       return {
         ...restOfLoadedInst,
         parameters: instanceParams,
         internalState: initialInternalState, // This now includes the initialized logging flags
-        lastRunOutputs: loadedInst.lastRunOutputs || initialOutputs,
-        logs: loadedInst.logs || [],
-        modificationPrompts: loadedInst.modificationPrompts || [],
+        lastRunOutputs: loadedInst?.lastRunOutputs || initialOutputs,
+        logs: loadedInst?.logs || [],
+        modificationPrompts: loadedInst?.modificationPrompts || [],
         audioWorkletNodeId: undefined,
-        lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst.lyriaServiceInstanceId : undefined, // Changed
+        lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
       } as BlockInstance;
     });
   }
@@ -419,7 +362,7 @@ export class BlockStateManager {
   }
   
   public getDefinitionForBlock(instanceOrDefinitionId: BlockInstance | string): BlockDefinition | undefined {
-    const id = typeof instanceOrDefinitionId === 'string' ? instanceOrDefinitionId : instanceOrDefinitionId.definitionId;
+    const id = typeof instanceOrDefinitionId === 'string' ? instanceOrDefinitionId : instanceOrDefinitionId?.definitionId;
     return this._blockDefinitions.find(def => def.id === id);
   }
 
@@ -556,7 +499,6 @@ export class BlockStateManager {
         // Call Rule 110 specific logic using the helper method
         // Pass the state *after* generic updates (newBlockState)
         // and the state *before* generic updates (currentBlockInst)
-        newBlockState = this._handleRule110ParameterAdjustment(newBlockState, currentBlockInst);
 
         return newBlockState;
       }
@@ -611,7 +553,7 @@ export class BlockStateManager {
           // using the state *before this entire batch* for that instance as `previousInstance`.
           // For simplicity and to match single update behavior, we'll pass `accInst` as previous for Rule110.
           // This means if Rule110 logic depends on a parameter changed earlier in the *same batch* for the same instance, it will see it.
-          return this._handleRule110ParameterAdjustment(newBlockStatePartial, accInst);
+          // return this._handleRule110ParameterAdjustment(newBlockStatePartial, accInst);
         }, currentBlockInst);
         return updatedBlockInst;
       }
