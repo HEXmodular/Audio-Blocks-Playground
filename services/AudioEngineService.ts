@@ -155,6 +155,8 @@ class AudioEngineService {
         console.log('[AudioEngineService toggleGlobalAudio] Unmuted master volume.', { masterVolumeMute: this.masterVolume.mute });
       }
       console.log("Audio globally enabled.");
+      this.stopTransport();   // <--- ADD THIS LINE
+      this.startTransport();  // <--- Existing line
     } else {
       // Potentially mute master output
       if (this.masterVolume) {
