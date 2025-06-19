@@ -178,6 +178,7 @@ export class AudioNodeManager {
                     if (instance.internalState.needsAudioNodeSetup) {
                         this.addLog(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
                         console.log(instance.instanceId, "Native node setup initiated by AudioNodeManager.");
+                        console.log('[AudioNodeManager] Attempting to call audioEngineService.addNativeNode for instance:', { instanceId: instance.instanceId, definitionId: definition.id, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, contextState: Tone.getContext()?.state, isAudioGloballyEnabled });
                         const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
                         if (success) {
                             this.updateInstance(instance.instanceId, currentInst => ({
