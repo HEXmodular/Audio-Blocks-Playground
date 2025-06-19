@@ -79,7 +79,7 @@ export class AudioNodeManager {
                     }
                 }
             });
-            return;
+            // return; // Removed to allow processing to continue
         }
 
         // Determine the actual usable AudioContext (native) or null
