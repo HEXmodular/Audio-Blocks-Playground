@@ -29,7 +29,6 @@ export class DelayNativeBlock implements CreatableNode {
           { id: 'feedback', name: 'Feedback', type: 'slider', min: 0, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback amount (0 to 0.99).' },
           { id: 'wet', name: 'Wet Mix', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.5, description: 'Wet/dry mix (0 dry, 1 wet).' }
         ]),
-        logicCode: "",
       };
     }
 

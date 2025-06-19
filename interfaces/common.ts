@@ -1,20 +1,12 @@
 import type { WeightedPrompt as GenAIWeightedPrompt, LiveMusicGenerationConfig as GenAILiveMusicConfig } from '@google/genai';
-// Removed unused GenAIScaleType from type import.
-// It's possible Scale is exported as a value (enum object) or just a type.
-// If it's an enum object, it would be: import { Scale as GenAIScaleEnum } from '@google/genai';
-// For now, assuming it might be primarily a type for config, and we might need a local compatible enum if the value isn't exported.
-// However, the error messages imply @google/genai/dist/genai.Scale is a concrete type. So trying to re-export it.
 import { Scale as GenAIScale } from '@google/genai'; // Attempting to import as a value/enum.
-import { LiveMusicService } from '@services/LiveMusicService'; // Ensure this is the actual class
-import * as Tone from 'tone'; // Added Tone import
+import { LiveMusicService } from '@services/LiveMusicService';
+import * as Tone from 'tone';
 
 // Re-export for easier usage within the app if needed directly
 export type WeightedPrompt = GenAIWeightedPrompt;
 export type LiveMusicGenerationConfig = GenAILiveMusicConfig;
-export { GenAIScale as Scale }; // Re-exporting @google/genai Scale
-// If GenAIScale is only a type, this export might need to be `export type { GenAIScale as Scale };`
-// and a compatible const enum might be needed if values are used directly.
-// But error messages point to it being a concrete type that other enums are failing to match.
+export { GenAIScale as Scale };
 
 
 export enum BlockView {
@@ -61,10 +53,12 @@ export interface BlockDefinition {
   inputs: BlockPort[];
   outputs: BlockPort[];
   parameters: BlockParameterDefinition[]; 
+  // logicCode?: string; // Removed
   initialPrompt?: string;
   runsAtAudioRate?: boolean; 
   audioWorkletProcessorName?: string; 
   audioWorkletCode?: string; 
+  // logicCodeTests?: string; // Removed
   isAiGenerated?: boolean;
   compactRendererId?: string; // ID for serialization
   // Transient: Populated at runtime based on compactRendererId
@@ -79,7 +73,7 @@ export interface BlockInstance {
   logs: string[];
   parameters: BlockParameter[]; 
   internalState: {
-    emitters?: { [inputId: string]: Tone.Emitter };
+    emitters?: { [inputId: string]: Tone.Emitter }; // Restored
     needsAudioNodeSetup?: boolean;
     lyriaServiceReady?: boolean;
     autoPlayInitiated?: boolean;
@@ -132,6 +126,7 @@ export interface Connection {
 export interface GeminiRequest {
   prompt: string;
   targetBlockInstanceId?: string; 
+  // currentLogicCode?: string; // Removed
   blockDefinitionContext?: Partial<BlockDefinition>; 
 }
 
@@ -228,19 +223,19 @@ export interface AllpassInternalNodes {
 }
 
 export interface ManagedNativeNodeInfo {
-    node: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null; // Broader type for node
+    node: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
     nodeForInputConnections: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
     nodeForOutputConnections: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
-    mainProcessingNode?: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null; // Broader type
-    internalGainNode?: GainNode | Tone.Gain; // Can be native or Tone.Gain
-    allpassInternalNodes?: AllpassInternalNodes | null; // This would also need Tone.js types if Allpass refactored
-    paramTargetsForCv?: Map<string, AudioParam | Tone.Param | Tone.Signal<any>>; // Broader type
+    mainProcessingNode?: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
+    internalGainNode?: GainNode | Tone.Gain;
+    allpassInternalNodes?: AllpassInternalNodes | null;
+    paramTargetsForCv?: Map<string, AudioParam | Tone.Param | Tone.Signal<any>>;
     definition: BlockDefinition;
     instanceId: string;
-    constantSourceValueNode?: ConstantSourceNode; // Likely to be replaced if block using it is refactored
+    constantSourceValueNode?: ConstantSourceNode;
     internalState?: any;
-    emitter?: Tone.Emitter; // Added
-    providerInstance?: EmitterProvider; // Added
+    emitter?: Tone.Emitter;
+    providerInstance?: EmitterProvider;
 
     // Add specific Tone.js node references, used by refactored blocks
     toneOscillator?: Tone.Oscillator;
@@ -249,36 +244,19 @@ export interface ManagedNativeNodeInfo {
     toneFeedbackDelay?: Tone.FeedbackDelay;
     toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
     toneAnalyser?: Tone.Analyser;
-    // Add other specific Tone.js node types as needed by other blocks
 }
 
 export interface ManagedLyriaServiceInfo {
     instanceId: string;
-    service: LiveMusicService; // Now uses the actual imported class
+    service: LiveMusicService;
     outputNode: AudioNode;
     definition?: BlockDefinition;
 }
-
-
-// Enums for Lyria Service Integration (matching those in LiveMusicService.ts)
-// Removed local Scale enum, now re-exporting from @google/genai
 
 export enum MusicGenerationMode {
   QUALITY = "QUALITY",
   LOW_LATENCY = "LOW_LATENCY",
 }
-
-/**
- * @google/genai Lyria SDK is not available. This is a conceptual type.
- * Represents a single prompt item for Lyria.
- * Expected structure for 'lyria_prompt' or items in 'prompt_collection'.
- * Use with ports of type 'any'.
- * Example:
- * export interface LyriaPromptItem {
- *   text: string;
- *   weight: number; // Typically 0.0 to 1.0
- * }
- */
 
 export interface CompactRendererProps {
   blockInstance: BlockInstance;

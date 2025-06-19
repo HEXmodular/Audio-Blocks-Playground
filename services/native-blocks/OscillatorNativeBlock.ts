@@ -42,7 +42,6 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'detune', name: 'Detune', type: 'slider', min: -1200, max: 1200, step: 1, defaultValue: 0, description: 'Detune in cents (Tone.Oscillator.detune).' },
           { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.5, description: 'Output gain (0 to 1, controls Tone.Gain).' }
         ]),
-        logicCode: "",
         compactRendererId: 'oscillator',
       };
     }
@@ -71,7 +70,6 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'detune', name: 'Detune', type: 'slider', min: -100, max: 100, step: 1, defaultValue: 0, description: 'LFO detune in cents.' },
           { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Amplitude of the LFO signal (0 to 1, controls Tone.Gain).' }
         ]),
-        logicCode: "",
         compactRendererId: 'oscillator',
       };
     }
@@ -99,7 +97,6 @@ export class OscillatorNativeBlock implements CreatableNode {
           { id: 'detune', name: 'Detune (Cents)', type: 'slider', min: -100, max: 100, step: 1, defaultValue: 0, description: 'Fine-tune LFO frequency in cents.' },
           { id: 'gain', name: 'Amplitude', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Amplitude of the LFO signal (0 to 1, controls Tone.Gain).' }
         ]),
-        logicCode: "",
         compactRendererId: 'oscillator',
       };
     }

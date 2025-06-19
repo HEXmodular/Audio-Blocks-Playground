@@ -29,7 +29,6 @@ export class OscilloscopeNativeBlock implements CreatableNode {
             description: 'Size of the FFT window. This influences the detail in the time domain data for the oscilloscope.'
           }
         ]),
-        logicCode: "",
       };
     }
 

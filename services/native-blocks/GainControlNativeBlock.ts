@@ -25,7 +25,6 @@ export class GainControlNativeBlock implements CreatableNode {
         parameters: createParameterDefinitions([
           { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (linear gain).' }
         ]),
-        logicCode: "",
         compactRendererId: 'gain',
       };
     }

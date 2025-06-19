@@ -41,7 +41,6 @@ export class EnvelopeNativeBlock implements CreatableNode {
             defaultValue: 'linear', description: 'Shape of the attack curve.'
           }
         ]),
-        logicCode: "",
       };
     }
 

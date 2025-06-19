@@ -42,7 +42,6 @@ export class BiquadFilterNativeBlock implements CreatableNode {
             description: 'The type of filtering algorithm.'
           },
         ]),
-        logicCode: "",
       };
     }
 

@@ -25,7 +25,6 @@ export class AllpassFilterNativeBlock implements CreatableNode {
           { id: 'delayTime', name: 'Delay Time (s)', type: 'slider', min: 0.0001, max: 1.0, step: 0.0001, defaultValue: 0.05, description: 'Delay length M in seconds. Affects both input and feedback delay paths.' },
           { id: 'coefficient', name: 'Coefficient (g)', type: 'slider', min: -0.99, max: 0.99, step: 0.01, defaultValue: 0.5, description: 'Feedback/feedforward coefficient g.' }
         ]),
-        logicCode: "",
       };
     }
 

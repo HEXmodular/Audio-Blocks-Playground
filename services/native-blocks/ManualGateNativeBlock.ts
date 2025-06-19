@@ -20,7 +20,6 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
         parameters: createParameterDefinitions([
           { id: 'gate_active', name: 'Gate Active', type: 'toggle', defaultValue: false, description: 'Controls the state of the gate output.' }
         ]),
-        logicCode: "", // Native blocks do not use logicCode
         compactRendererId: 'manual-gate',
       };
     }

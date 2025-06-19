@@ -91,7 +91,6 @@ export class LyriaMasterBlock implements CreatableNode {
         { id: 'top_k', name: 'Top K', type: 'number_input', min: 1, max: 100, step: 1, defaultValue: 40, description: 'Lyria Top K. Overridden by CV.' },
         { id: 'bpm', name: 'BPM', type: 'number_input', min: 30, max: 240, step: 1, defaultValue: 120, description: 'Lyria BPM. Overridden by CV.' },
       ]),
-      logicCode: '', // Added to satisfy BlockDefinition interface
       // initialPrompt has been removed as the block's logic is now in TypeScript.
       maxInstances: 1, // Typically, there's only one master output for Lyria service
     } as BlockDefinition;

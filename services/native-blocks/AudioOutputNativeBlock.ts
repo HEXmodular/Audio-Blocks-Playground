@@ -29,7 +29,6 @@ export class AudioOutputNativeBlock implements CreatableNode {
         parameters: createParameterDefinitions([
             { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal Tone.Gain).' }
         ]),
-        logicCode: "",
         isAiGenerated: false,
         initialPrompt: '',
       };
