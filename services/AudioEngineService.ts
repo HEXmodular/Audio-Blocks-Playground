@@ -51,6 +51,19 @@ class AudioEngineService {
   }
 
   public async initialize(): Promise<void> {
+    if (Tone.context && Tone.context.state === 'running') {
+      console.log('AudioEngineService: Context already initialized and running.');
+      // Ensure local context property is also set if it wasn't (e.g. if init was somehow bypassed)
+      if (!this.context) {
+        this.context = Tone.context;
+        Tone.setContext(this.context); // Ensure Tone uses this context
+        // Minimal setup if context was externally initialized
+        this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+        this.isAudioGloballyEnabled = true;
+        this.publishAudioEngineState();
+      }
+      return;
+    }
     try {
       this.context = await AudioContextService.getAudioContext(); // Ensures Tone.start() is called
       if (!this.context) {
