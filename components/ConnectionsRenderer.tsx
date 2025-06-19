@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 import { ConnectionState } from '@services/ConnectionState';
 import { BlockStateManager } from '@state/BlockStateManager';
@@ -24,10 +24,16 @@ interface ConnectionsRendererProps {
 const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     svgRef,
 }) => {
+    const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
+    const [, setForceUpdateKey] = useState<number>(0); // Value of forceUpdateKey is not directly used, only its change
+
     const connections = ConnectionState.getInstance().getConnections();
     const blockInstances = BlockStateManager.getInstance().getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
     const onUpdateConnections = ConnectionState.getInstance().updateConnections;
+
+    // forceUpdateKey is implicitly used by being part of the component's state,
+    // so changing it will trigger a re-render of ConnectionsRenderer.
 
     return (
         <>
@@ -51,13 +57,25 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                 console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId });
 
                 if (!outputPortElem || !inputPortElem) {
-                    console.warn(`[ConnectionsRenderer] Port elements not found for connection ${conn.id}. This might be a timing issue.`);
-                    // return null; // Or some fallback rendering / error indicator
-                     setTimeout(() => {
-                        outputPortElem = document.querySelector(`[data-instance-id="${conn.fromInstanceId}"] [data-port-id="${conn.fromOutputId}"]`);
-                        inputPortElem = document.querySelector(`[data-instance-id="${conn.toInstanceId}"] [data-port-id="${conn.toInputId}"]`);
-                        console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId })
-                    }, 1000);
+                    const currentAttempts = retryAttemptsMap[conn.id] || 0;
+                    if (currentAttempts < 10) {
+                        setRetryAttemptsMap(prev => ({ ...prev, [conn.id]: currentAttempts + 1 }));
+                        setTimeout(() => setForceUpdateKey(prev => prev + 1), 100);
+                        return null; // Skip rendering this line for now
+                    } else {
+                        console.warn(`[ConnectionsRenderer] Could not find port elements for connection ${conn.id} after 10 retries. Giving up on this connection for now.`);
+                        // Optionally, mark as "given up" in retryAttemptsMap to prevent further logs if needed,
+                        // e.g., setRetryAttemptsMap(prev => ({ ...prev, [conn.id]: Infinity }));
+                        return null; // Stop trying to render this connection
+                    }
+                } else {
+                    // Elements are found, clear any retry state for this connection if it existed
+                    if (retryAttemptsMap[conn.id]) {
+                        setRetryAttemptsMap(prev => {
+                            const { [conn.id]: _, ...rest } = prev;
+                            return rest;
+                        });
+                    }
                 }
 
                 const startPos = getPortElementCenterForConnectionLine(outputPortElem, svgRef);
