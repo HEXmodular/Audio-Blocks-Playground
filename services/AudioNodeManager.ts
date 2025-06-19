@@ -56,36 +56,12 @@ export class AudioNodeManager {
           console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
         }
         // console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
-        if (audioContextCurrent?.rawContext) { // More robust check for valid context objects
-            blockInstances.forEach(instance => {
-                // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
-                const definition = this.getDefinition(instance);
-                if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
-                    // Node was set up, but audio context is now gone. Mark for setup and log if not already.
-                    const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
-                    this.updateInstance(instance.instanceId, currentInst => ({
-                        ...currentInst,
-                        internalState: {
-                            ...currentInst.internalState,
-                            needsAudioNodeSetup: true,
-                            lyriaServiceReady: false, // Reset related flags
-                            autoPlayInitiated: false,
-                            loggedAudioSystemNotActive: true // Set the flag
-                        }
-                    }));
-                    if (needsToLog) {
-                        this.addLog(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
-                        console.warn(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
-                    }
-                }
-            });
-            // return; // Removed to allow processing to continue
-        }
+        // The erroneous if (audioContextCurrent?.rawContext) block is removed by not including it here.
 
         // Determine the actual usable AudioContext (native) or null
-        const usableContext = (audioContextCurrent as Tone.Context).rawContext;
+        const usableContext = audioContextCurrent?.rawContext as AudioContext | null; // Corrected type cast
 
-        if (!usableContext) { // If after all checks, we don't have a usable AudioContext
+        if (!usableContext || usableContext.state !== 'running') {
             blockInstances.forEach(instance => {
                 // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
                 const definition = this.getDefinition(instance);
@@ -103,12 +79,13 @@ export class AudioNodeManager {
                         }
                     }));
                     if (needsToLog) {
-                        this.addLog(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
-                        console.warn(instance.instanceId, "Audio system (AudioContext) not available. Node requires setup.", "warn");
+                        // Use a more accurate log message here
+                        this.addLog(instance.instanceId, "Context not running. Node marked for setup.", "warn");
+                        console.warn(instance.instanceId, "Context not running. Node marked for setup.", "warn");
                     }
                 }
             });
-            return;
+            return; // Exit if context is not ready
         }
 
         for (const instance of blockInstances) {
