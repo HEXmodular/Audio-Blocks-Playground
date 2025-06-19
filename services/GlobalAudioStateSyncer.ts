@@ -19,6 +19,7 @@ export interface GlobalAudioState {
   isWorkletSystemReady: boolean;
 }
 
+// кандидат на удаление
 export class GlobalAudioStateSyncer {
   private audioEngineService: typeof AudioEngineServiceInstance; // Corrected type
   private listeners: Array<(state: GlobalAudioState) => void> = [];

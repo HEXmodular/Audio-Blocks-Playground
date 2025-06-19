@@ -110,6 +110,7 @@ const App: React.FC = () => {
     };
   }, [connectionDragHandler]);
 
+  // проброс этого отсюдова является излишним
   const blockInstanceController = useMemo(() => {
     if (!ctxBlockStateManager || !connectionState) return null;
     return new BlockInstanceController(

@@ -11,6 +11,7 @@ const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
 type ConnectionStateListener = (connections: Connection[]) => void;
 
+// удаление под вопросом 
 export class ConnectionState {
   private connections: Connection[] = [];
   private listeners: ConnectionStateListener[] = [];
