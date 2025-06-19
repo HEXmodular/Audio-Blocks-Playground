@@ -128,6 +128,7 @@ class AudioEngineService {
 
   // --- Method Implementations (selected) ---
   public async toggleGlobalAudio(): Promise<void> {
+    console.log('[AudioEngineService toggleGlobalAudio] Initial masterVolume check. Volume value:', this.masterVolume?.volume.value, 'Mute state:', this.masterVolume?.mute);
     console.log('[AudioEngineService toggleGlobalAudio] Called.', { currentGlobalState: this.isAudioGloballyEnabled, contextState: this.context?.state });
     if (!this.context) {
       await this.initialize(); // Initialize if not already
@@ -397,8 +398,10 @@ class AudioEngineService {
 
   // Method to set master volume
   public setMasterVolume(level: Tone.Unit.Decibels): void {
+    console.log('[AudioEngineService setMasterVolume] Received level:', { level, typeofLevel: typeof level });
     if (this.masterVolume) {
       this.masterVolume.volume.value = level;
+      console.log('[AudioEngineService setMasterVolume] Value after setting:', { volumeValue: this.masterVolume.volume.value, muteState: this.masterVolume.mute });
       console.log(`Master volume set to ${level} dB.`);
     } else {
       console.warn('Master volume node not initialized.');
