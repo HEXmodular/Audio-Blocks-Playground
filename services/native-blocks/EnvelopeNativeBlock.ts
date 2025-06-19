@@ -6,7 +6,9 @@ import { CreatableNode } from './CreatableNode';
 
 export interface ManagedEnvelopeNodeInfo extends OriginalManagedNativeNodeInfo {
   toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
-  prevGateState?: boolean;
+  prevGateState?: boolean; // Keep this for internal logic
+  gateEmitter?: Tone.Emitter; // The emitter this block is currently subscribed to for its gate_in
+  gateSubscription?: { off: () => void }; // Stores the subscription object from emitter.on()
 }
 
 export class EnvelopeNativeBlock implements CreatableNode {
@@ -94,6 +96,9 @@ export class EnvelopeNativeBlock implements CreatableNode {
             constantSourceValueNode: undefined,
             prevGateState: false,
             internalState: {},
+            // Initialize new properties
+            gateEmitter: undefined,
+            gateSubscription: undefined,
         };
         return nodeInfo;
     }
@@ -126,20 +131,46 @@ export class EnvelopeNativeBlock implements CreatableNode {
             }
         });
 
-        if (currentInputs && typeof currentInputs.gate_in !== 'undefined') {
-            const gateInputVal = !!currentInputs.gate_in;
-            const now = context.currentTime;
+        // --- Emitter-based gate control ---
+        const newDesignatedEmitter = nodeInfo.internalState?.emitters?.['gate_in'] as Tone.Emitter | undefined;
 
-            if (gateInputVal === true && !nodeInfo.prevGateState) {
-                envelope.triggerAttack(now);
-            } else if (gateInputVal === false && nodeInfo.prevGateState) {
-                envelope.triggerRelease(now);
+        if (newDesignatedEmitter !== nodeInfo.gateEmitter) {
+            // Unsubscribe from the old emitter
+            if (nodeInfo.gateSubscription) {
+                nodeInfo.gateSubscription.off();
+                nodeInfo.gateSubscription = undefined;
             }
-            nodeInfo.prevGateState = gateInputVal;
+
+            // Subscribe to the new emitter
+            if (newDesignatedEmitter) {
+                nodeInfo.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
+                    if (!nodeInfo.toneAmplitudeEnvelope) return;
+                    const now = Tone.getContext().currentTime;
+                    const currentEnvelopeState = nodeInfo.prevGateState;
+
+                    if (payload.newState === true && !currentEnvelopeState) {
+                        nodeInfo.toneAmplitudeEnvelope.triggerAttack(now);
+                    } else if (payload.newState === false && currentEnvelopeState) {
+                        nodeInfo.toneAmplitudeEnvelope.triggerRelease(now);
+                    }
+                    nodeInfo.prevGateState = payload.newState;
+                    console.log(`[EnvelopeNativeBlock] Instance ${nodeInfo.instanceId} received gate_change: ${payload.newState}`);
+                });
+                nodeInfo.gateEmitter = newDesignatedEmitter;
+            } else {
+                // No new emitter, so clear the current one
+                nodeInfo.gateEmitter = undefined;
+            }
         }
+        // --- End of Emitter-based gate control ---
+        // The old logic based on currentInputs.gate_in has been removed.
     }
 
     dispose(nodeInfo: ManagedEnvelopeNodeInfo): void {
+        if (nodeInfo.gateSubscription) { // Unsubscribe on dispose
+            nodeInfo.gateSubscription.off();
+            nodeInfo.gateSubscription = undefined;
+        }
         if (nodeInfo.toneAmplitudeEnvelope) {
             nodeInfo.toneAmplitudeEnvelope.dispose();
             console.log(`Disposed Tone.AmplitudeEnvelope node for instanceId: ${nodeInfo.instanceId}`);

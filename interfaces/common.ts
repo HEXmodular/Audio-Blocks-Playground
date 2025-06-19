@@ -81,6 +81,7 @@ export interface BlockInstance {
   logs: string[];
   parameters: BlockParameter[]; 
   internalState: {
+    emitters?: { [inputId: string]: Tone.Emitter };
     needsAudioNodeSetup?: boolean;
     lyriaServiceReady?: boolean;
     autoPlayInitiated?: boolean;
@@ -116,6 +117,10 @@ export interface BlockInstance {
   error?: string | null; 
   audioWorkletNodeId?: string; 
   lyriaServiceInstanceId?: string;
+}
+
+export interface EmitterProvider {
+  getEmitter(outputId: string): Tone.Emitter | undefined;
 }
 
 export interface Connection {
@@ -237,6 +242,8 @@ export interface ManagedNativeNodeInfo {
     instanceId: string;
     constantSourceValueNode?: ConstantSourceNode; // Likely to be replaced if block using it is refactored
     internalState?: any;
+    emitter?: Tone.Emitter; // Added
+    providerInstance?: EmitterProvider; // Added
 
     // Add specific Tone.js node references, used by refactored blocks
     toneOscillator?: Tone.Oscillator;

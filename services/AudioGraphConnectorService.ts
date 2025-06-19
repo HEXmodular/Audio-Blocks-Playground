@@ -12,8 +12,10 @@ import {
     BlockDefinition,
     ManagedWorkletNodeInfo,
     ManagedNativeNodeInfo,
-    ManagedLyriaServiceInfo
+    ManagedLyriaServiceInfo,
+    EmitterProvider // Added import
 } from '@interfaces/common';
+import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 
 // Define a more generic type for connectable nodes/params
 type ConnectableSource = Tone.ToneAudioNode | AudioWorkletNode | AudioNode; // AudioNode for Lyria or unrefactored
@@ -45,7 +47,8 @@ export class AudioGraphConnectorService {
     managedWorkletNodes: Map<string, ManagedWorkletNodeInfo>,
     managedNativeNodes: Map<string, ManagedNativeNodeInfo>,
     managedLyriaServices: Map<string, ManagedLyriaServiceInfo>
-  ): void {
+  ): InstanceUpdatePayload[] { // Changed return type
+    const instanceUpdates: InstanceUpdatePayload[] = []; // Initialized updates array
     const toneContext = Tone.getContext();
     if (!toneContext || !isAudioGloballyEnabled || toneContext.state !== 'running') {
       this.activeWebAudioConnections.forEach(connInfo => {
@@ -60,7 +63,7 @@ export class AudioGraphConnectorService {
         }
       });
       this.activeWebAudioConnections.clear();
-      return;
+      return instanceUpdates; // Return updates if exiting early
     }
 
     const newActiveConnections = new Map<string, ActiveWebAudioConnection>();
@@ -76,9 +79,41 @@ export class AudioGraphConnectorService {
 
       const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
       const inputPortDef = toDef.inputs.find(p => p.id === conn.toInputId);
-      if (!outputPortDef || !inputPortDef || outputPortDef.type !== 'audio' || inputPortDef.type !== 'audio') return;
 
-      let sourceNode: ConnectableSource | undefined;
+      if (!outputPortDef || !inputPortDef) return;
+
+      // Handle Emitter propagation for 'gate' or 'trigger' types
+      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
+        const sourceManagedNodeInfo = managedNativeNodes.get(fromInstance.instanceId) /* || other manager maps */;
+        // The prompt mentions providerInstance as hypothetical.
+        // Assuming BlockStore holds instances and those instances might implement EmitterProvider
+        // This part is highly dependent on where the actual EmitterProvider instance is stored.
+        // For now, using the placeholder `providerInstance` on ManagedNativeNodeInfo.
+        if (sourceManagedNodeInfo && (sourceManagedNodeInfo as any).providerInstance &&
+            typeof ((sourceManagedNodeInfo as any).providerInstance as EmitterProvider).getEmitter === 'function') {
+          const provider = (sourceManagedNodeInfo as any).providerInstance as EmitterProvider;
+          const emitter = provider.getEmitter(conn.fromOutputId);
+
+          if (emitter) {
+            if (!toInstance.internalState) { // Should ideally not happen if BlockInstance is well-initialized
+              toInstance.internalState = {};
+            }
+            if (!toInstance.internalState.emitters) {
+              toInstance.internalState.emitters = {};
+            }
+            toInstance.internalState.emitters[conn.toInputId] = emitter;
+            instanceUpdates.push({
+              instanceId: toInstance.instanceId,
+              updates: { internalState: { ...toInstance.internalState } }
+            });
+            console.log(`[AudioGraphConnectorService] Propagated emitter for connection ${conn.id} from ${conn.fromInstanceId}.${conn.fromOutputId} to ${conn.toInstanceId}.${conn.toInputId}`);
+          }
+        }
+        // Gate/trigger connections do not create Web Audio API connections, so we return after handling emitters.
+        return;
+      } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
+        // Existing logic for audio connections
+        let sourceNode: ConnectableSource | undefined;
       const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
       const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
       const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
@@ -91,7 +126,7 @@ export class AudioGraphConnectorService {
 
       if (!sourceNode) {
         // console.warn(`[AGC] Source node not found for instance ${fromInstance.instanceId}`);
-        return;
+        return; // Return for this connection if sourceNode not found
       }
 
       let targetNode: ConnectableTargetNode | undefined | null;
@@ -157,16 +192,52 @@ export class AudioGraphConnectorService {
     // Disconnect old connections that are no longer active
     this.activeWebAudioConnections.forEach((oldConnInfo, oldConnId) => {
       if (!newActiveConnections.has(oldConnId)) {
+        // This connection is being removed
         try {
+          // Standard audio disconnection
           if (oldConnInfo.targetParam) {
             (oldConnInfo.sourceNode as any).disconnect(oldConnInfo.targetParam as any);
           } else {
             (oldConnInfo.sourceNode as any).disconnect(oldConnInfo.targetNode as any);
           }
+
+          // Emitter cleanup logic
+          // Try to find the original connection details to check its type for emitter cleanup.
+          // This relies on the assumption that `connections` might still contain it if it's being modified,
+          // or requires a more robust way to get old connection details.
+          const originalConn = connections.find(c => c.id === oldConnInfo.connectionId);
+          if (originalConn) {
+            const fromInstance = blockInstances.find(b => b?.instanceId === originalConn.fromInstanceId);
+            const toInstance = blockInstances.find(b => b?.instanceId === originalConn.toInstanceId);
+            if (fromInstance && toInstance) {
+              const fromDef = getDefinitionForBlock(fromInstance);
+              // const toDef = getDefinitionForBlock(toInstance); // Not strictly needed for output check
+              if (fromDef) {
+                const outputPortDef = fromDef.outputs.find(p => p.id === originalConn.fromOutputId);
+                if (outputPortDef && (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger')) {
+                  if (toInstance.internalState && toInstance.internalState.emitters && toInstance.internalState.emitters[originalConn.toInputId]) {
+                    delete toInstance.internalState.emitters[originalConn.toInputId];
+                    instanceUpdates.push({
+                      instanceId: toInstance.instanceId,
+                      updates: { internalState: { ...toInstance.internalState } }
+                    });
+                    console.log(`[AudioGraphConnectorService] Cleared emitter for disconnected connection ${oldConnInfo.connectionId} on ${originalConn.toInstanceId}.${originalConn.toInputId}`);
+                  }
+                }
+              }
+            }
+          } else {
+            // If originalConn is not found in the current `connections` list, it means the connection was entirely removed.
+            // We lack enough info in oldConnInfo to reliably clean up emitters without structural changes
+            // to ActiveWebAudioConnection or how old connections are tracked.
+            // console.warn(`[AudioGraphConnectorService] Could not find original connection details for ${oldConnId} to perform emitter cleanup.`);
+          }
+
         } catch (e) { /* Ignore errors, node might already be gone */ }
       }
     });
     this.activeWebAudioConnections = newActiveConnections;
+    return instanceUpdates; // Return all collected updates
   }
 
   public disconnectAll(): void {

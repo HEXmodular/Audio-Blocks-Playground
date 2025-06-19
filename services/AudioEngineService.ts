@@ -5,6 +5,7 @@ import { AudioWorkletManager, IAudioWorkletManager } from './AudioWorkletManager
 import { LyriaServiceManager, ILyriaServiceManager } from './LyriaServiceManager';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
 import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioEngineState, OutputDevice } from '@interfaces/common';
+import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager'; // Added imports
 
 // Callback for NativeNodeManager to signal UI re-render if necessary
 const onStateChangeForReRender = () => {
@@ -216,7 +217,7 @@ class AudioEngineService {
     // if (!rawContextForConnector && this.context?.rawContext) {
     //     console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
     // }
-    this.audioGraphConnectorService.updateConnections(
+    const instanceUpdates: InstanceUpdatePayload[] = this.audioGraphConnectorService.updateConnections(
       rawContextForConnector as AudioContext,
       this.isAudioGloballyEnabled,
       connections,
@@ -226,6 +227,10 @@ class AudioEngineService {
       this.nativeNodeManager.getManagedNodesMap(),
       this.lyriaServiceManager.getManagedServicesMap()
     );
+
+    if (instanceUpdates && instanceUpdates.length > 0) {
+      BlockStateManager.getInstance().updateMultipleBlockInstances(instanceUpdates);
+    }
   }
 
    public getSampleRate(): number | null {

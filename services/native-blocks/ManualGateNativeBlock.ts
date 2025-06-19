@@ -1,9 +1,11 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo, EmitterProvider } from '@interfaces/common'; // Added EmitterProvider
 import { CreatableNode } from './CreatableNode';
 import { createParameterDefinitions } from '@constants/constants';
+import * as Tone from 'tone'; // Added Tone
 
-export class ManualGateNativeBlock implements CreatableNode {
+export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { // Implemented EmitterProvider
     private context: AudioContext | null;
+    private _emitter: Tone.Emitter; // Added emitter property
 
     public static getDefinition(): BlockDefinition {
       return {
@@ -25,6 +27,14 @@ export class ManualGateNativeBlock implements CreatableNode {
 
     constructor(context: AudioContext | null) {
         this.context = context;
+        this._emitter = new Tone.Emitter(); // Initialized emitter
+    }
+
+    public getEmitter(outputId: string): Tone.Emitter | undefined { // Implemented getEmitter
+      if (outputId === 'gate_out' && this._emitter) {
+        return this._emitter;
+      }
+      return undefined;
     }
 
     setAudioContext(context: AudioContext | null): void {
@@ -58,6 +68,10 @@ export class ManualGateNativeBlock implements CreatableNode {
             definition,
             instanceId,
             constantSourceValueNode: constantSourceNode, // Specific for nodes that are ConstantSourceNode-like
+            // Added emitter, providerInstance, and internalState
+            emitter: this._emitter,
+            providerInstance: this,
+            internalState: { prevGateValue: (initialParams.find(p => p.id === 'gate_active')?.currentValue as boolean) ?? false },
         };
     }
 
@@ -72,10 +86,23 @@ export class ManualGateNativeBlock implements CreatableNode {
         const constantSourceNode = nodeInfo.mainProcessingNode;
         const gateActiveParam = parameters.find(p => p.id === 'gate_active');
 
-        if (gateActiveParam && constantSourceNode.offset) {
-            const newValue = (gateActiveParam.currentValue as boolean) ? 1 : 0;
-            // Avoids clicks if possible, though for a gate, direct change is often fine.
-            constantSourceNode.offset.setTargetAtTime(newValue, this.context.currentTime, 0.01);
+        if (gateActiveParam) {
+            const newGateValue = !!gateActiveParam.currentValue;
+            const prevGateValue = nodeInfo.internalState?.prevGateValue;
+
+            if (newGateValue !== prevGateValue && nodeInfo.emitter) {
+                nodeInfo.emitter.emit('gate_change', { newState: newGateValue });
+                if (nodeInfo.internalState) {
+                    nodeInfo.internalState.prevGateValue = newGateValue;
+                }
+                console.log(`[ManualGateNativeBlock] Emitted gate_change: ${newGateValue} for instance ${nodeInfo.instanceId}`);
+            }
+
+            // Existing ConstantSourceNode update (kept as per instructions)
+            if (constantSourceNode instanceof ConstantSourceNode && constantSourceNode.offset) {
+                 // Avoids clicks if possible, though for a gate, direct change is often fine.
+                constantSourceNode.offset.setTargetAtTime(newGateValue ? 1 : 0, this.context.currentTime, 0.01);
+            }
         }
     }
 
@@ -87,5 +114,17 @@ export class ManualGateNativeBlock implements CreatableNode {
     disconnect(_destination?: AudioNode | AudioParam | number, _output?: number, _input?: number): void {
         // Disconnections are handled by AudioGraphConnectorService or NativeNodeManager
         console.warn(`ManualGateNativeBlock.disconnect called directly on instance. This should be handled by the manager's removeManagedNativeNode.`);
+    }
+
+    public dispose(nodeInfo: ManagedNativeNodeInfo): void {
+      if (nodeInfo.emitter) {
+        nodeInfo.emitter.dispose();
+        console.log(`[ManualGateNativeBlock] Disposed emitter for instance ${nodeInfo.instanceId}`);
+      }
+      // If ConstantSourceNode is kept, it should also be stopped and disconnected here.
+      if (nodeInfo.mainProcessingNode instanceof ConstantSourceNode) {
+          nodeInfo.mainProcessingNode.stop();
+          nodeInfo.mainProcessingNode.disconnect();
+      }
     }
 }

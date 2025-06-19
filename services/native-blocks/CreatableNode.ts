@@ -22,4 +22,5 @@ export interface CreatableNode {
     // Most simple blocks will not need these, AudioGraphConnectorService handles external connections.
     connect?(destinationNode: any, outputIndex?: number, inputIndex?: number): any;
     disconnect?(destinationNode?: any, output?: number, input?: number): void;
+    dispose?(nodeInfo: ManagedNativeNodeInfo): void; // Added dispose
 }
