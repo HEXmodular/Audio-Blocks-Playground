@@ -149,14 +149,18 @@ class AudioEngineService {
     if (this.isAudioGloballyEnabled) {
       // Potentially unmute master output if it was muted when disabled
       if (this.masterVolume) {
+        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *before* unmuting:', this.masterVolume?.volume.value);
         this.masterVolume.mute = false; // Or restore previous volume
+        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *after* unmuting:', this.masterVolume?.volume.value);
         console.log('[AudioEngineService toggleGlobalAudio] Unmuted master volume.', { masterVolumeMute: this.masterVolume.mute });
       }
       console.log("Audio globally enabled.");
     } else {
       // Potentially mute master output
       if (this.masterVolume) {
+        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *before* muting:', this.masterVolume?.volume.value);
         this.masterVolume.mute = true;
+        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *after* muting:', this.masterVolume?.volume.value);
         console.log('[AudioEngineService toggleGlobalAudio] Muted master volume.', { masterVolumeMute: this.masterVolume.mute });
       }
       console.log("Audio globally disabled.");
