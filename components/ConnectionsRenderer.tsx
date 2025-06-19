@@ -1,6 +1,7 @@
 import React from 'react';
-import { Connection, PendingConnection, BlockInstance, BlockDefinition } from '@interfaces/common';
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
+import { ConnectionState } from '@services/ConnectionState';
+import { BlockStateManager } from '@state/BlockStateManager';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
@@ -18,21 +19,16 @@ const getPortElementCenterForConnectionLine = (
 
 interface ConnectionsRendererProps {
     svgRef: React.RefObject<SVGSVGElement>;
-    connections: Connection[];
-    pendingConnection: PendingConnection | null;
-    blockInstances: BlockInstance[];
-    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
-    onUpdateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
 }
 
 const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     svgRef,
-    connections,
-    pendingConnection,
-    blockInstances,
-    getDefinitionForBlock,
-    onUpdateConnections,
 }) => {
+    const connections = ConnectionState.getInstance().getConnections();
+    const blockInstances = BlockStateManager.getInstance().getBlockInstances();
+    const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
+    const onUpdateConnections = ConnectionState.getInstance().updateConnections;
+
     return (
         <>
             {connections.map(conn => {
@@ -75,14 +71,14 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                     />
                 );
             })}
-            {pendingConnection && (
+            {/* {pendingConnection && (
                 <line
                     x1={pendingConnection.startX} y1={pendingConnection.startY}
                     x2={pendingConnection.currentX} y2={pendingConnection.currentY}
                     className={`connection-line stroke-dashed ${getBlockPortBgColor(pendingConnection.fromPort.type).replace('bg-', 'stroke-')}`}
                     strokeWidth="2.5"
                 />
-            )}
+            )} */}
         </>
     );
 };

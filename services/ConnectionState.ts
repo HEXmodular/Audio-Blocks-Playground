@@ -11,13 +11,20 @@ const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
 type ConnectionStateListener = (connections: Connection[]) => void;
 
-// удаление под вопросом 
 export class ConnectionState {
+  private static instance: ConnectionState | null = null; // Singleton instance
   private connections: Connection[] = [];
   private listeners: ConnectionStateListener[] = [];
 
-  constructor() {
+  private constructor() { // Make the constructor private
     this.loadFromLocalStorage();
+  }
+
+  public static getInstance(): ConnectionState {
+    if (!ConnectionState.instance) {
+      ConnectionState.instance = new ConnectionState();
+    }
+    return ConnectionState.instance;
   }
 
   private loadFromLocalStorage(): void {
@@ -35,13 +42,12 @@ export class ConnectionState {
   }
 
   private persistToLocalStorage(): void {
-  try {
-    const connectionsJson = JSON.stringify(this.connections);
-    localStorage.setItem(LOCAL_STORAGE_KEY, connectionsJson);
-  } catch (error) {
-    console.error("ConnectionState: Failed to stringify connections or save to localStorage:", error);
-    // Optional: Add a mechanism to inform the user if saving consistently fails.
-  }
+    try {
+      const connectionsJson = JSON.stringify(this.connections);
+      localStorage.setItem(LOCAL_STORAGE_KEY, connectionsJson);
+    } catch (error) {
+      console.error("ConnectionState: Failed to stringify connections or save to localStorage:", error);
+    }
   }
 
   private notifyListeners(): void {
@@ -52,7 +58,7 @@ export class ConnectionState {
     return [...this.connections]; // Return a copy
   }
 
-public updateConnections = (updater: Connection[] | ((prev: Connection[]) => Connection[])): void => {
+  public updateConnections = (updater: Connection[] | ((prev: Connection[]) => Connection[])): void => {
     if (typeof updater === 'function') {
       this.connections = updater(this.connections);
     } else {

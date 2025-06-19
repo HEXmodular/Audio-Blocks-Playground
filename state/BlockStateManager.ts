@@ -122,6 +122,7 @@ export class BlockStateManager {
     // Initial saves should still happen directly
     this._saveDefinitionsToLocalStorageInternal(); // Save once on init
     this._saveInstancesToLocalStorageInternal();   // Save once on init
+    this.getDefinitionForBlock = this.getDefinitionForBlock.bind(this); // Bind the method to the instance context
   }
 
 

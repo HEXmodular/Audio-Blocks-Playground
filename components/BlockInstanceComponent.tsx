@@ -1,8 +1,10 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { BlockInstance, BlockDefinition, BlockPort } from '@interfaces/common';
+import { BlockInstance, BlockPort } from '@interfaces/common';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
+import { BlockStateManager } from '@/state/BlockStateManager';
+import { ConnectionDragHandler } from '@utils/ConnectionDragHandler';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120; 
@@ -37,34 +39,24 @@ export const getPortColor = (type: BlockPort['type']): string => {
 interface BlockInstanceComponentProps {
   blockInstance: BlockInstance;
   isSelected: boolean;
-  getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
   onSelect: (instanceId: string | null) => void;
-  onUpdateInstancePosition: (instanceId: string, updates: Partial<Pick<BlockInstance, 'position'>>) => void;
-  onDeleteInstance: (instanceId: string) => void;
-  onStartConnectionDrag: (
-    instanceId: string, 
-    port: BlockPort, 
-    isOutput: boolean, 
-    portElement: HTMLDivElement
-  ) => void;
-  pendingConnectionSource?: { instanceId: string; portId: string } | null; // To dim source port during drag
   draggedOverPort?: { instanceId: string; portId: string } | null; // To highlight target port
 }
 
 const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   blockInstance,
   isSelected,
-  getDefinitionForBlock,
   onSelect,
-  onUpdateInstancePosition,
-  onDeleteInstance,
-  onStartConnectionDrag,
-  pendingConnectionSource,
   draggedOverPort,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const blockDefinition = getDefinitionForBlock(blockInstance);
+  const blockDefinition = BlockStateManager.getInstance().getDefinitionForBlock(blockInstance);
+  const pendingConnection = ConnectionDragHandler.getInstance().pendingConnection;
+  const onStartConnectionDrag = ConnectionDragHandler.getInstance().handleStartConnectionDrag;
+  
+
+  const onUpdateInstancePosition = BlockStateManager.getInstance().updateBlockInstance;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
@@ -92,7 +84,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         position: { x: snappedX, y: snappedY },
       });
     }
-  }, [isDragging, dragStart, blockInstance.instanceId, onUpdateInstancePosition]);
+  }, [isDragging, dragStart, blockInstance.instanceId]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -126,7 +118,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         >
             <p className="text-center">Error: Def '{blockInstance.definitionId}' not found for '{blockInstance.name}'.</p>
             <button
-                onClick={() => onDeleteInstance(blockInstance.instanceId)}
+                // onClick={() => onDeleteInstance(blockInstance.instanceId)}
                 className="mt-1.5 bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-xs js-interactive-element"
             >
                 Delete
@@ -191,7 +183,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             </span>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); onDeleteInstance(blockInstance.instanceId); }}
+            // onClick={(e) => { e.stopPropagation(); onDeleteInstance(blockInstance.instanceId); }}
             title="Delete Block"
             aria-label={`Delete block ${blockInstance.name}`}
             className="p-0.5 text-gray-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
@@ -219,7 +211,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {/* Input Port Stubs */}
       {blockDefinition?.inputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.inputs.length, blockHeight);
-        const isPendingSource = pendingConnectionSource?.instanceId === blockInstance.instanceId && pendingConnectionSource?.portId === port.id;
+        const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
           <div
@@ -250,7 +242,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {/* Output Port Stubs */}
       {blockDefinition?.outputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.outputs.length, blockHeight);
-        const isPendingSource = pendingConnectionSource?.instanceId === blockInstance.instanceId && pendingConnectionSource?.portId === port.id;
+        const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
           <div
