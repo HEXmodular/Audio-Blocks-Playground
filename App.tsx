@@ -172,7 +172,7 @@ const App: React.FC = () => {
           globalBpm,
           syncedGlobalAudioState.isAudioGloballyEnabled,
           AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady,
-          Tone.getContext().rawContext instanceof AudioContext ? Tone.getContext().rawContext : null
+          Tone.getContext()
         );
       } catch (error) {
         console.error("Error during processAudioNodeSetupAndTeardown:", error);

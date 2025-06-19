@@ -3,7 +3,7 @@ import * as Tone from 'tone';
 class AudioContextService {
   private static instance: AudioContextService;
   // Store the global Tone.js context instance
-  private audioContext: Tone.Context | null = null;
+  private audioContext: Tone.BaseContext | null = null;
 
   private constructor() {
     // Private constructor
@@ -16,7 +16,7 @@ class AudioContextService {
     return AudioContextService.instance;
   }
 
-  public async getAudioContext(): Promise<Tone.Context> {
+  public async getAudioContext(): Promise<Tone.BaseContext> {
     if (!this.audioContext || this.audioContext.state !== 'running') {
       await this.initializeAudioContext();
     }
@@ -26,8 +26,9 @@ class AudioContextService {
 
   public async initializeAudioContext(): Promise<void> {
     // Check if Tone.context is already available and running
-    if (Tone.context && Tone.context.state === 'running') {
-      this.audioContext = Tone.context;
+    const context = Tone.getContext();
+    if (context && context.state === 'running') {
+      this.audioContext = context;
       console.log('Tone.js AudioContext is already running.');
       return;
     }

@@ -77,7 +77,7 @@ export class BlockInstanceController {
 
     public deleteInstance = (instanceId: string, currentSelectedInstanceId: string | null) => {
         const blockInstances = this.getBlockInstances();
-        const instanceToRemove = blockInstances.find(b => b.instanceId === instanceId);
+        const instanceToRemove = blockInstances.find(b => b?.instanceId === instanceId);
 
         if (instanceToRemove) {
             const definition = this.getDefinitionForBlock(instanceToRemove);

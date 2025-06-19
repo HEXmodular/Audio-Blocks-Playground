@@ -5,7 +5,7 @@ import { compactRendererRegistry } from '@services/block-definitions/compactRend
 // import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // OLD
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
-import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
+import { RULE_110_BLOCK_DEFINITION } from '@constants/automata';
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
 import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
 
@@ -368,7 +368,7 @@ export class BlockStateManager {
 
   public addLogToBlockInstance(instanceId: string, message: string): void {
     this._blockInstances = this._blockInstances.map(b =>
-      b.instanceId === instanceId
+      b?.instanceId === instanceId
         ? { ...b, logs: [`${new Date().toLocaleTimeString()} - ${message}`, ...(b.logs || []).slice(0, 49)] }
         : b
     );
@@ -487,7 +487,7 @@ export class BlockStateManager {
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
     let wasUpdated = false;
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
-      if (currentBlockInst.instanceId === instanceId) {
+      if (currentBlockInst?.instanceId === instanceId) {
         wasUpdated = true;
         let newBlockState: BlockInstance;
         if (typeof updates === 'function') {
@@ -512,7 +512,7 @@ export class BlockStateManager {
   }
 
   public deleteBlockInstance(instanceId: string): void {
-    this._blockInstances = this._blockInstances.filter(b => b.instanceId !== instanceId);
+    this._blockInstances = this._blockInstances.filter(b => b?.instanceId !== instanceId);
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
@@ -534,7 +534,7 @@ export class BlockStateManager {
 
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
       // Find all updates pertaining to the currentBlockInst
-      const updatesForThisInstance = instanceUpdates.filter(upd => upd.instanceId === currentBlockInst.instanceId);
+      const updatesForThisInstance = instanceUpdates.filter(upd => upd.instanceId === currentBlockInst?.instanceId);
 
       if (updatesForThisInstance.length > 0) {
         wasAnyInstanceUpdated = true;

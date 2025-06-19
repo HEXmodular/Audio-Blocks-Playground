@@ -349,9 +349,9 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   };
 
   const renderConnectionsView = () => {
-    const findConnectedBlockName = (instanceId: string) => blockInstances.find((b: BlockInstance) => b.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
+    const findConnectedBlockName = (instanceId: string) => blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
-        const instance = blockInstances.find((b: BlockInstance) => b.instanceId === instanceId); // Use context blockInstances, added type for b
+        const instance = blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
         if (!instance) return undefined;
         const def = getDefinitionById(instance.definitionId); // Use context function
         if (!def) return undefined;

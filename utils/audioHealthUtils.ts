@@ -37,8 +37,8 @@ export async function verifyAudioPathHealth(options: VerifyAudioPathHealthOption
   }
 
   // Pre-check 2: Instances Exist
-  const oscillatorInstance = blockInstances.find(b => b.instanceId === oscillatorInstanceId);
-  const audioOutInstance = blockInstances.find(b => b.instanceId === audioOutInstanceId);
+  const oscillatorInstance = blockInstances.find(b => b?.instanceId === oscillatorInstanceId);
+  const audioOutInstance = blockInstances.find(b => b?.instanceId === audioOutInstanceId);
 
   if (!oscillatorInstance) {
     throw new Error(`[AudioHealthCheck] Oscillator instance with ID '${oscillatorInstanceId}' not found.`);

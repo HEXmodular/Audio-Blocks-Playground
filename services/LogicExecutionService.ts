@@ -1,3 +1,4 @@
+// это говна кусок надо удалить
 /**
  * This service is responsible for executing the user-defined JavaScript logic associated with each non-audio-rate block in the application's graph.
  * It orchestrates the flow of data between blocks by first determining the correct execution order using a topological sort of the block connections.
@@ -6,7 +7,7 @@
  * It effectively provides the runtime environment for the control-rate logic that drives the dynamic behavior of the audio application.
  */
 import * as Tone from 'tone'; // Added Tone
-import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common'; 
+import { BlockInstance, Connection, BlockDefinition } from '@interfaces/common';
 import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
 import AudioEngineServiceInstance from '@services/AudioEngineService'; // Corrected import
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
@@ -146,11 +147,11 @@ export class LogicExecutionService {
     }
   }
 
-  private compileLogicFunction(instanceId: string, logicCode: string): Function {
+  private compileLogicFunction(instanceId: string, logicCode?: string): Function {
     if (this.logicFunctionCache.has(instanceId)) {
       return this.logicFunctionCache.get(instanceId)!;
     }
-    const compiledFunction = new Function(
+    const compiledFunction = logicCode ? new Function(
       'inputs',
       'params',
       'internalState',
@@ -158,7 +159,15 @@ export class LogicExecutionService {
       '__custom_block_logger__',
       'audioContextInfo',
       'postMessageToWorklet'
-      , logicCode);
+      , logicCode)
+      : new Function(
+        'inputs',
+        'params',
+        'internalState',
+        'setOutput',
+        '__custom_block_logger__',
+        'audioContextInfo',
+        'postMessageToWorklet')
     this.logicFunctionCache.set(instanceId, compiledFunction);
     return compiledFunction;
   }
@@ -271,7 +280,7 @@ export class LogicExecutionService {
       bpm: this.currentGlobalBpm,
     };
 
-    const validInstanceIds = new Set(this.currentBlockInstances.map(b => b.instanceId));
+    const validInstanceIds = new Set(this.currentBlockInstances.map(b => b?.instanceId));
     for (const instId in this.currentTickOutputs) {
       if (!validInstanceIds.has(instId)) {
         delete this.currentTickOutputs[instId];
@@ -287,7 +296,7 @@ export class LogicExecutionService {
     const instanceUpdates: Array<{ instanceId: string; updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance) }> = [];
 
     for (const instanceId of orderedInstanceIds) {
-      const instance = this.currentBlockInstances.find(b => b.instanceId === instanceId);
+      const instance = this.currentBlockInstances.find(b => b?.instanceId === instanceId);
       if (instance) {
         if (!this.currentTickOutputs[instance.instanceId]) {
           this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
@@ -325,7 +334,7 @@ export class LogicExecutionService {
   public startProcessingLoop(): void {
     if (this.runIntervalId === null && this.currentIsAudioGloballyEnabled) {
       this.currentTickOutputs = {};
-      this.currentBlockInstances.forEach(instance => {
+      this.currentBlockInstances.filter(instance => instance).forEach(instance => {
         this.currentTickOutputs[instance.instanceId] = { ...instance.lastRunOutputs };
       });
       this.runIntervalId = window.setInterval(() => this.runInstancesLoop(), 10);

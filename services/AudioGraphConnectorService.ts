@@ -66,8 +66,8 @@ export class AudioGraphConnectorService {
     const newActiveConnections = new Map<string, ActiveWebAudioConnection>();
 
     connections.forEach(conn => {
-      const fromInstance = blockInstances.find(b => b.instanceId === conn.fromInstanceId);
-      const toInstance = blockInstances.find(b => b.instanceId === conn.toInstanceId);
+      const fromInstance = blockInstances.find(b => b?.instanceId === conn.fromInstanceId);
+      const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
       if (!fromInstance || !toInstance) return;
 
       const fromDef = getDefinitionForBlock(fromInstance);

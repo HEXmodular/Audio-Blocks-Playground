@@ -4,7 +4,7 @@ import { NativeNodeManager, INativeNodeManager } from './NativeNodeManager';
 import { AudioWorkletManager, IAudioWorkletManager } from './AudioWorkletManager';
 import { LyriaServiceManager, ILyriaServiceManager } from './LyriaServiceManager';
 import { AudioGraphConnectorService } from './AudioGraphConnectorService';
-import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioDevice, AudioEngineState, OutputDevice } from '@interfaces/common';
+import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioEngineState, OutputDevice } from '@interfaces/common';
 
 // Callback for NativeNodeManager to signal UI re-render if necessary
 const onStateChangeForReRender = () => {
@@ -16,9 +16,8 @@ const onStateChangeForReRender = () => {
 
 class AudioEngineService {
   private static instance: AudioEngineService;
-  public context: Tone.Context | null = null; // Made public for easier access by other services if needed
+  public context: Tone.BaseContext | null = null; // Made public for easier access by other services if needed
   private masterVolume: Tone.Volume | null = null;
-  private synth: Tone.Synth | null = null; // Example synth
 
   // Managers - Made public for now, consider getters if more controlled access is needed
   public nativeNodeManager: INativeNodeManager;
@@ -39,6 +38,7 @@ class AudioEngineService {
     this.audioWorkletManager = new AudioWorkletManager(null, onStateChangeForReRender); // Added onStateChangeForReRender
     this.lyriaServiceManager = new LyriaServiceManager(onStateChangeForReRender, null, null); // Pass onStateChangeForReRender and nulls
     this.audioGraphConnectorService = new AudioGraphConnectorService();
+    this.toggleGlobalAudio = this.toggleGlobalAudio.bind(this);
     this.queryOutputDevices();
   }
 
@@ -57,10 +57,10 @@ class AudioEngineService {
       }
       Tone.setContext(this.context); // Ensure all Tone.js components use this context
 
-      const rawCtx = this.context.rawContext instanceof AudioContext ? this.context.rawContext : null;
-      if (!rawCtx && this.context.rawContext) { // If rawContext exists but is not AudioContext (i.e. OfflineAudioContext)
-          console.warn("AudioEngineService: rawContext is OfflineAudioContext, passing null to managers expecting AudioContext.");
-      }
+      const rawCtx = this.context.rawContext;
+      // if (!rawCtx && this.context.rawContext) { // If rawContext exists but is not AudioContext (i.e. OfflineAudioContext)
+      //     console.warn("AudioEngineService: rawContext is OfflineAudioContext, passing null to managers expecting AudioContext.");
+      // }
       this.nativeNodeManager._setAudioContext?.(rawCtx);
       this.audioWorkletManager.setAudioContext(rawCtx);
       this.lyriaServiceManager.setAudioContext(this.context); // LyriaServiceManager's setAudioContext can handle Tone.Context or raw
@@ -70,8 +70,8 @@ class AudioEngineService {
         throw new Error('Failed to initialize Tone.Transport.');
       }
 
-      this.masterVolume = new Tone.Volume(0).connect(Tone.getDestination());
-      this.synth = new Tone.Synth().connect(this.masterVolume);
+      this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+      // this.synth = new Tone.Synth().connect(this.masterVolume);
       this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
 
       console.log('AudioEngineService initialized successfully with Tone.js context.');
@@ -212,12 +212,12 @@ class AudioEngineService {
     blockInstances: BlockInstance[],
     getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
   ): void {
-    const rawContextForConnector = (this.context?.rawContext instanceof AudioContext) ? this.context.rawContext : null;
-    if (!rawContextForConnector && this.context?.rawContext) {
-        console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
-    }
+    const rawContextForConnector = this.context?.rawContext; // instanceof AudioContext) ? this.context.rawContext : null;
+    // if (!rawContextForConnector && this.context?.rawContext) {
+    //     console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
+    // }
     this.audioGraphConnectorService.updateConnections(
-      rawContextForConnector,
+      rawContextForConnector as AudioContext,
       this.isAudioGloballyEnabled,
       connections,
       blockInstances,
@@ -230,27 +230,6 @@ class AudioEngineService {
 
    public getSampleRate(): number | null {
     return this.context?.sampleRate ?? null;
-  }
-
-
-  public playNote(note: string, duration: string, time?: Tone.Unit.Time, velocity?: number): void {
-    if (!this.synth) {
-      console.warn('Synth not initialized. Cannot play note.');
-      return;
-    }
-    if (!this.context || this.context.state !== 'running') {
-      console.warn('Audio context not ready or not running. Cannot play note.');
-      // Optionally, try to resume context or prompt user
-      // AudioContextService.resumeContext();
-      return;
-    }
-
-    try {
-      // If time is provided, it's scheduled. Otherwise, plays immediately.
-      this.synth.triggerAttackRelease(note, duration, time, velocity);
-    } catch (error) {
-      console.error(`Error playing note ${note}:`, error);
-    }
   }
 
   public startTransport(): void {

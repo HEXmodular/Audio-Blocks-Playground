@@ -36,8 +36,8 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     return (
         <>
             {connections.map(conn => {
-                const fromInstance = blockInstances.find(b => b.instanceId === conn.fromInstanceId);
-                const toInstance = blockInstances.find(b => b.instanceId === conn.toInstanceId);
+                const fromInstance = blockInstances.find(b => b?.instanceId === conn.fromInstanceId);
+                const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
                 if (!fromInstance || !toInstance) return null;
 
                 const fromDef = getDefinitionForBlock(fromInstance);

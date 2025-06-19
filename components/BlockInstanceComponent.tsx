@@ -203,13 +203,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Body: Custom or Default Compact Renderer */}
       <div className="flex-grow flex flex-col justify-center relative">
-        {blockDefinition.compactRendererComponent ? (
+        {blockDefinition?.compactRendererComponent ? (
           <blockDefinition.compactRendererComponent
             blockInstance={blockInstance}
             blockDefinition={blockDefinition}
           />
         ) : (
-          <DefaultCompactRenderer
+          blockDefinition && <DefaultCompactRenderer
             blockInstance={blockInstance}
             blockDefinition={blockDefinition}
           />
@@ -217,7 +217,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       </div>
 
       {/* Input Port Stubs */}
-      {blockDefinition.inputs.map((port, index) => {
+      {blockDefinition?.inputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.inputs.length, blockHeight);
         const isPendingSource = pendingConnectionSource?.instanceId === blockInstance.instanceId && pendingConnectionSource?.portId === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
@@ -248,7 +248,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       })}
 
       {/* Output Port Stubs */}
-      {blockDefinition.outputs.map((port, index) => {
+      {blockDefinition?.outputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.outputs.length, blockHeight);
         const isPendingSource = pendingConnectionSource?.instanceId === blockInstance.instanceId && pendingConnectionSource?.portId === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;

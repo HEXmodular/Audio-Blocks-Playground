@@ -40,7 +40,7 @@ export class AudioNodeManager {
         this.blockStateManager.addLogToBlockInstance(instanceId, message);
     }
     private getDefinition(instance: BlockInstance): BlockDefinition | undefined {
-        return this.getDefinitionByIdCallback(instance.definitionId);
+        return this.getDefinitionByIdCallback(instance?.definitionId);
     }
 
     public async processAudioNodeSetupAndTeardown(
@@ -48,10 +48,10 @@ export class AudioNodeManager {
         globalBpm: number,
         isAudioGloballyEnabled: boolean,
         isWorkletSystemReady: boolean,
-        audioContextCurrent: any // Changed to any
+        audioContextCurrent: Tone.BaseContext
     ) {
         // console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
-        if (!audioContextCurrent || !(audioContextCurrent instanceof AudioContext || typeof audioContextCurrent.rawContext !== 'undefined')) { // More robust check for valid context objects
+        if (audioContextCurrent?.rawContext) { // More robust check for valid context objects
             blockInstances.forEach(instance => {
                 // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
                 const definition = this.getDefinition(instance);
@@ -78,11 +78,7 @@ export class AudioNodeManager {
         }
 
         // Determine the actual usable AudioContext (native) or null
-        const usableContext: AudioContext | null = (audioContextCurrent instanceof AudioContext)
-            ? audioContextCurrent
-            : ((audioContextCurrent as Tone.Context).rawContext instanceof AudioContext
-                ? (audioContextCurrent as Tone.Context).rawContext
-                : null);
+        const usableContext = (audioContextCurrent as Tone.Context).rawContext;
 
         if (!usableContext) { // If after all checks, we don't have a usable AudioContext
             blockInstances.forEach(instance => {

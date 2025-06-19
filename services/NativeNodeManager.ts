@@ -172,8 +172,8 @@ export class NativeNodeManager implements INativeNodeManager {
     // Helper to get the raw AudioContext from Tone.js's context
     private getRawAudioContext(): AudioContext | null {
         const rawCtx = Tone?.getContext()?.rawContext;
-        if (rawCtx instanceof AudioContext) {
-            return rawCtx;
+        if (rawCtx) {
+            return rawCtx as AudioContext;
         }
         return null;
     }

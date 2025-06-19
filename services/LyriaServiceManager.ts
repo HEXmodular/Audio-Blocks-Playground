@@ -48,23 +48,24 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         let newToneContext: Tone.Context | null = null;
 
         if (context) {
-            if (context instanceof Tone.Context) {
-                newToneContext = context;
-                newRawContext = context.rawContext instanceof AudioContext ? context.rawContext : null;
-            } else if (context instanceof AudioContext) {
-                newRawContext = context;
-                newToneContext = new Tone.Context(context);
-            } else if (context.rawContext && context.rawContext instanceof AudioContext) {
-                newRawContext = context.rawContext;
-                newToneContext = (typeof context.toDestination === 'function') ? context as Tone.Context : new Tone.Context(newRawContext);
-            } else if (context.rawContext && context.rawContext instanceof OfflineAudioContext) {
-                console.warn("[LyriaServiceManager] Received OfflineAudioContext. Lyria services require a live AudioContext.");
-                newRawContext = null;
-                newToneContext = null;
-            }
-             else {
-                console.warn("[LyriaServiceManager] Received context that is not directly usable as Tone.Context or AudioContext:", context);
-            }
+            newToneContext = context;
+            // if (context instanceof Tone.Context) {
+            //     newToneContext = context;
+            //     newRawContext = context.rawContext instanceof AudioContext ? context.rawContext : null;
+            // } else if (context instanceof AudioContext) {
+            //     newRawContext = context;
+            //     newToneContext = new Tone.Context(context);
+            // } else if (context.rawContext && context.rawContext instanceof AudioContext) {
+            //     newRawContext = context.rawContext;
+            //     newToneContext = (typeof context.toDestination === 'function') ? context as Tone.Context : new Tone.Context(newRawContext);
+            // } else if (context.rawContext && context.rawContext instanceof OfflineAudioContext) {
+            //     console.warn("[LyriaServiceManager] Received OfflineAudioContext. Lyria services require a live AudioContext.");
+            //     newRawContext = null;
+            //     newToneContext = null;
+            // }
+            //  else {
+            //     console.warn("[LyriaServiceManager] Received context that is not directly usable as Tone.Context or AudioContext:", context);
+            // }
         }
 
         let contextChanged = false;
