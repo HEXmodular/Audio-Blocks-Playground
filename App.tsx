@@ -181,12 +181,12 @@ const App: React.FC = () => {
     };
     setupNodes();
   }, [
-    // audioNodeManager,
-    // appBlockInstances, // Use new state
+    audioNodeManager, // Ensure this is uncommented
+    appBlockInstances, // Ensure this is uncommented
     globalBpm,
     syncedGlobalAudioState.isAudioGloballyEnabled,
-    AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady, // Assuming audioWorkletManager is a property
-    AudioEngineServiceInstance.context, // Assuming AudioEngineService stores the Tone.Context as 'context'
+    AudioEngineServiceInstance.audioWorkletManager.isAudioWorkletSystemReady,
+    AudioEngineServiceInstance.context,
   ]);
 
   // useEffect(() => {
