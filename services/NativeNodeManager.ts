@@ -200,15 +200,30 @@ export class NativeNodeManager implements INativeNodeManager {
              }
         }
 
-        if (this.managedNativeNodesRef.has(instanceId)) {
-            console.warn(`[NativeManager Setup] Node for ID '${instanceId}' already exists. Skipping creation, but will ensure params are up-to-date.`);
-            // Still update params in case they changed while the node "didn't exist" from manager's perspective
-            this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
-            return true;
+        const handler = this.blockHandlers.get(definition.id);
+        if (!handler) {
+            console.warn(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, definition);
+            return false;
         }
+
+        if (this.managedNativeNodesRef.has(instanceId)) {
+            const existingNodeInfo = this.managedNativeNodesRef.get(instanceId);
+            if (existingNodeInfo && existingNodeInfo.handler && existingNodeInfo.nodeDetail) { // nodeDetail is the ManagedNativeNodeInfo itself
+                try {
+                    // Assuming existingNodeInfo.handler is the correct handler instance.
+                    // And existingNodeInfo (which is ManagedNativeNodeInfo) is what dispose expects.
+                    existingNodeInfo.handler.dispose(existingNodeInfo);
+                    console.log('[NativeNodeManager setupManagedNativeNode] Disposed existing node for instanceId:', instanceId);
+                } catch (e) {
+                    console.error('[NativeNodeManager setupManagedNativeNode] Error disposing existing node for instanceId:', instanceId, e);
+                }
+            }
+            this.managedNativeNodesRef.delete(instanceId); // Remove before re-creating
+        }
+
         try {
-            const handler = this.blockHandlers.get(definition.id);
-            if (handler) {
+            // const handler = this.blockHandlers.get(definition.id); // Handler is already fetched
+            if (handler) { // Handler should be valid here due to the check above
                 // Ensure handler's internal context (if any, like for Oscilloscope) is up-to-date
                 // For most Tone-based blocks, setAudioContext is a no-op or ensures Tone.getContext() is used.
                 handler.setAudioContext(this.getRawAudioContext());
@@ -217,14 +232,14 @@ export class NativeNodeManager implements INativeNodeManager {
                 this.managedNativeNodesRef.set(instanceId, nodeInfo);
                 // updateManagedNativeNodeParams is often called inside createNode in the refactored blocks,
                 // but calling it here ensures consistency if some blocks don't.
-                this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm);
+                // Note: createNode now returns nodeInfo which includes the handler.
+                // The initialParams are used by createNode.
+                // this.updateManagedNativeNodeParams(instanceId, initialParams, undefined, currentBpm); // This might be redundant if createNode handles it
                 console.log(`[NativeManager Setup] Tone.js based node for '${definition.name}' (ID: ${instanceId}) created/managed via handler.`);
                 this.onStateChangeForReRender();
                 return true;
-            } else {
-                console.warn(`[NativeManager Setup] No handler for definition ID '${definition.id}'. Not recognized.`, definition);
-                return false;
             }
+            // else case for handler should not be reached if the check above is correct.
         } catch (e) {
             const errorMsg = `Failed to construct Tone.js based node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`;
             console.error(errorMsg, e);

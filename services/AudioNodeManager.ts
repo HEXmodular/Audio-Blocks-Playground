@@ -132,7 +132,8 @@ export class AudioNodeManager {
                 // Context is RUNNING (guaranteed by outer guard) and Global Audio is ON.
                 if (instance.internalState.needsAudioNodeSetup) {
                     // Node needs setup.
-                    if (definition.audioWorkletProcessorName && definition.audioWorkletCode) {
+                    let setupSuccess = false; // Initialize setupSuccess for this scope
+                    if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Worklet Node
                         if (isWorkletSystemReady) {
                             if (instance.internalState.loggedWorkletSystemNotReady) {
                                 this.updateInstance(instance.instanceId, currentInst => ({
@@ -142,7 +143,7 @@ export class AudioNodeManager {
                             }
                             this.addLog(instance.instanceId, "Worklet node setup initiated (audio on).");
                             console.log(instance.instanceId, "Worklet node setup initiated (audio on).");
-                            const setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
+                            setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
                             if (setupSuccess) {
                                 this.updateInstance(instance.instanceId, currentInst => ({
                                     ...currentInst,
@@ -170,8 +171,8 @@ export class AudioNodeManager {
                         this.addLog(instance.instanceId, "Native node setup initiated (audio on).");
                         console.log(instance.instanceId, "Native node setup initiated (audio on).");
                         console.log('[AudioNodeManager] Attempting to call audioEngineService.addNativeNode for instance:', { instanceId: instance.instanceId, definitionId: definition.id, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, contextState: Tone.getContext()?.state, isAudioGloballyEnabled });
-                        const success = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
-                        if (success) {
+                        setupSuccess = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
+                        if (setupSuccess) {
                             this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
                                 internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }
@@ -185,12 +186,12 @@ export class AudioNodeManager {
                         }
                     }
                 } else {
-                    // Node does NOT need setup (needsAudioNodeSetup is false), and audio is globally enabled.
-                    // This is the "already running fine" state. DO NOTHING.
+                    // instance.internalState.needsAudioNodeSetup is FALSE.
+                    // Node is already set up and audio is on. DO NOTHING.
                 }
             } else {
                 // Context is RUNNING (guaranteed by outer guard) BUT Global Audio is OFF.
-                if (!instance.internalState.needsAudioNodeSetup) {
+                if (definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) { // Check definition.runsAtAudioRate here
                     // Node was previously set up, but global audio is now off. Mark it for re-setup.
                     const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
                     this.updateInstance(instance.instanceId, currentInst => ({
@@ -208,7 +209,7 @@ export class AudioNodeManager {
                         console.warn(instance.instanceId, "Audio globally disabled, context is running. Node marked for re-setup.", "warn");
                     }
                 } else {
-                    // Node already needs setup (needsAudioNodeSetup is true), and global audio is off. DO NOTHING.
+                    // Node already needs setup (needsAudioNodeSetup is true), or doesn't run at audio rate. And global audio is off. DO NOTHING.
                 }
             }
         }
