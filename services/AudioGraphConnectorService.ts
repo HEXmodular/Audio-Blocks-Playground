@@ -186,7 +186,7 @@ export class AudioGraphConnectorService {
         } catch (e) {
           console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
         }
-      }
+      }}
       // End of re-applied block
     });
 
