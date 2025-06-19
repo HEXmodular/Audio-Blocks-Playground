@@ -22,7 +22,7 @@ import AudioEngineServiceInstance from '@services/AudioEngineService'; // Correc
 import { ConnectionDragHandler } from '@utils/ConnectionDragHandler';
 import { ConnectionState } from '@services/ConnectionState';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
-import { LogicExecutionEngineManager } from '@services/LogicExecutionEngineManager';
+// import { LogicExecutionEngineManager } from '@services/LogicExecutionEngineManager'; // Removed
 import { GlobalAudioState, GlobalAudioStateSyncer } from '@services/GlobalAudioStateSyncer';
 import { AudioNodeManager } from '@services/AudioNodeManager';
 import { BlockInstanceController } from '@controllers/BlockInstanceController';
@@ -122,40 +122,40 @@ const App: React.FC = () => {
     );
   }, [ctxBlockStateManager, connectionState, globalBpm, appBlockInstances]); // Use new state
 
-  const logicExecutionEngineManager = useMemo(() => {
-    if (ctxBlockStateManager) {
-      return new LogicExecutionEngineManager(
-        ctxBlockStateManager,
-        getDefinitionForBlock
-      );
-    }
-    return null;
-  }, [ctxBlockStateManager, getDefinitionForBlock]);
+  // const logicExecutionEngineManager = useMemo(() => { // Removed
+  //   if (ctxBlockStateManager) {
+  //     return new LogicExecutionEngineManager(
+  //       ctxBlockStateManager,
+  //       getDefinitionForBlock
+  //     );
+  //   }
+  //   return null;
+  // }, [ctxBlockStateManager, getDefinitionForBlock]);
 
-  useEffect(() => {
-    if (logicExecutionEngineManager) {
-      logicExecutionEngineManager.updateCoreDependencies(
-        appBlockInstances, // Use new state
-        connections,
-        globalBpm,
-        syncedGlobalAudioState.isAudioGloballyEnabled
-      );
-    }
-  }, [
-    logicExecutionEngineManager,
-    // appBlockInstances, // Use new state
-    connections,
-    globalBpm,
-    syncedGlobalAudioState.isAudioGloballyEnabled
-  ]);
+  // useEffect(() => { // Removed
+  //   if (logicExecutionEngineManager) {
+  //     logicExecutionEngineManager.updateCoreDependencies(
+  //       appBlockInstances, // Use new state
+  //       connections,
+  //       globalBpm,
+  //       syncedGlobalAudioState.isAudioGloballyEnabled
+  //     );
+  //   }
+  // }, [
+  //   logicExecutionEngineManager,
+  //   // appBlockInstances, // Use new state
+  //   connections,
+  //   globalBpm,
+  //   syncedGlobalAudioState.isAudioGloballyEnabled
+  // ]);
 
-  useEffect(() => {
-    return () => {
-      if (logicExecutionEngineManager) {
-        logicExecutionEngineManager.dispose();
-      }
-    };
-  }, [logicExecutionEngineManager]);
+  // useEffect(() => { // Removed
+  //   return () => {
+  //     if (logicExecutionEngineManager) {
+  //       logicExecutionEngineManager.dispose();
+  //     }
+  //   };
+  // }, [logicExecutionEngineManager]);
 
   const audioNodeManager = useMemo(() => {
     if (!ctxBlockStateManager || !ctxGetDefinitionById) return null;

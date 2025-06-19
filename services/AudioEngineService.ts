@@ -230,6 +230,46 @@ class AudioEngineService {
 
     if (instanceUpdates && instanceUpdates.length > 0) {
       BlockStateManager.getInstance().updateMultipleBlockInstances(instanceUpdates);
+
+      // BlockStateManager has updated the instances.
+      // Now, notify relevant node managers if their managed instances were affected,
+      // especially for internal state changes like emitter propagation.
+      instanceUpdates.forEach(payload => {
+          const updatedInstance = blockInstances.find(b => b.instanceId === payload.instanceId);
+          if (updatedInstance) {
+              const definition = getDefinitionForBlock(updatedInstance);
+              if (definition) {
+                  // Check if this is a native block that NativeNodeManager would handle
+                  const isNativeBlock = this.nativeNodeManager.getNodeInfo(updatedInstance.instanceId) !== undefined;
+
+                  if (isNativeBlock) {
+                      // Check if the update likely involved internalState.emitters.
+                      let internalStateChanged = false;
+                      if (typeof payload.updates === 'function') {
+                          // If it's a function, it's harder to inspect here without re-running it.
+                          // Assume for now it might have changed internalState if it's an emitter-related update.
+                          internalStateChanged = true;
+                      } else {
+                          internalStateChanged = payload.updates.internalState !== undefined;
+                      }
+
+                      if (internalStateChanged) {
+                          console.log(`[AudioEngineService] Notifying NativeNodeManager for instance ${updatedInstance.instanceId} due to potential emitter change.`);
+                          // We need the currentBpm. Assuming it's available globally or via a service.
+                          // For now, let's retrieve it from Tone.Transport as a fallback.
+                          const currentBpm = Tone.getTransport().bpm.value;
+                          this.nativeNodeManager.updateManagedNativeNodeParams(
+                              updatedInstance.instanceId,
+                              updatedInstance.parameters, // Pass current parameters
+                              undefined, // currentInputs is undefined as per new design
+                              currentBpm
+                          );
+                      }
+                  }
+                  // TODO: Similar logic for AudioWorkletManager if its blocks also use emitters via internalState
+              }
+          }
+      });
     }
   }
 

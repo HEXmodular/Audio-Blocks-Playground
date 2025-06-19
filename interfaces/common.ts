@@ -61,12 +61,10 @@ export interface BlockDefinition {
   inputs: BlockPort[];
   outputs: BlockPort[];
   parameters: BlockParameterDefinition[]; 
-  logicCode?: string;
   initialPrompt?: string;
   runsAtAudioRate?: boolean; 
   audioWorkletProcessorName?: string; 
   audioWorkletCode?: string; 
-  logicCodeTests?: string; 
   isAiGenerated?: boolean;
   compactRendererId?: string; // ID for serialization
   // Transient: Populated at runtime based on compactRendererId
@@ -134,7 +132,6 @@ export interface Connection {
 export interface GeminiRequest {
   prompt: string;
   targetBlockInstanceId?: string; 
-  currentLogicCode?: string; 
   blockDefinitionContext?: Partial<BlockDefinition>; 
 }
 

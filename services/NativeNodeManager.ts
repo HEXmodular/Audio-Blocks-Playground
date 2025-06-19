@@ -12,6 +12,7 @@ import {
     ManagedNativeNodeInfo,
     // AllpassInternalNodes, // Removed unused import - implicitly used by ManagedNativeNodeInfo
 } from '@interfaces/common';
+import { BlockStateManager } from '@state/BlockStateManager'; // Added import
 
 // Removed direct imports of BlockDefinition constants
 
@@ -248,6 +249,29 @@ export class NativeNodeManager implements INativeNodeManager {
             // console.warn(`[NativeManager Update] No node info found for ID '${instanceId}'.`);
             return;
         }
+
+        const blockInstance = BlockStateManager.getInstance().getBlockInstances().find(bi => bi.instanceId === instanceId);
+
+        if (!blockInstance) {
+            console.warn(`[NativeNodeManager Update] BlockInstance not found for ID '${instanceId}' during param update. Emitter propagation might be affected.`);
+            // Continue without blockInstance for basic param updates, but emitter logic relies on it.
+        }
+
+        // Ensure info.internalState exists
+        if (!info.internalState) {
+            info.internalState = {};
+        }
+
+        // Propagate emitters from BlockInstance to ManagedNativeNodeInfo's internalState
+        if (blockInstance && blockInstance.internalState?.emitters) {
+            info.internalState.emitters = blockInstance.internalState.emitters;
+            // console.log(`[NativeNodeManager] Propagated emitters for ${instanceId} to nodeInfo:`, info.internalState.emitters);
+        } else if (info.internalState.emitters) {
+            // If BlockInstance no longer has emitters, clear them from nodeInfo's internalState as well.
+            delete info.internalState.emitters;
+            // console.log(`[NativeNodeManager] Cleared emitters for ${instanceId} from nodeInfo internalState.`);
+        }
+
         const handler = this.blockHandlers.get(info.definition.id);
         if (handler) {
             // Ensure handler context is set, especially for blocks like Oscilloscope
