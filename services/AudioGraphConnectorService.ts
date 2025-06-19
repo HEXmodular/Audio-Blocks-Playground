@@ -7,13 +7,13 @@
  */
 import * as Tone from 'tone'; // Import Tone
 import {
-    Connection,
-    BlockInstance,
-    BlockDefinition,
-    ManagedWorkletNodeInfo,
-    ManagedNativeNodeInfo,
-    ManagedLyriaServiceInfo,
-    EmitterProvider // Added import
+  Connection,
+  BlockInstance,
+  BlockDefinition,
+  ManagedWorkletNodeInfo,
+  ManagedNativeNodeInfo,
+  ManagedLyriaServiceInfo,
+  EmitterProvider // Added import
 } from '@interfaces/common';
 import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 
@@ -90,7 +90,7 @@ export class AudioGraphConnectorService {
         // This part is highly dependent on where the actual EmitterProvider instance is stored.
         // For now, using the placeholder `providerInstance` on ManagedNativeNodeInfo.
         if (sourceManagedNodeInfo && (sourceManagedNodeInfo as any).providerInstance &&
-            typeof ((sourceManagedNodeInfo as any).providerInstance as EmitterProvider).getEmitter === 'function') {
+          typeof ((sourceManagedNodeInfo as any).providerInstance as EmitterProvider).getEmitter === 'function') {
           const provider = (sourceManagedNodeInfo as any).providerInstance as EmitterProvider;
           const emitter = provider.getEmitter(conn.fromOutputId);
 
@@ -111,80 +111,85 @@ export class AudioGraphConnectorService {
         }
         // Gate/trigger connections do not create Web Audio API connections, so we return after handling emitters.
         return;
-      } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
+      }
+
+      if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
         // Existing logic for audio connections
         let sourceNode: ConnectableSource | undefined;
-      const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
-      const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
-      const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
-
-      if (fromWorkletInfo) sourceNode = fromWorkletInfo.node;
-      // For native (Tone.js based) nodes, nodeForOutputConnections should provide the correct Tone.ToneAudioNode
-      else if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
-      else if (fromLyriaInfo) sourceNode = fromLyriaInfo.outputNode as ConnectableSource | undefined;
+        const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
+        const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
+        const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
 
 
-      if (!sourceNode) {
-        // console.warn(`[AGC] Source node not found for instance ${fromInstance.instanceId}`);
-        return; // Return for this connection if sourceNode not found
-      }
+        if (fromWorkletInfo) sourceNode = fromWorkletInfo.node;
+        // For native (Tone.js based) nodes, nodeForOutputConnections should provide the correct Tone.ToneAudioNode
+        else if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
+        else if (fromLyriaInfo) sourceNode = fromLyriaInfo.outputNode as ConnectableSource | undefined;
 
-      let targetNode: ConnectableTargetNode | undefined | null;
-      let targetParam: ConnectableParam | undefined;
 
-      const toWorkletInfo = managedWorkletNodes.get(toInstance.instanceId);
-      const toNativeInfo = managedNativeNodes.get(toInstance.instanceId);
-
-      if (inputPortDef.audioParamTarget) {
-        if (toWorkletInfo?.node?.parameters?.has(inputPortDef.audioParamTarget)) {
-          targetParam = toWorkletInfo.node.parameters.get(inputPortDef.audioParamTarget);
-          targetNode = toWorkletInfo.node; // The node hosting the parameter
-        } else if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
-          targetParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
-          // Determine the actual Tone.js node that hosts this param.
-          // This could be the main tone node, or a sub-component.
-          // For simplicity, assume paramTargetsForCv provides a connectable Param/Signal.
-          // The targetNode in ActiveWebAudioConnection should be the node to which the param belongs,
-          // which is generally the main node exposed by nodeForInputConnections or a specific tone... field.
-          targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
-
+        if (!sourceNode) {
+          // console.warn(`[AGC] Source node not found for instance ${fromInstance.instanceId}`);
+          return; // Return for this connection if sourceNode not found
         }
-      } else { // Not an audioParamTarget, direct node-to-node connection
-        if (toWorkletInfo) {
+
+
+        let targetNode: ConnectableTargetNode | undefined | null;
+        let targetParam: ConnectableParam | undefined;
+
+        const toWorkletInfo = managedWorkletNodes.get(toInstance.instanceId);
+        const toNativeInfo = managedNativeNodes.get(toInstance.instanceId);
+
+        if (inputPortDef.audioParamTarget) {
+          if (toWorkletInfo?.node?.parameters?.has(inputPortDef.audioParamTarget)) {
+            targetParam = toWorkletInfo.node.parameters.get(inputPortDef.audioParamTarget);
+            targetNode = toWorkletInfo.node; // The node hosting the parameter
+          } else if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
+            targetParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
+            // Determine the actual Tone.js node that hosts this param.
+            // This could be the main tone node, or a sub-component.
+            // For simplicity, assume paramTargetsForCv provides a connectable Param/Signal.
+            // The targetNode in ActiveWebAudioConnection should be the node to which the param belongs,
+            // which is generally the main node exposed by nodeForInputConnections or a specific tone... field.
+            targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
+
+          }
+        } else { // Not an audioParamTarget, direct node-to-node connection
+          if (toWorkletInfo) {
             targetNode = toWorkletInfo.node;
-        } else if (toNativeInfo) {
+          } else if (toNativeInfo) {
             targetNode = toNativeInfo.nodeForInputConnections as ConnectableTargetNode | undefined;
+          }
         }
-      }
 
-      if (!targetNode && !targetParam) {
-        // console.warn(`[AGC] Target node or param not found for instance ${toInstance.instanceId}, input ${inputPortDef.id}`);
-        return;
-      }
-
-      // Ensure targetNode is set if targetParam is defined (for ActiveWebAudioConnection structure)
-      if (targetParam && !targetNode && toNativeInfo) {
-        // Try to assign a sensible targetNode if only param was found.
-        targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
-      }
-      if (targetParam && !targetNode && toWorkletInfo) {
-        targetNode = toWorkletInfo.node;
-      }
-
-
-      if (sourceNode && targetParam && targetNode) { // Ensure targetNode is available for context
-        try {
-          (sourceNode as any).connect(targetParam as any);
-          newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode, targetParam: targetParam });
-        } catch (e) {
-          console.error(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
+        if (!targetNode && !targetParam) {
+          // console.warn(`[AGC] Target node or param not found for instance ${toInstance.instanceId}, input ${inputPortDef.id}`);
+          return;
         }
-      } else if (sourceNode && targetNode) {
-        try {
-          (sourceNode as any).connect(targetNode as any);
-          newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
-        } catch (e) {
-          console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
+
+        // Ensure targetNode is set if targetParam is defined (for ActiveWebAudioConnection structure)
+        if (targetParam && !targetNode && toNativeInfo) {
+          // Try to assign a sensible targetNode if only param was found.
+          targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
+        }
+        if (targetParam && !targetNode && toWorkletInfo) {
+          targetNode = toWorkletInfo.node;
+        }
+
+
+        if (sourceNode && targetParam && targetNode) { // Ensure targetNode is available for context
+          try {
+            (sourceNode as any).connect(targetParam as any);
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode, targetParam: targetParam });
+          } catch (e) {
+            console.error(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
+          }
+        } else if (sourceNode && targetNode) {
+          try {
+            (sourceNode as any).connect(targetNode as any);
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
+          } catch (e) {
+            console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
+          }
         }
       }
     });
@@ -243,16 +248,16 @@ export class AudioGraphConnectorService {
   public disconnectAll(): void {
     console.log(`[AudioGraphConnectorService] Disconnecting all ${this.activeWebAudioConnections.size} connections.`);
     this.activeWebAudioConnections.forEach(connInfo => {
-        try {
-          if (connInfo.targetParam) {
-            (connInfo.sourceNode as any).disconnect(connInfo.targetParam as any);
-          } else if (connInfo.targetNode) {
-            (connInfo.sourceNode as any).disconnect(connInfo.targetNode as any);
-          }
-        } catch (e) {
-          // console.warn(`[AudioGraphConnectorService] Error during disconnectAll for connection ${connInfo.connectionId}: ${(e as Error).message}`);
+      try {
+        if (connInfo.targetParam) {
+          (connInfo.sourceNode as any).disconnect(connInfo.targetParam as any);
+        } else if (connInfo.targetNode) {
+          (connInfo.sourceNode as any).disconnect(connInfo.targetNode as any);
         }
-      });
+      } catch (e) {
+        // console.warn(`[AudioGraphConnectorService] Error during disconnectAll for connection ${connInfo.connectionId}: ${(e as Error).message}`);
+      }
+    });
     this.activeWebAudioConnections.clear();
   }
 }
