@@ -43,6 +43,7 @@ export class AudioOutputNativeBlock implements CreatableNode {
         definition: BlockDefinition,
         initialParams: BlockParameter[]
     ): ManagedAudioOutputNodeInfo {
+        console.log('[AudioOutputNativeBlock createNode]', { instanceId, contextState: Tone.getContext().state });
         if (Tone.getContext().state !== 'running') {
             console.warn('Tone.js context is not running. Audio Output may not function correctly.');
         }
@@ -52,6 +53,7 @@ export class AudioOutputNativeBlock implements CreatableNode {
         toneGain.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
 
         toneGain.connect(Tone.getDestination());
+        console.log('[AudioOutputNativeBlock createNode] Connected internal gain to Tone.getDestination()', { instanceId, gainValue: toneGain.gain.value });
 
         const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
             ['volume', toneGain.gain as unknown as Tone.Param<any>], // Correctly cast
@@ -95,6 +97,7 @@ export class AudioOutputNativeBlock implements CreatableNode {
     }
 
     dispose(nodeInfo: ManagedAudioOutputNodeInfo): void {
+        console.log('[AudioOutputNativeBlock dispose]', { instanceId: nodeInfo.instanceId, contextState: Tone.getContext().state });
         if (nodeInfo.toneGain) {
             nodeInfo.toneGain.disconnect(Tone.getDestination());
             nodeInfo.toneGain.dispose();

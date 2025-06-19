@@ -111,6 +111,7 @@ export class OscillatorNativeBlock implements CreatableNode {
         initialParams: BlockParameter[],
         currentBpm?: number
     ): ManagedOscillatorNodeInfo {
+        console.log('[OscillatorNativeBlock createNode]', { instanceId, contextState: Tone.getContext().state });
         if (Tone.getContext().state !== 'running') {
             console.warn('Tone.js context is not running. Oscillator may not produce sound until context is started.');
         }
@@ -118,7 +119,9 @@ export class OscillatorNativeBlock implements CreatableNode {
         const toneOscillator = new Tone.Oscillator();
         const toneGain = new Tone.Gain();
         toneOscillator.connect(toneGain);
+        console.log('[OscillatorNativeBlock createNode] Starting oscillator', { instanceId, frequency: toneOscillator.frequency.value, type: toneOscillator.type, gain: toneGain.gain.value });
         toneOscillator.start();
+        console.log('[OscillatorNativeBlock createNode] Oscillator started', { instanceId });
 
         const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
             ['frequency', toneOscillator.frequency],
@@ -142,6 +145,7 @@ export class OscillatorNativeBlock implements CreatableNode {
             internalState: {},
         };
 
+        console.log('[OscillatorNativeBlock createNode] Created nodeInfo:', { instanceId, nodeInfo });
         const { toneOscillator: currentToneOscFromInfo, toneGain: currentToneGainFromInfo } = nodeInfo;
 
         if (currentToneOscFromInfo && currentToneGainFromInfo) {
@@ -190,6 +194,7 @@ export class OscillatorNativeBlock implements CreatableNode {
         _currentInputs?: Record<string, any>,
         currentBpm?: number
     ): void {
+        console.log('[OscillatorNativeBlock updateNodeParams]', { instanceId: nodeInfo.instanceId, parameters, currentBpm, contextState: Tone.getContext().state });
         if (!nodeInfo.toneOscillator || !nodeInfo.toneGain) {
             console.warn('Tone.js nodes not found in nodeInfo for OscillatorNativeBlock', nodeInfo);
             return;
@@ -235,6 +240,7 @@ export class OscillatorNativeBlock implements CreatableNode {
     }
 
     dispose(nodeInfo: ManagedOscillatorNodeInfo): void {
+        console.log('[OscillatorNativeBlock dispose]', { instanceId: nodeInfo.instanceId, contextState: Tone.getContext().state });
         if (nodeInfo.toneOscillator) {
             nodeInfo.toneOscillator.dispose();
         }

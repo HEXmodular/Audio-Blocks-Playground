@@ -59,6 +59,7 @@ class AudioEngineService {
         Tone.setContext(this.context); // Ensure Tone uses this context
         // Minimal setup if context was externally initialized
         this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+        console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
         this.isAudioGloballyEnabled = true;
         this.publishAudioEngineState();
       }
@@ -85,6 +86,7 @@ class AudioEngineService {
       }
 
       this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+      console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
       // this.synth = new Tone.Synth().connect(this.masterVolume);
       this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
 
@@ -126,6 +128,7 @@ class AudioEngineService {
 
   // --- Method Implementations (selected) ---
   public async toggleGlobalAudio(): Promise<void> {
+    console.log('[AudioEngineService toggleGlobalAudio] Called.', { currentGlobalState: this.isAudioGloballyEnabled, contextState: this.context?.state });
     if (!this.context) {
       await this.initialize(); // Initialize if not already
       if (!this.context) { // Still no context after init attempt
@@ -141,13 +144,20 @@ class AudioEngineService {
     }
 
     this.isAudioGloballyEnabled = !this.isAudioGloballyEnabled;
+    console.log('[AudioEngineService toggleGlobalAudio] Toggled global audio.', { newGlobalState: this.isAudioGloballyEnabled, masterVolumeMute: this.masterVolume?.mute, masterVolumeLevel: this.masterVolume?.volume.value });
     if (this.isAudioGloballyEnabled) {
       // Potentially unmute master output if it was muted when disabled
-      if (this.masterVolume) this.masterVolume.mute = false; // Or restore previous volume
+      if (this.masterVolume) {
+        this.masterVolume.mute = false; // Or restore previous volume
+        console.log('[AudioEngineService toggleGlobalAudio] Unmuted master volume.', { masterVolumeMute: this.masterVolume.mute });
+      }
       console.log("Audio globally enabled.");
     } else {
       // Potentially mute master output
-      if (this.masterVolume) this.masterVolume.mute = true;
+      if (this.masterVolume) {
+        this.masterVolume.mute = true;
+        console.log('[AudioEngineService toggleGlobalAudio] Muted master volume.', { masterVolumeMute: this.masterVolume.mute });
+      }
       console.log("Audio globally disabled.");
       // Consider stopping transport, etc.
       this.stopTransport();
@@ -291,6 +301,7 @@ class AudioEngineService {
   }
 
   public startTransport(): void {
+    console.log('[AudioEngineService startTransport] Attempting to start transport.', { contextState: this.context?.state, transportState: Tone.getTransport().state });
     if (!this.context || this.context.state !== 'running') {
       console.warn('Audio context not running. Cannot start transport.');
       return;
@@ -304,6 +315,7 @@ class AudioEngineService {
   }
 
   public stopTransport(): void {
+    console.log('[AudioEngineService stopTransport] Attempting to stop transport.', { contextState: this.context?.state, transportState: Tone.getTransport().state });
     try {
       Tone.getTransport().stop();
       console.log('Tone.Transport stopped.');
