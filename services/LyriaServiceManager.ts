@@ -25,22 +25,27 @@ export interface ILyriaServiceManager {
     getManagedServicesMap(): Map<string, ManagedLyriaServiceInfo>;
 }
 
-export class LyriaServiceManager implements ILyriaServiceManager {
+class LyriaServiceManager implements ILyriaServiceManager {
+    private static instance: LyriaServiceManager | null = null;
     private managedLyriaServiceInstancesRef: Map<string, ManagedLyriaServiceInfo>;
     private audioContext: AudioContext | null = null;
     private toneContext: Tone.Context | null = null;
     private masterGainNode: GainNode | null;
-    private readonly onStateChangeForReRender: () => void;
+    private readonly onStateChangeForReRender = () => {};
 
-    constructor(
-        onStateChangeForReRender: () => void,
-        initialAudioContext: any = null,
-        initialMasterGainNode: GainNode | null = null
+    private constructor(
+
     ) {
-        this.onStateChangeForReRender = onStateChangeForReRender;
-        this.setAudioContext(initialAudioContext);
-        this.masterGainNode = initialMasterGainNode;
+
         this.managedLyriaServiceInstancesRef = new Map<string, ManagedLyriaServiceInfo>();
+    }
+
+    public static getInstance(
+    ): LyriaServiceManager {
+        if (!LyriaServiceManager.instance) {
+            LyriaServiceManager.instance = new LyriaServiceManager();
+        }
+        return LyriaServiceManager.instance;
     }
 
     public setAudioContext(context: any): void {
@@ -49,29 +54,12 @@ export class LyriaServiceManager implements ILyriaServiceManager {
 
         if (context) {
             newToneContext = context;
-            // if (context instanceof Tone.Context) {
-            //     newToneContext = context;
-            //     newRawContext = context.rawContext instanceof AudioContext ? context.rawContext : null;
-            // } else if (context instanceof AudioContext) {
-            //     newRawContext = context;
-            //     newToneContext = new Tone.Context(context);
-            // } else if (context.rawContext && context.rawContext instanceof AudioContext) {
-            //     newRawContext = context.rawContext;
-            //     newToneContext = (typeof context.toDestination === 'function') ? context as Tone.Context : new Tone.Context(newRawContext);
-            // } else if (context.rawContext && context.rawContext instanceof OfflineAudioContext) {
-            //     console.warn("[LyriaServiceManager] Received OfflineAudioContext. Lyria services require a live AudioContext.");
-            //     newRawContext = null;
-            //     newToneContext = null;
-            // }
-            //  else {
-            //     console.warn("[LyriaServiceManager] Received context that is not directly usable as Tone.Context or AudioContext:", context);
-            // }
         }
 
         let contextChanged = false;
         if (this.audioContext !== newRawContext) {
             contextChanged = true;
-            if (this.managedLyriaServiceInstancesRef.size > 0 && this.audioContext ) {
+            if (this.managedLyriaServiceInstancesRef.size > 0 && this.audioContext) {
                 console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services tied to the old context.", true);
                 this.removeAllServices();
             }
@@ -102,14 +90,14 @@ export class LyriaServiceManager implements ILyriaServiceManager {
             return false;
         }
         if (typeof process === 'undefined' || !process.env.API_KEY) {
-             addBlockLog("[LyriaManager Setup] Lyria Service setup failed: API_KEY not configured."); // Corrected log
+            addBlockLog("[LyriaManager Setup] Lyria Service setup failed: API_KEY not configured.");
             return false;
         }
         if (this.managedLyriaServiceInstancesRef.has(instanceId)) {
             addBlockLog("[LyriaManager Setup] Lyria Service already initialized for this block.");
             const existingServiceInfo = this.managedLyriaServiceInstancesRef.get(instanceId);
             if (existingServiceInfo && this.masterGainNode && existingServiceInfo.outputNode !== this.masterGainNode) {
-                 try { existingServiceInfo.outputNode.disconnect(); } catch (e) { /*ignore*/ }
+                try { existingServiceInfo.outputNode.disconnect(); } catch (e) { /*ignore*/ }
                 try { existingServiceInfo.outputNode.connect(this.masterGainNode); }
                 catch (e) { console.log(`[LyriaManager Error] Re-connecting existing Lyria output for ${instanceId} to master gain: ${(e as Error).message}`, true); }
             }
@@ -254,3 +242,5 @@ export class LyriaServiceManager implements ILyriaServiceManager {
         return this.managedLyriaServiceInstancesRef;
     }
 }
+
+export default LyriaServiceManager.getInstance(); // Ensure singleton instance is used

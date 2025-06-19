@@ -46,12 +46,18 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
 
                 // Querying the DOM directly can be problematic in React if elements are not yet rendered
                 // or if their IDs/attributes change. Assuming these elements are stable when this renders.
-                const outputPortElem = document.querySelector(`[data-instance-id="${conn.fromInstanceId}"] [data-port-id="${conn.fromOutputId}"]`);
-                const inputPortElem = document.querySelector(`[data-instance-id="${conn.toInstanceId}"] [data-port-id="${conn.toInputId}"]`);
+                let outputPortElem = document.querySelector(`[data-instance-id="${conn.fromInstanceId}"] [data-port-id="${conn.fromOutputId}"]`);
+                let inputPortElem = document.querySelector(`[data-instance-id="${conn.toInstanceId}"] [data-port-id="${conn.toInputId}"]`);
+                console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId });
 
                 if (!outputPortElem || !inputPortElem) {
-                    // console.warn(`[ConnectionsRenderer] Port elements not found for connection ${conn.id}. This might be a timing issue.`);
+                    console.warn(`[ConnectionsRenderer] Port elements not found for connection ${conn.id}. This might be a timing issue.`);
                     // return null; // Or some fallback rendering / error indicator
+                     setTimeout(() => {
+                        outputPortElem = document.querySelector(`[data-instance-id="${conn.fromInstanceId}"] [data-port-id="${conn.fromOutputId}"]`);
+                        inputPortElem = document.querySelector(`[data-instance-id="${conn.toInstanceId}"] [data-port-id="${conn.toInputId}"]`);
+                        console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId })
+                    }, 1000);
                 }
 
                 const startPos = getPortElementCenterForConnectionLine(outputPortElem, svgRef);

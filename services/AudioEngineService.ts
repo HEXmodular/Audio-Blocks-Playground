@@ -1,11 +1,14 @@
 import * as Tone from 'tone';
 import AudioContextService from './AudioContextService';
-import { NativeNodeManager, INativeNodeManager } from './NativeNodeManager';
-import { AudioWorkletManager, IAudioWorkletManager } from './AudioWorkletManager';
-import { LyriaServiceManager, ILyriaServiceManager } from './LyriaServiceManager';
-import { AudioGraphConnectorService } from './AudioGraphConnectorService';
+import  NativeNodeManager from './NativeNodeManager';
+import AudioWorkletManager from './AudioWorkletManager';
+import LyriaServiceManager from './LyriaServiceManager';
+import  AudioGraphConnectorService  from './AudioGraphConnectorService';
 import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioEngineState, OutputDevice } from '@interfaces/common';
-import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager'; // Added imports
+import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added imports
+
+import BlockStateManager from '@state/BlockStateManager';
+import AudioNodeManager from './AudioNodeManager';
 
 // Callback for NativeNodeManager to signal UI re-render if necessary
 const onStateChangeForReRender = () => {
@@ -20,11 +23,7 @@ class AudioEngineService {
   public context: Tone.BaseContext | null = null; // Made public for easier access by other services if needed
   private masterVolume: Tone.Volume | null = null;
 
-  // Managers - Made public for now, consider getters if more controlled access is needed
-  public nativeNodeManager: INativeNodeManager;
-  public audioWorkletManager: IAudioWorkletManager;
-  public lyriaServiceManager: ILyriaServiceManager;
-  private audioGraphConnectorService: AudioGraphConnectorService;
+
 
   // State properties
   public isAudioGloballyEnabled: boolean = false;
@@ -35,10 +34,6 @@ class AudioEngineService {
 
   private constructor() {
     // Initialize managers
-    this.nativeNodeManager = new NativeNodeManager(null, onStateChangeForReRender);
-    this.audioWorkletManager = new AudioWorkletManager(null, onStateChangeForReRender); // Added onStateChangeForReRender
-    this.lyriaServiceManager = new LyriaServiceManager(onStateChangeForReRender, null, null); // Pass onStateChangeForReRender and nulls
-    this.audioGraphConnectorService = new AudioGraphConnectorService();
     this.toggleGlobalAudio = this.toggleGlobalAudio.bind(this);
     this.queryOutputDevices();
   }
@@ -51,42 +46,40 @@ class AudioEngineService {
   }
 
   public async initialize(): Promise<void> {
-    if (Tone.context && Tone.context.state === 'running') {
-      console.log('AudioEngineService: Context already initialized and running.');
+    const isRunning =  Tone.getContext().state === 'running';
+    // if (isRunning) {
+      // console.log('AudioEngineService: Context already initialized and running.');
       // Ensure local context property is also set if it wasn't (e.g. if init was somehow bypassed)
-      if (!this.context) {
-        this.context = Tone.context;
-        Tone.setContext(this.context); // Ensure Tone uses this context
+      // if (!this.context) {
+        // this.context = Tone.context;
+        // Tone.setContext(this.context); // Ensure Tone uses this context
         // Minimal setup if context was externally initialized
-        this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
-        console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
-        this.isAudioGloballyEnabled = true;
-        this.publishAudioEngineState();
-      }
-      return;
-    }
+        // this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+        // console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
+        // this.isAudioGloballyEnabled = true;
+        // this.publishAudioEngineState();
+      // }
+      // return;
+    // } 
     try {
-      this.context = await AudioContextService.getAudioContext(); // Ensures Tone.start() is called
-      if (!this.context) {
-        throw new Error("Failed to get Tone.Context from AudioContextService.");
-      }
-      Tone.setContext(this.context); // Ensure all Tone.js components use this context
-
-      const rawCtx = this.context.rawContext;
+      // Tone.start();
+      const rawCtx = Tone.getContext().rawContext as AudioContext | null; // Get the raw AudioContext from Tone.js context
       // if (!rawCtx && this.context.rawContext) { // If rawContext exists but is not AudioContext (i.e. OfflineAudioContext)
       //     console.warn("AudioEngineService: rawContext is OfflineAudioContext, passing null to managers expecting AudioContext.");
       // }
-      this.nativeNodeManager._setAudioContext?.(rawCtx);
-      this.audioWorkletManager.setAudioContext(rawCtx);
-      this.lyriaServiceManager.setAudioContext(this.context); // LyriaServiceManager's setAudioContext can handle Tone.Context or raw
+      NativeNodeManager.setAudioContext(rawCtx);
+      AudioWorkletManager.setAudioContext(rawCtx);
+      LyriaServiceManager.setAudioContext(rawCtx); // LyriaServiceManager's setAudioContext can handle Tone.Context or raw
+      this.setupNodes();
+
 
       if (!Tone.getTransport()) {
         console.error('Tone.Transport is not available after context initialization.');
         throw new Error('Failed to initialize Tone.Transport.');
       }
 
-      this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
-      console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
+      // this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
+      // console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
       // this.synth = new Tone.Synth().connect(this.masterVolume);
       this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
 
@@ -109,7 +102,7 @@ class AudioEngineService {
       selectedSinkId: this.selectedSinkId,
       audioContextState: this.context?.state ?? null,
       sampleRate: this.context?.sampleRate ?? null,
-      isWorkletSystemReady: this.audioWorkletManager.isAudioWorkletSystemReady,
+      isWorkletSystemReady: AudioWorkletManager.isAudioWorkletSystemReady,
     };
   }
 
@@ -209,16 +202,16 @@ class AudioEngineService {
     }
   }
 
-  public removeAllManagedNodes(): void {
-    this.nativeNodeManager.removeAllManagedNativeNodes();
-    this.audioWorkletManager.removeAllManagedAudioWorkletNodes();
-    // Lyria services might need similar cleanup
-    this.lyriaServiceManager.removeAllServices?.();
-    console.log("All managed nodes removed from AudioEngineService.");
-    this.publishAudioEngineState(); // State might change (e.g. if nodes were part of metrics)
-  }
+  // public removeAllManagedNodes(): void {
+  //   this.nativeNodeManager.removeAllManagedNativeNodes();
+  //   this.audioWorkletManager.removeAllManagedAudioWorkletNodes();
+  //   // Lyria services might need similar cleanup
+  //   this.lyriaServiceManager.removeAllServices?.();
+  //   console.log("All managed nodes removed from AudioEngineService.");
+  //   this.publishAudioEngineState(); // State might change (e.g. if nodes were part of metrics)
+  // }
 
-  // --- Delegated methods to NativeNodeManager ---
+  // // --- Delegated methods to NativeNodeManager ---
   public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
     return this.nativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
   }
@@ -226,80 +219,70 @@ class AudioEngineService {
     this.nativeNodeManager.removeManagedNativeNode(instanceId);
   }
 
-  // --- Delegated methods to AudioWorkletManager ---
-  public async addManagedAudioWorkletNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> {
-    return this.audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
-  }
-  public removeManagedAudioWorkletNode(instanceId: string): void {
-    this.audioWorkletManager.removeManagedAudioWorkletNode(instanceId);
-  }
-   public sendManagedAudioWorkletNodeMessage(instanceId: string, message: any): void {
-    this.audioWorkletManager.sendManagedAudioWorkletNodeMessage(instanceId, message);
-  }
+  // // --- Delegated methods to AudioWorkletManager ---
+  // public async addManagedAudioWorkletNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> {
+  //   return this.audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
+  // }
+  // public removeManagedAudioWorkletNode(instanceId: string): void {
+  //   this.audioWorkletManager.removeManagedAudioWorkletNode(instanceId);
+  // }
+  //  public sendManagedAudioWorkletNodeMessage(instanceId: string, message: any): void {
+  //   this.audioWorkletManager.sendManagedAudioWorkletNodeMessage(instanceId, message);
+  // }
 
   // --- AudioGraphConnectorService related ---
   public updateAudioGraphConnections(
-    connections: Connection[],
-    blockInstances: BlockInstance[],
-    getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined
   ): void {
-    const rawContextForConnector = this.context?.rawContext; // instanceof AudioContext) ? this.context.rawContext : null;
+    console.log("updateAudioGraphConnections called with connections:");
+    const rawContextForConnector = Tone.getContext().rawContext; // instanceof AudioContext) ? this.context.rawContext : null;
     // if (!rawContextForConnector && this.context?.rawContext) {
     //     console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
     // }
-    const instanceUpdates: InstanceUpdatePayload[] = this.audioGraphConnectorService.updateConnections(
-      rawContextForConnector as AudioContext,
-      this.isAudioGloballyEnabled,
-      connections,
-      blockInstances,
-      getDefinitionForBlock,
-      this.audioWorkletManager.getManagedNodesMap(),
-      this.nativeNodeManager.getManagedNodesMap(),
-      this.lyriaServiceManager.getManagedServicesMap()
-    );
+    const instanceUpdates: InstanceUpdatePayload[] = AudioGraphConnectorService.updateConnections()
+  
 
     if (instanceUpdates && instanceUpdates.length > 0) {
-      BlockStateManager.getInstance().updateMultipleBlockInstances(instanceUpdates);
+      BlockStateManager.updateMultipleBlockInstances(instanceUpdates);
 
       // BlockStateManager has updated the instances.
       // Now, notify relevant node managers if their managed instances were affected,
       // especially for internal state changes like emitter propagation.
-      instanceUpdates.forEach(payload => {
-          const updatedInstance = blockInstances.find(b => b.instanceId === payload.instanceId);
-          if (updatedInstance) {
-              const definition = getDefinitionForBlock(updatedInstance);
-              if (definition) {
-                  // Check if this is a native block that NativeNodeManager would handle
-                  const isNativeBlock = this.nativeNodeManager.getNodeInfo(updatedInstance.instanceId) !== undefined;
+      // instanceUpdates.forEach(payload => {
+      //     const updatedInstance = blockInstances.find(b => b.instanceId === payload.instanceId);
+      //     if (updatedInstance) {
+      //         const definition = getDefinitionForBlock(updatedInstance);
+      //         if (definition) {
+      //             // Check if this is a native block that NativeNodeManager would handle
+      //             const isNativeBlock = this.nativeNodeManager.getNodeInfo(updatedInstance.instanceId) !== undefined;
 
-                  if (isNativeBlock) {
-                      // Check if the update likely involved internalState.emitters.
-                      let internalStateChanged = false;
-                      if (typeof payload.updates === 'function') {
-                          // If it's a function, it's harder to inspect here without re-running it.
-                          // Assume for now it might have changed internalState if it's an emitter-related update.
-                          internalStateChanged = true;
-                      } else {
-                          internalStateChanged = payload.updates.internalState !== undefined;
-                      }
+      //             if (isNativeBlock) {
+      //                 // Check if the update likely involved internalState.emitters.
+      //                 let internalStateChanged = false;
+      //                 if (typeof payload.updates === 'function') {
+      //                     // If it's a function, it's harder to inspect here without re-running it.
+      //                     // Assume for now it might have changed internalState if it's an emitter-related update.
+      //                     internalStateChanged = true;
+      //                 } else {
+      //                     internalStateChanged = payload.updates.internalState !== undefined;
+      //                 }
 
-                      if (internalStateChanged) {
-                          console.log(`[AudioEngineService] Notifying NativeNodeManager for instance ${updatedInstance.instanceId} due to potential emitter change.`);
-                          // We need the currentBpm. Assuming it's available globally or via a service.
-                          // For now, let's retrieve it from Tone.Transport as a fallback.
-                          const currentBpm = Tone.getTransport().bpm.value;
-                          this.nativeNodeManager.updateManagedNativeNodeParams(
-                              updatedInstance.instanceId,
-                              updatedInstance.parameters, // Pass current parameters
-                              undefined, // currentInputs is undefined as per new design
-                              currentBpm
-                          );
-                      }
-                  }
-                  // TODO: Similar logic for AudioWorkletManager if its blocks also use emitters via internalState
-              }
-          }
-      });
+      //                 if (internalStateChanged) {
+      //                     console.log(`[AudioEngineService] Notifying NativeNodeManager for instance ${updatedInstance.instanceId} due to potential emitter change.`);
+      //                     // We need the currentBpm. Assuming it's available globally or via a service.
+      //                     // For now, let's retrieve it from Tone.Transport as a fallback.
+      //                     const currentBpm = Tone.getTransport().bpm.value;
+      //                     this.nativeNodeManager.updateManagedNativeNodeParams(
+      //                         updatedInstance.instanceId,
+      //                         updatedInstance.parameters, // Pass current parameters
+      //                         undefined, // currentInputs is undefined as per new design
+      //                         currentBpm
+      //                     );
+      //                 }
+      //             }
+      //             // TODO: Similar logic for AudioWorkletManager if its blocks also use emitters via internalState
+      //         }
+      //     }
+      // });
     }
   }
 
@@ -308,9 +291,11 @@ class AudioEngineService {
   }
 
   public startTransport(): void {
-    console.log('[AudioEngineService startTransport] Attempting to start transport.', { contextState: this.context?.state, transportState: Tone.getTransport().state });
-    if (!this.context || this.context.state !== 'running') {
-      console.warn('Audio context not running. Cannot start transport.');
+    const isRunning =  Tone.getContext().state === 'running';
+    console.log('[AudioEngineService startTransport] Attempting to start transport.', { transportState: isRunning });
+
+    if (isRunning) {
+      console.warn('Transport is running. Cannot start transport.');
       return;
     }
     try {
@@ -413,6 +398,15 @@ class AudioEngineService {
       console.warn('Master volume node not initialized.');
     }
   }
+
+  public setupNodes = async () => {
+    try {
+      await AudioNodeManager.processAudioNodeSetupAndTeardown();
+    } catch (error) {
+      console.error("Error during processAudioNodeSetupAndTeardown:", error);
+      // setGlobalError("Failed to process audio nodes: " + (error as Error).message);
+    }
+  };
 }
 
 export default AudioEngineService.getInstance();

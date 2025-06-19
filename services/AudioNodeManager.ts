@@ -8,49 +8,44 @@
  */
 // services/AudioNodeManager.ts
 import * as Tone from 'tone'; // Added Tone import
-import AudioEngineServiceInstance from './AudioEngineService'; // Corrected import
+import AudioEngineService from './AudioEngineService'; // Corrected import
 import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@interfaces/common';
-import { BlockStateManager, getDefaultOutputValue } from '@state/BlockStateManager';
+import { getDefaultOutputValue } from '@state/BlockStateManager';
+
+import BlockStateManager from '@state/BlockStateManager';
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; 
-// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
+import LyriaServiceManager from './LyriaServiceManager';
+import AudioWorkletManager from './AudioWorkletManager';
+import NativeNodeManager from './NativeNodeManager';
 
+class AudioNodeManager {
+    private static instance: AudioNodeManager;
 
-export class AudioNodeManager {
-    private audioEngineService: typeof AudioEngineServiceInstance; // Corrected type
-    private blockStateManager: BlockStateManager; // For updating instance state & logging
-    private readonly getDefinitionByIdCallback: (definitionId: string) => BlockDefinition | undefined;
-
-    constructor(
-        passedAudioEngineService: typeof AudioEngineServiceInstance, // Corrected param type and name
-        blockStateManager: BlockStateManager,
-        getDefinitionByIdFunc: (definitionId: string) => BlockDefinition | undefined
-    ) {
-        this.audioEngineService = passedAudioEngineService; // Use passed instance
-        this.blockStateManager = blockStateManager;
-        this.getDefinitionByIdCallback = getDefinitionByIdFunc;
+    private constructor() {
+        // Private constructor to prevent direct instantiation
     }
 
-    // Helper to update instance state and add logs
+    // Static method to get the singleton instance
+    public static getInstance(): AudioNodeManager {
+        if (!AudioNodeManager.instance) {
+            AudioNodeManager.instance = new AudioNodeManager();
+        }
+        return AudioNodeManager.instance;
+    }
+
     private updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
-        this.blockStateManager.updateBlockInstance(instanceId, updates);
+        BlockStateManager.updateBlockInstance(instanceId, updates);
     }
+
     private addLog(instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info') {
-        // _type is not used by BlockStateManager.addLogToBlockInstance
-        this.blockStateManager.addLogToBlockInstance(instanceId, message);
-    }
-    private getDefinition(instance: BlockInstance): BlockDefinition | undefined {
-        return this.getDefinitionByIdCallback(instance?.definitionId);
+        BlockStateManager.addLogToBlockInstance(instanceId, message);
     }
 
     public async processAudioNodeSetupAndTeardown(
-        blockInstances: BlockInstance[],
-        globalBpm: number,
-        isAudioGloballyEnabled: boolean,
-        isWorkletSystemReady: boolean,
-        audioContextCurrent: Tone.BaseContext
     ) {
-        console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Entry. GlobalAudioEnabled:', isAudioGloballyEnabled, 'WorkletSystemReady:', isWorkletSystemReady, 'AudioContext State:', audioContextCurrent?.state);
+        const blockInstances= BlockStateManager.getBlockInstances();
+        // console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Entry. GlobalAudioEnabled:', isAudioGloballyEnabled, 'WorkletSystemReady:', isWorkletSystemReady, 'AudioContext State:', audioContextCurrent?.state);
         console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Number of blockInstances received:', blockInstances.length);
         if (blockInstances.length > 0) {
           console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
@@ -59,37 +54,37 @@ export class AudioNodeManager {
         // The erroneous if (audioContextCurrent?.rawContext) block is removed by not including it here.
 
         // Determine the actual usable AudioContext (native) or null
-        const usableContext = audioContextCurrent?.rawContext as AudioContext | null; // Corrected type cast
+        // const usableContext = audioContextCurrent?.rawContext as AudioContext | null; // Corrected type cast
 
-        if (!usableContext || usableContext.state !== 'running') {
-            blockInstances.forEach(instance => {
-                // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
-                const definition = this.getDefinition(instance);
-                if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
-                    // Node was set up, but audio context is now gone. Mark for setup and log if not already.
-                    const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
-                    this.updateInstance(instance.instanceId, currentInst => ({
-                        ...currentInst,
-                        internalState: {
-                            ...currentInst.internalState,
-                            needsAudioNodeSetup: true,
-                            lyriaServiceReady: false, // Reset related flags
-                            autoPlayInitiated: false,
-                            loggedAudioSystemNotActive: true // Set the flag
-                        }
-                    }));
-                    if (needsToLog) {
-                        // Use a more accurate log message here
-                        this.addLog(instance.instanceId, "Context not running. Node marked for setup.", "warn");
-                        console.warn(instance.instanceId, "Context not running. Node marked for setup.", "warn");
-                    }
-                }
-            });
-            return; // Exit if context is not ready
-        }
+        // if (!usableContext || usableContext.state !== 'running') {
+        //     blockInstances.forEach(instance => {
+        //         // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
+        //         const definition = this.getDefinition(instance);
+        //         if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
+        //             // Node was set up, but audio context is now gone. Mark for setup and log if not already.
+        //             const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
+        //             this.updateInstance(instance.instanceId, currentInst => ({
+        //                 ...currentInst,
+        //                 internalState: {
+        //                     ...currentInst.internalState,
+        //                     needsAudioNodeSetup: true,
+        //                     lyriaServiceReady: false, // Reset related flags
+        //                     autoPlayInitiated: false,
+        //                     loggedAudioSystemNotActive: true // Set the flag
+        //                 }
+        //             }));
+        //             if (needsToLog) {
+        //                 // Use a more accurate log message here
+        //                 this.addLog(instance.instanceId, "Context not running. Node marked for setup.", "warn");
+        //                 console.warn(instance.instanceId, "Context not running. Node marked for setup.", "warn");
+        //             }
+        //         }
+        //     });
+        //     return; // Exit if context is not ready
+        // }
 
         for (const instance of blockInstances) {
-            const definition = this.getDefinition(instance);
+            const definition = BlockStateManager.getDefinitionForBlock(instance);
             console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Processing instance:', { instanceId: instance.instanceId, name: instance.name, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, definitionId: instance.definitionId, runsAtAudioRate: definition?.runsAtAudioRate });
             // console.log(`[AudioNodeManager DEBUG] Processing instance: ${instance.instanceId}, Def ID: ${instance.definitionId}`);
             if (!definition) {
@@ -105,13 +100,14 @@ export class AudioNodeManager {
             }
 
             // Pre-condition: usableContext.state is 'running'
+            const isAudioGloballyEnabled = true; // Assume this is set globally or passed in
             if (isAudioGloballyEnabled) {
                 // Context is RUNNING (guaranteed by outer guard) and Global Audio is ON.
                 if (instance.internalState.needsAudioNodeSetup) {
                     // Node needs setup.
                     let setupSuccess = false; // Initialize setupSuccess for this scope
                     if (definition.audioWorkletProcessorName && definition.audioWorkletCode) { // Worklet Node
-                        if (isWorkletSystemReady) {
+                        if (AudioWorkletManager.isAudioWorkletSystemReady) {
                             if (instance.internalState.loggedWorkletSystemNotReady) {
                                 this.updateInstance(instance.instanceId, currentInst => ({
                                     ...currentInst,
@@ -120,7 +116,7 @@ export class AudioNodeManager {
                             }
                             this.addLog(instance.instanceId, "Worklet node setup initiated (audio on).");
                             console.log(instance.instanceId, "Worklet node setup initiated (audio on).");
-                            setupSuccess = await this.audioEngineService.audioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
+                            setupSuccess = await AudioWorkletManager.setupManagedAudioWorkletNode(instance.instanceId, definition, instance.parameters);
                             if (setupSuccess) {
                                 this.updateInstance(instance.instanceId, currentInst => ({
                                     ...currentInst,
@@ -148,7 +144,7 @@ export class AudioNodeManager {
                         this.addLog(instance.instanceId, "Native node setup initiated (audio on).");
                         console.log(instance.instanceId, "Native node setup initiated (audio on).");
                         console.log('[AudioNodeManager] Attempting to call audioEngineService.addNativeNode for instance:', { instanceId: instance.instanceId, definitionId: definition.id, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, contextState: Tone.getContext()?.state, isAudioGloballyEnabled });
-                        setupSuccess = await this.audioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters, globalBpm);
+                        setupSuccess = await AudioEngineService.addNativeNode(instance.instanceId, definition, instance.parameters);
                         if (setupSuccess) {
                             this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,
@@ -192,25 +188,19 @@ export class AudioNodeManager {
         }
     }
 
-    public updateAudioNodeParameters(
-        blockInstances: BlockInstance[],
-        connections: Connection[],
-        globalBpm: number
-    ) {
-        // Check Tone.js context state
+    public updateAudioNodeParameters(blockInstances: BlockInstance[], connections: Connection[], globalBpm: number) {
         if (!Tone.getContext() || Tone.getContext().state !== 'running') return;
 
         blockInstances.forEach(instance => {
-            const definition = this.getDefinition(instance);
-            if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
+            const definition = BlockStateManager.getDefinitionForBlock(instance);
+            if (!definition || !definition.runsAtAudioRate || instance.internalState.needsAudioNodeSetup || definition.id === LyriaMasterBlock.getDefinition().id) {
                 return;
             }
 
             if (definition.audioWorkletProcessorName) {
-                this.audioEngineService.audioWorkletManager.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
-            } else { // Native Nodes
+                AudioWorkletManager.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
+            } else {
                 const currentInputsForParamUpdate: Record<string, any> = {};
-                // Special handling for NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION
                 if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
                     const inputPort = definition.inputs.find(ip => ip.id === 'number_in');
                     if (inputPort) {
@@ -219,11 +209,11 @@ export class AudioNodeManager {
                             const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
                             currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
                         } else {
-                             currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(inputPort.type);
+                            currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(inputPort.type);
                         }
                     }
                 }
-                this.audioEngineService.nativeNodeManager.updateManagedNativeNodeParams?.(
+                NativeNodeManager.updateManagedNativeNodeParams?.(
                     instance.instanceId,
                     instance.parameters,
                     Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined,
@@ -239,14 +229,13 @@ export class AudioNodeManager {
         isAudioGloballyEnabled: boolean,
     ) {
         // Check Tone.js context state for Lyria Service updates, as it might interact with audio scheduling
-        if (!Tone.getContext() || !this.audioEngineService.lyriaServiceManager) return;
-
+        if (!Tone.getContext() || !LyriaServiceManager) return;
 
         blockInstances.forEach(instance => {
-            const definition = this.getDefinition(instance);
-            if (!definition || definition.id !== LyriaMasterBlock.getDefinition().id) return; // Changed
+            const definition = BlockStateManager.getDefinitionForBlock(instance);
+            if (!definition || definition.id !== LyriaMasterBlock.getDefinition().id) return;
 
-            const service = this.audioEngineService.lyriaServiceManager.getLyriaServiceInstance(instance.instanceId);
+            const service = LyriaServiceManager;
             const servicePlaybackState = service?.getPlaybackState();
             const isServiceEffectivelyPlaying = servicePlaybackState === PlaybackState.PLAYING || servicePlaybackState === PlaybackState.LOADING;
 
@@ -298,7 +287,7 @@ export class AudioNodeManager {
                     }
                 });
 
-                this.audioEngineService.lyriaServiceManager.updateLyriaServiceState(
+                LyriaServiceManager.updateLyriaServiceState(
                     instance.instanceId,
                     instance.internalState,
                     blockParams,
@@ -326,10 +315,12 @@ export class AudioNodeManager {
         // Check Tone.js context state for updating graph connections
         if (!Tone.getContext()) return;
         if (isAudioGloballyEnabled) {
-            this.audioEngineService.updateAudioGraphConnections(connections, blockInstances, (inst) => this.getDefinition(inst));
+            AudioEngineService.updateAudioGraphConnections();
         } else {
             // Clear connections if audio is disabled
-            this.audioEngineService.updateAudioGraphConnections([], blockInstances, (inst) => this.getDefinition(inst));
+            AudioEngineService.updateAudioGraphConnections();
         }
     }
 }
+
+export default AudioNodeManager.getInstance();

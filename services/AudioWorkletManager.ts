@@ -12,6 +12,8 @@ import {
     ManagedWorkletNodeInfo, 
     ManagedAudioWorkletNodeMessage 
 } from '@interfaces/common';
+import * as Tone from 'tone'; // Import Tone
+
 import { RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
 export const PREDEFINED_WORKLET_DEFS: BlockDefinition[] = [
@@ -38,7 +40,9 @@ export interface IAudioWorkletManager {
   getManagedNodesMap(): Map<string, ManagedWorkletNodeInfo>;
 }
 
-export class AudioWorkletManager implements IAudioWorkletManager {
+class AudioWorkletManager implements IAudioWorkletManager {
+  private static instance: AudioWorkletManager | null = null;
+
   public isAudioWorkletSystemReady: boolean = false;
   public audioInitializationErrorLocal: string | null = null;
   private registeredWorkletNamesRef: Set<string>;
@@ -47,11 +51,22 @@ export class AudioWorkletManager implements IAudioWorkletManager {
   private readonly onStateChangeForReRender: () => void;
   private dynamicallyRegisteredDefs: BlockDefinition[] = [];
 
-  constructor(audioContext: AudioContext | null, onStateChangeForReRender: () => void) {
-    this.audioContext = audioContext;
-    this.onStateChangeForReRender = onStateChangeForReRender;
+  private constructor() {
+    this.audioContext = Tone.getContext().rawContext || null;
+    // this.onStateChangeForReRender = onStateChangeForReRender;
     this.registeredWorkletNamesRef = new Set<string>();
     this.managedWorkletNodesRef = new Map<string, ManagedWorkletNodeInfo>();
+  }
+
+  public static getInstance(): AudioWorkletManager {
+    if (!AudioWorkletManager.instance) {
+      AudioWorkletManager.instance = new AudioWorkletManager();
+    }
+    return AudioWorkletManager.instance;
+  }
+
+  public static resetInstance(): void {
+    AudioWorkletManager.instance = null;
   }
 
   public setAudioContext(newContext: AudioContext | null): void {
@@ -309,3 +324,5 @@ try {
     this.sendManagedAudioWorkletNodeMessage(nodeId, message);
   }
 }
+
+export default AudioWorkletManager.getInstance();

@@ -572,3 +572,5 @@ export type InstanceUpdatePayload = {
     instanceId: string;
     updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance);
 };
+
+export default BlockStateManager.getInstance(); // Export the singleton instance directly;

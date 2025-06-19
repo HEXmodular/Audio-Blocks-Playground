@@ -3,6 +3,7 @@
 import React, { useMemo, useCallback, useState } from 'react'; // Added useState
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons';
 import * as Tone from 'tone'; // Added Tone import
+import AudioEngineService from '@services/AudioEngineService';
 
 
 
@@ -85,11 +86,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
             toneTransport.state === "started" ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
           } text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2`}
           onClick={async () => {
+            // AudioEngineService.toggleGlobalAudio()
             if (toneTransport.state === "started") {
-              toneTransport.stop();
+              AudioEngineService.stopTransport();   
+              // toneTransport.stop();
             } else {
-              await toneTransport.start();
-              console.log("Transport started");
+              await Tone.start()
+              AudioEngineService.initialize();  // <--- Existing line
+              AudioEngineService.updateAudioGraphConnections();
+              // await toneTransport.start();
+              // console.log("Transport started");
             }
           }}
               >    {toneTransport.state !== "started" ? <StopIcon className="w-4 h-4 mr-1" /> : <PlayIcon className="w-4 h-4 mr-1" />}

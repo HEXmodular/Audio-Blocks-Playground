@@ -41,7 +41,7 @@ export class BlockInstanceController {
 
     public addBlockFromDefinition = async (definition: BlockDefinition, name?: string, position?: { x: number; y: number }): Promise<BlockInstance | null> => {
         const newInstance = this.blockStateManager.addBlockInstance(definition, name, position);
-        const globalBpm = this.getGlobalBpm();
+        // const globalBpm = this.getGlobalBpm();
         const toneContext = Tone.getContext();
 
         if (newInstance && definition.runsAtAudioRate && toneContext && toneContext.state === 'running') {
