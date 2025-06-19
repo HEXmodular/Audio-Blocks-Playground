@@ -112,7 +112,7 @@ export class AudioGraphConnectorService {
         // Gate/trigger connections do not create Web Audio API connections, so we return after handling emitters.
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
-        // Existing logic for audio connections
+        // Re-applying this block with careful formatting
         let sourceNode: ConnectableSource | undefined;
       const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
       const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
@@ -187,6 +187,7 @@ export class AudioGraphConnectorService {
           console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
         }
       }
+      // End of re-applied block
     });
 
     // Disconnect old connections that are no longer active
