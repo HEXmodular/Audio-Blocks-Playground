@@ -286,10 +286,9 @@ export class BlockStateManager {
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
             initialInternalState.needsAudioNodeSetup = false;
         }
-        if (loadedInst?.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            console.log(`[BlockStateManager._loadAndProcessInstances] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 (Def: ${definition?.id}), initialInternalState.needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup}`);
-        }
       }
+      // New general log for all instances being processed
+      console.log(`[BlockStateManager._loadAndProcessInstances] Processing instance: ID ${loadedInst?.instanceId}, DefID: ${loadedInst?.definitionId}, needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup} ${loadedInst?.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
 
       if (!loadedInst) {
         return {
