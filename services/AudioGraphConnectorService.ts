@@ -64,8 +64,6 @@ class AudioGraphConnectorService {
     const blockInstances = BlockStateManager.getInstance().getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
 
-    // Corrected: Use NativeNodeManager for native nodes, and AudioWorkletManager for worklet nodes.
-    // These are the maps of all managed nodes/services.
     const localManagedWorkletNodes = AudioWorkletManager.getManagedNodesMap();
     const localManagedNativeNodes = NativeNodeManager.getManagedNodesMap();
     const localManagedLyriaServices = LyriaServiceManager.getManagedServicesMap();
@@ -142,7 +140,10 @@ class AudioGraphConnectorService {
       if (!outputPortDef || !inputPortDef) return;
 
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
-        const sourceManagedNodeInfo = managedNativeNodes.get(fromInstance.instanceId);
+        // Ensure this uses the local map as well, if this logic is still relevant.
+        // For now, focusing on the `fromWorkletInfo` etc. for audio connections as per subtask.
+        // Assuming this part might be correct or out of scope for the current specific fix.
+        const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
         if (sourceManagedNodeInfo && (sourceManagedNodeInfo as any).providerInstance &&
           typeof ((sourceManagedNodeInfo as any).providerInstance as EmitterProvider).getEmitter === 'function') {
           const provider = (sourceManagedNodeInfo as any).providerInstance as EmitterProvider;
@@ -167,9 +168,10 @@ class AudioGraphConnectorService {
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
         console.log(`[AudioGraphConnectorService] Processing audio connection from ${fromDef.name} to ${toDef.name} (${conn.id})`);
         let sourceNode: ConnectableSource | undefined;
-        const fromWorkletInfo = managedWorkletNodes.get(fromInstance.instanceId);
-        const fromNativeInfo = managedNativeNodes.get(fromInstance.instanceId);
-        const fromLyriaInfo = managedLyriaServices.get(fromInstance.instanceId);
+        // Correctly use localManaged maps for fromInfo lookups
+        const fromWorkletInfo = localManagedWorkletNodes.get(fromInstance.instanceId);
+        const fromNativeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
+        const fromLyriaInfo = localManagedLyriaServices.get(fromInstance.instanceId);
 
         if (fromWorkletInfo) sourceNode = fromWorkletInfo.node;
         else if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
