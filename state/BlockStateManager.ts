@@ -286,6 +286,9 @@ export class BlockStateManager {
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
             initialInternalState.needsAudioNodeSetup = false;
         }
+        if (loadedInst?.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            console.log(`[BlockStateManager._loadAndProcessInstances] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 (Def: ${definition?.id}), initialInternalState.needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup}`);
+        }
       }
 
       if (!loadedInst) {
@@ -482,19 +485,38 @@ export class BlockStateManager {
     this._blockInstances = [...this._blockInstances, newInstance];
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+
+    if (newInstance.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+        console.log(`[BlockStateManager.addBlockInstance] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 created with internalState.needsAudioNodeSetup: ${newInstance.internalState.needsAudioNodeSetup}`);
+    }
     return newInstance;
   }
 
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
+    if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+        const updatesToLog = typeof updates === 'function' ? 'Function update' : JSON.stringify(updates);
+        console.log(`[BlockStateManager.updateBlockInstance] Updating inst_0d8a9770-06d7-4d8b-8503-1121765a2324 with updates: ${updatesToLog}`);
+    }
     let wasUpdated = false;
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
       if (currentBlockInst?.instanceId === instanceId) {
         wasUpdated = true;
+
+        const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
+        if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE update: ${beforeNeedsAudioNodeSetup}`);
+        }
+
         let newBlockState: BlockInstance;
         if (typeof updates === 'function') {
           newBlockState = updates(currentBlockInst);
         } else {
           newBlockState = { ...currentBlockInst, ...updates };
+        }
+
+        if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            const updatesString = typeof updates === 'function' ? "{Function update}" : JSON.stringify(updates);
+            console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${newBlockState.internalState?.needsAudioNodeSetup}. Updates applied: ${updatesString}`);
         }
 
         // Call Rule 110 specific logic using the helper method
@@ -524,6 +546,18 @@ export class BlockStateManager {
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
 
+  public setAllBlockInstances(newInstances: BlockInstance[]): void {
+    const targetInstanceFromFile = newInstances.find(inst => inst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
+    if (targetInstanceFromFile) {
+        console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. For inst_0d8a9770-06d7-4d8b-8503-1121765a2324, initial internalState.needsAudioNodeSetup from input array: ${targetInstanceFromFile.internalState?.needsAudioNodeSetup}`);
+    } else {
+        console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 not found in input array.`);
+    }
+    this._blockInstances = newInstances;
+    this._saveInstancesToLocalStorage();
+    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+  }
+
   public setAllBlockDefinitions(newDefinitions: BlockDefinition[]): void {
     this._blockDefinitions = newDefinitions;
     this._saveDefinitionsToLocalStorage();
@@ -531,15 +565,25 @@ export class BlockStateManager {
   }
 
   public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
+    const targetInstanceUpdate = instanceUpdates.find(update => update.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
+    if (targetInstanceUpdate) {
+        const updatesToLog = typeof targetInstanceUpdate.updates === 'function' ? 'Function update' : JSON.stringify(targetInstanceUpdate.updates);
+        console.log(`[BlockStateManager.updateMultipleBlockInstances] Received updates for inst_0d8a9770-06d7-4d8b-8503-1121765a2324: ${updatesToLog}`);
+    }
+
     let wasAnyInstanceUpdated = false;
 
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
-      // Find all updates pertaining to the currentBlockInst
       const updatesForThisInstance = instanceUpdates.filter(upd => upd.instanceId === currentBlockInst?.instanceId);
 
       if (updatesForThisInstance.length > 0) {
         wasAnyInstanceUpdated = true;
-        // Reduce all applicable updates sequentially onto the currentBlockInst
+
+        const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
+        if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE batch update: ${beforeNeedsAudioNodeSetup}`);
+        }
+
         const updatedBlockInst = updatesForThisInstance.reduce((accInst, currentUpdatePayload) => {
           let newBlockStatePartial: BlockInstance;
           if (typeof currentUpdatePayload.updates === 'function') {
@@ -547,15 +591,13 @@ export class BlockStateManager {
           } else {
             newBlockStatePartial = { ...accInst, ...currentUpdatePayload.updates };
           }
-          // Apply Rule 110 specific logic if necessary after each partial update within the batch for this instance
-          // Note: _handleRule110ParameterAdjustment takes the fully updated new state and the state before this specific adjustment.
-          // In a reduce chain, 'accInst' is the state *before* currentUpdatePayload.updates is applied.
-          // However, _handleRule110ParameterAdjustment might be better applied *after* all updates for an instance are merged,
-          // using the state *before this entire batch* for that instance as `previousInstance`.
-          // For simplicity and to match single update behavior, we'll pass `accInst` as previous for Rule110.
-          // This means if Rule110 logic depends on a parameter changed earlier in the *same batch* for the same instance, it will see it.
-          // return this._handleRule110ParameterAdjustment(newBlockStatePartial, accInst);
+          return newBlockStatePartial; // In a real scenario, Rule110 or other specific logic might be here
         }, currentBlockInst);
+
+        if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            const updatesString = JSON.stringify(updatesForThisInstance.map(u => typeof u.updates === 'function' ? {functionUpdate: true} : u.updates));
+            console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${updatedBlockInst.internalState?.needsAudioNodeSetup}. Updates: ${updatesString}`);
+        }
         return updatedBlockInst;
       }
       return currentBlockInst;

@@ -153,6 +153,35 @@ class WorkspacePersistenceManager {
                     modificationPrompts: inst.modificationPrompts || [],
                 })));
                 console.log("[WorkspacePersistenceManager] Block instances set.");
+
+                // Specific logging for instance states after setAllBlockInstances
+                const instanceIdsToLog = ['inst_0d8a9770-06d7-4d8b-8503-1121765a2324'];
+                // Add a few more instance IDs from the imported data if available, avoiding duplicates
+                if (importedInstances.length > 0) {
+                    importedInstances.slice(0, 3).forEach((inst: BlockInstance) => {
+                        if (!instanceIdsToLog.includes(inst.instanceId)) {
+                            instanceIdsToLog.push(inst.instanceId);
+                        }
+                    });
+                }
+
+                instanceIdsToLog.forEach(targetInstanceId => {
+                    const loggedInstance = this.blockStateManager.getBlockInstances().find(inst => inst.instanceId === targetInstanceId);
+                    if (loggedInstance) {
+                        console.log(`[WorkspacePersistenceManager] Instance ${targetInstanceId} state after setAllBlockInstances:`, {
+                            instanceId: loggedInstance.instanceId,
+                            name: loggedInstance.name,
+                            // The 'needsAudioNodeSetup' property might not exist directly on BlockInstance after transformation
+                            // It's primarily managed within internalState post-merge.
+                            // Logging internalState directly is more reliable for the property we are interested in.
+                            internalStateNeedsAudioNodeSetup: loggedInstance.internalState?.needsAudioNodeSetup,
+                            internalState: loggedInstance.internalState
+                        });
+                    } else {
+                        console.log(`[WorkspacePersistenceManager] Instance ${targetInstanceId} not found after setAllBlockInstances.`);
+                    }
+                });
+
                 this.connectionState.setAllConnections(importedConnections);
 
                 if (typeof importedBpm === 'number' && importedBpm > 0) {
