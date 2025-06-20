@@ -64,9 +64,11 @@ class AudioGraphConnectorService {
     const blockInstances = BlockStateManager.getInstance().getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
 
-    const managedWorkletNodes = NativeNodeManager.getManagedNodesMap()
-    const managedNativeNodes= AudioWorkletManager.getManagedNodesMap()
-    const managedLyriaServices = LyriaServiceManager.getManagedServicesMap();
+    // Corrected: Use NativeNodeManager for native nodes, and AudioWorkletManager for worklet nodes.
+    // These are the maps of all managed nodes/services.
+    const localManagedWorkletNodes = AudioWorkletManager.getManagedNodesMap();
+    const localManagedNativeNodes = NativeNodeManager.getManagedNodesMap();
+    const localManagedLyriaServices = LyriaServiceManager.getManagedServicesMap();
 
 
     const instanceUpdates: InstanceUpdatePayload[] = [];
@@ -183,8 +185,9 @@ class AudioGraphConnectorService {
         let targetNode: ConnectableTargetNode | undefined | null;
         let targetParam: ConnectableParam | undefined;
 
-        const toWorkletInfo = managedWorkletNodes.get(toInstance.instanceId);
-        const toNativeInfo = managedNativeNodes.get(toInstance.instanceId);
+        // Use the correctly populated local maps
+        const toWorkletInfo = localManagedWorkletNodes.get(toInstance.instanceId);
+        const toNativeInfo = localManagedNativeNodes.get(toInstance.instanceId);
 
         if (inputPortDef.audioParamTarget) {
           if (toWorkletInfo?.node?.parameters?.has(inputPortDef.audioParamTarget)) {
@@ -197,6 +200,15 @@ class AudioGraphConnectorService {
             console.log(`[AudioGraphConnectorService] Target param identified for ${toInstance.instanceId}: ${inputPortDef.audioParamTarget} on NativeNode`, targetParam);
           }
         } else {
+          // This is the section to add the new conditional log
+          if (toInstance.definitionId === 'system-audio-output-tone-v1') {
+            console.log(`[AudioGraphConnectorService] Attempting to find target for AudioOutput: ID ${toInstance.instanceId}`);
+            // Log toNativeInfo before accessing its properties
+            console.log(`[AudioGraphConnectorService] Retrieved toNativeInfo for ${toInstance.instanceId}:`, JSON.stringify(toNativeInfo, (key, value) => typeof value === 'object' && value !== null && value.constructor && value.constructor.name !== 'Object' ? value.constructor.name : value, 2));
+            if (toNativeInfo) {
+                console.log(`[AudioGraphConnectorService] toNativeInfo.nodeForInputConnections for ${toInstance.instanceId}: ${toNativeInfo.nodeForInputConnections?.constructor?.name}`);
+            }
+          }
           if (toWorkletInfo) {
             targetNode = toWorkletInfo.node;
             console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (WorkletNode):`, targetNode);

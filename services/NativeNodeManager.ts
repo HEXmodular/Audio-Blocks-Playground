@@ -148,7 +148,14 @@ class NativeNodeManager implements INativeNodeManager {
         try {
             handler.setAudioContext(this.getRawAudioContext());
             const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
+            if (definition.id === 'system-audio-output-tone-v1') {
+                console.log(`[NativeNodeManager.setupManagedNativeNode] Storing AudioOutput: ID ${instanceId}, nodeForInputConnections: ${nodeInfo.nodeForInputConnections?.constructor?.name}, nodeInfo:`, JSON.stringify(nodeInfo, (key, value) => typeof value === 'object' && value !== null && value.constructor && value.constructor.name !== 'Object' ? value.constructor.name : value, 2));
+            }
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
+            if (definition.id === 'system-audio-output-tone-v1') {
+                const storedNode = this.managedNativeNodesRef.get(instanceId);
+                console.log(`[NativeNodeManager.setupManagedNativeNode] VERIFY Stored AudioOutput: ID ${instanceId}, retrieved nodeForInputConnections: ${storedNode?.nodeForInputConnections?.constructor?.name}`);
+            }
             this.onStateChangeForReRender();
             return true;
         } catch (e) {
