@@ -96,11 +96,13 @@ class NativeNodeManager implements INativeNodeManager {
     }
 
     public setAudioContext(newContext: AudioContext | null): void {
+        console.log(`[NativeNodeManager.setAudioContext] Called with newContext:`, newContext);
         const oldContextIsToneContext = Tone.getContext() && Tone.getContext().rawContext === this.getRawAudioContext();
 
         if (this.getRawAudioContext() !== newContext) {
             if (this.managedNativeNodesRef.size > 0 && oldContextIsToneContext) {
-                console.warn("[NativeManager] AudioContext changed/nulled. Removing all existing managed Tone.js based nodes.");
+                console.warn('[NativeNodeManager.setAudioContext] Conditions met to call removeAllManagedNativeNodes. Current map size:', this.managedNativeNodesRef.size);
+                console.warn("[NativeManager] AudioContext changed/nulled. Removing all existing managed Tone.js based nodes."); // Kept original log for context
                 this.removeAllManagedNativeNodes();
             }
 
@@ -193,6 +195,8 @@ class NativeNodeManager implements INativeNodeManager {
     }
 
     public removeAllManagedNativeNodes(): void {
+        console.warn('[NativeNodeManager.removeAllManagedNativeNodes] CALLED!');
+        console.trace('[NativeNodeManager.removeAllManagedNativeNodes] Stack trace:');
         Array.from(this.managedNativeNodesRef.keys()).forEach(instanceId => this.removeManagedNativeNode(instanceId));
     }
 
@@ -205,6 +209,7 @@ class NativeNodeManager implements INativeNodeManager {
     }
 
     public getManagedNodesMap(): Map<string, ManagedNativeNodeInfo> {
+        console.log(`[NativeNodeManager.getManagedNodesMap] CALLED. Current map size: ${this.managedNativeNodesRef.size}. Keys:`, Array.from(this.managedNativeNodesRef.keys()));
         return this.managedNativeNodesRef;
     }
 
