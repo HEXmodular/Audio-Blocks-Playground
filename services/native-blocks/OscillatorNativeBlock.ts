@@ -111,21 +111,21 @@ export class OscillatorNativeBlock implements CreatableNode {
         initialParams: BlockParameter[],
         currentBpm?: number
     ): ManagedOscillatorNodeInfo {
-        console.log(`[OscillatorNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams);
+        // console.log(`[OscillatorNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams); // REMOVED
         if (Tone.getContext().state !== 'running') {
             console.warn(`[OscillatorNativeBlock createNode] Tone.js context is not running for instance ${instanceId}. Oscillator may not produce sound until context is started.`);
         }
 
         const toneOscillator = new Tone.Oscillator();
         const toneGain = new Tone.Gain();
-        console.log(`[OscillatorNativeBlock createNode] Created Tone.Oscillator for ${instanceId}. Initial properties: Frequency: ${toneOscillator.frequency.value}, Type: ${toneOscillator.type}`);
-        console.log(`[OscillatorNativeBlock createNode] Created Tone.Gain for ${instanceId}. Initial properties: Gain: ${toneGain.gain.value}`);
+        // console.log(`[OscillatorNativeBlock createNode] Created Tone.Oscillator for ${instanceId}. Initial properties: Frequency: ${toneOscillator.frequency.value}, Type: ${toneOscillator.type}`); // REMOVED
+        // console.log(`[OscillatorNativeBlock createNode] Created Tone.Gain for ${instanceId}. Initial properties: Gain: ${toneGain.gain.value}`); // REMOVED
 
         toneOscillator.connect(toneGain);
 
-        console.log(`[OscillatorNativeBlock createNode] Attempting to start Tone.Oscillator for ${instanceId}.`);
+        // console.log(`[OscillatorNativeBlock createNode] Attempting to start Tone.Oscillator for ${instanceId}.`); // REMOVED
         toneOscillator.start();
-        console.log(`[OscillatorNativeBlock createNode] Tone.Oscillator started for ${instanceId}.`);
+        // console.log(`[OscillatorNativeBlock createNode] Tone.Oscillator started for ${instanceId}.`); // REMOVED
 
         const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
             ['frequency', toneOscillator.frequency],
@@ -149,8 +149,8 @@ export class OscillatorNativeBlock implements CreatableNode {
             internalState: {},
         };
 
-        console.log(`[OscillatorNativeBlock createNode] nodeForOutputConnections for ${instanceId}: ${nodeInfo.nodeForOutputConnections?.constructor.name}`);
-        console.log(`[OscillatorNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo);
+        // console.log(`[OscillatorNativeBlock createNode] nodeForOutputConnections for ${instanceId}: ${nodeInfo.nodeForOutputConnections?.constructor.name}`); // REMOVED
+        // console.log(`[OscillatorNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo); // REMOVED
         const { toneOscillator: currentToneOscFromInfo, toneGain: currentToneGainFromInfo } = nodeInfo;
 
         if (currentToneOscFromInfo && currentToneGainFromInfo) {
@@ -199,9 +199,9 @@ export class OscillatorNativeBlock implements CreatableNode {
         _currentInputs?: Record<string, any>,
         currentBpm?: number
     ): void {
-        console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters, `Current BPM: ${currentBpm}`);
+        // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters, `Current BPM: ${currentBpm}`); // REMOVED
         if (!nodeInfo.toneOscillator || !nodeInfo.toneGain) {
-            console.warn(`[OscillatorNativeBlock updateNodeParams] Tone.js nodes not found for instance ${nodeInfo.instanceId} in nodeInfo:`, nodeInfo);
+            console.warn(`[OscillatorNativeBlock updateNodeParams] Tone.js nodes not found for instance ${nodeInfo.instanceId} in nodeInfo:`, nodeInfo); // Kept warn
             return;
         }
 
@@ -218,50 +218,50 @@ export class OscillatorNativeBlock implements CreatableNode {
             const bpmFractionValue = parseFloat(bpmFractionParam.currentValue as string);
             const calculatedFreq = (currentBpm / 60) / bpmFractionValue;
             const targetFreq = Math.min(200, Math.max(0.01, calculatedFreq));
-            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting BPM-synced frequency to: ${targetFreq}`);
+            // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting BPM-synced frequency to: ${targetFreq}`); // REMOVED
             toneOscillator.frequency.setTargetAtTime(targetFreq, context.currentTime, 0.01);
         } else if (freqParam && toneOscillator.frequency) {
             const maxFreq = nodeInfo.definition.id.includes('-lfo-') ? 200 : 5000;
             const targetFreq = Math.min(maxFreq, Math.max(0.01, Number(freqParam.currentValue)));
-            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting frequency to: ${targetFreq}`);
+            // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting frequency to: ${targetFreq}`); // REMOVED
             toneOscillator.frequency.setTargetAtTime(targetFreq, context.currentTime, 0.01);
         }
 
         if (detuneParam && toneOscillator.detune) {
             const targetDetune = Number(detuneParam.currentValue);
-            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting detune to: ${targetDetune}`);
+            // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting detune to: ${targetDetune}`); // REMOVED
             toneOscillator.detune.setTargetAtTime(targetDetune, context.currentTime, 0.01);
         }
 
         if (waveformParam && toneOscillator.type !== waveformParam.currentValue as Tone.ToneOscillatorType) {
             const targetType = waveformParam.currentValue as Tone.ToneOscillatorType;
-            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting waveform type to: ${targetType}`);
+            // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting waveform type to: ${targetType}`); // REMOVED
             if (['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse'].includes(targetType)) {
                  toneOscillator.type = targetType;
             } else {
-                console.warn(`[OscillatorNativeBlock updateNodeParams] Unsupported waveform type for Tone.Oscillator on instance ${nodeInfo.instanceId}: ${targetType}. Defaulting to sine.`);
+                console.warn(`[OscillatorNativeBlock updateNodeParams] Unsupported waveform type for Tone.Oscillator on instance ${nodeInfo.instanceId}: ${targetType}. Defaulting to sine.`); // Kept warn
                 toneOscillator.type = 'sine';
             }
         }
 
         if (gainParam && toneGain.gain) {
             const targetGain = Number(gainParam.currentValue);
-            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting gain to: ${targetGain}`);
+            // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting gain to: ${targetGain}`); // REMOVED
             toneGain.gain.setTargetAtTime(targetGain, context.currentTime, 0.01);
         }
     }
 
     dispose(nodeInfo: ManagedOscillatorNodeInfo): void {
-        console.log(`[OscillatorNativeBlock dispose] Disposing resources for Instance ID: ${nodeInfo.instanceId}`);
+        // console.log(`[OscillatorNativeBlock dispose] Disposing resources for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
         if (nodeInfo.toneOscillator) {
-            console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Oscillator for Instance ID: ${nodeInfo.instanceId}`);
+            // console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Oscillator for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
             nodeInfo.toneOscillator.dispose();
         }
         if (nodeInfo.toneGain) {
-            console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`);
+            // console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
             nodeInfo.toneGain.dispose();
         }
-        console.log(`[OscillatorNativeBlock dispose] Finished disposing Tone.js nodes for Instance ID: ${nodeInfo.instanceId}`);
+        // console.log(`[OscillatorNativeBlock dispose] Finished disposing Tone.js nodes for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
     }
 
     connect(_destination: any, _outputIndex?: number, _inputIndex?: number): any {

@@ -294,8 +294,8 @@ export class BlockStateManager {
             );
         }
       }
-      // New general log for all instances being processed
-      console.log(`[BlockStateManager._loadAndProcessInstances] Processing instance: ID ${loadedInst?.instanceId}, DefID: ${loadedInst?.definitionId}, needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup} ${loadedInst?.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
+      // New general log for all instances being processed // REMOVED
+      // console.log(`[BlockStateManager._loadAndProcessInstances] Processing instance: ID ${loadedInst?.instanceId}, DefID: ${loadedInst?.definitionId}, needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup} ${loadedInst?.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
 
       if (!loadedInst) {
         return {
@@ -498,26 +498,29 @@ export class BlockStateManager {
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
 
-    if (newInstance.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-        console.log(`[BlockStateManager.addBlockInstance] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 created with internalState.needsAudioNodeSetup: ${newInstance.internalState.needsAudioNodeSetup}`);
-    }
+    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+    // if (newInstance.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+    //     console.log(`[BlockStateManager.addBlockInstance] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 created with internalState.needsAudioNodeSetup: ${newInstance.internalState.needsAudioNodeSetup}`);
+    // }
     return newInstance;
   }
 
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
-    if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-        const updatesToLog = typeof updates === 'function' ? 'Function update' : JSON.stringify(updates);
-        console.log(`[BlockStateManager.updateBlockInstance] Updating inst_0d8a9770-06d7-4d8b-8503-1121765a2324 with updates: ${updatesToLog}`);
-    }
+    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+    // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+    //     const updatesToLog = typeof updates === 'function' ? 'Function update' : JSON.stringify(updates);
+    //     console.log(`[BlockStateManager.updateBlockInstance] Updating inst_0d8a9770-06d7-4d8b-8503-1121765a2324 with updates: ${updatesToLog}`);
+    // }
     let wasUpdated = false;
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
       if (currentBlockInst?.instanceId === instanceId) {
         wasUpdated = true;
 
         const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
-        if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE update: ${beforeNeedsAudioNodeSetup}`);
-        }
+        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+        // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            // console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE update: ${beforeNeedsAudioNodeSetup}`);
+        // }
 
         let newBlockState: BlockInstance;
         if (typeof updates === 'function') {
@@ -526,10 +529,11 @@ export class BlockStateManager {
           newBlockState = { ...currentBlockInst, ...updates };
         }
 
-        if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            const updatesString = typeof updates === 'function' ? "{Function update}" : JSON.stringify(updates);
-            console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${newBlockState.internalState?.needsAudioNodeSetup}. Updates applied: ${updatesString}`);
-        }
+        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+        // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            // const updatesString = typeof updates === 'function' ? "{Function update}" : JSON.stringify(updates);
+            // console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${newBlockState.internalState?.needsAudioNodeSetup}. Updates applied: ${updatesString}`);
+        // }
 
         // Call Rule 110 specific logic using the helper method
         // Pass the state *after* generic updates (newBlockState)
@@ -553,12 +557,13 @@ export class BlockStateManager {
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
-    const targetInstanceFromFile = newInstances.find(inst => inst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
-    if (targetInstanceFromFile) {
-        console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. For inst_0d8a9770-06d7-4d8b-8503-1121765a2324, initial internalState.needsAudioNodeSetup from input array: ${targetInstanceFromFile.internalState?.needsAudioNodeSetup}`);
-    } else {
-        console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 not found in input array.`);
-    }
+    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+    // const targetInstanceFromFile = newInstances.find(inst => inst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
+    // if (targetInstanceFromFile) {
+    //     console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. For inst_0d8a9770-06d7-4d8b-8503-1121765a2324, initial internalState.needsAudioNodeSetup from input array: ${targetInstanceFromFile.internalState?.needsAudioNodeSetup}`);
+    // } else {
+    //     console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 not found in input array.`);
+    // }
     this._blockInstances = newInstances;
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
@@ -571,11 +576,12 @@ export class BlockStateManager {
   }
 
   public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
-    const targetInstanceUpdate = instanceUpdates.find(update => update.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
-    if (targetInstanceUpdate) {
-        const updatesToLog = typeof targetInstanceUpdate.updates === 'function' ? 'Function update' : JSON.stringify(targetInstanceUpdate.updates);
-        console.log(`[BlockStateManager.updateMultipleBlockInstances] Received updates for inst_0d8a9770-06d7-4d8b-8503-1121765a2324: ${updatesToLog}`);
-    }
+    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+    // const targetInstanceUpdate = instanceUpdates.find(update => update.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
+    // if (targetInstanceUpdate) {
+    //     const updatesToLog = typeof targetInstanceUpdate.updates === 'function' ? 'Function update' : JSON.stringify(targetInstanceUpdate.updates);
+    //     console.log(`[BlockStateManager.updateMultipleBlockInstances] Received updates for inst_0d8a9770-06d7-4d8b-8503-1121765a2324: ${updatesToLog}`);
+    // }
 
     let wasAnyInstanceUpdated = false;
 
@@ -586,9 +592,10 @@ export class BlockStateManager {
         wasAnyInstanceUpdated = true;
 
         const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
-        if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE batch update: ${beforeNeedsAudioNodeSetup}`);
-        }
+        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+        // if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            // console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE batch update: ${beforeNeedsAudioNodeSetup}`);
+        // }
 
         const updatedBlockInst = updatesForThisInstance.reduce((accInst, currentUpdatePayload) => {
           let newBlockStatePartial: BlockInstance;
@@ -597,13 +604,14 @@ export class BlockStateManager {
           } else {
             newBlockStatePartial = { ...accInst, ...currentUpdatePayload.updates };
           }
-          return newBlockStatePartial; // In a real scenario, Rule110 or other specific logic might be here
+          return newBlockStatePartial;
         }, currentBlockInst);
 
-        if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            const updatesString = JSON.stringify(updatesForThisInstance.map(u => typeof u.updates === 'function' ? {functionUpdate: true} : u.updates));
-            console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${updatedBlockInst.internalState?.needsAudioNodeSetup}. Updates: ${updatesString}`);
-        }
+        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
+        // if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
+            // const updatesString = JSON.stringify(updatesForThisInstance.map(u => typeof u.updates === 'function' ? {functionUpdate: true} : u.updates));
+            // console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${updatedBlockInst.internalState?.needsAudioNodeSetup}. Updates: ${updatesString}`);
+        // }
         return updatedBlockInst;
       }
       return currentBlockInst;

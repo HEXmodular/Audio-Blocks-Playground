@@ -109,7 +109,7 @@ class WorkspacePersistenceManager {
             try {
                 const jsonString = e.target?.result as string;
                 const workspace = JSON.parse(jsonString);
-                console.log("[WorkspacePersistenceManager] Imported workspace data:", workspace);
+                // console.log("[WorkspacePersistenceManager] Imported workspace data:", workspace); // REMOVED
 
                 if (!workspace || typeof workspace !== 'object' || !this.blockStateManager) {
                     throw new Error("Invalid workspace file format or context not ready.");
@@ -128,9 +128,9 @@ class WorkspacePersistenceManager {
                     selectedSinkId: importedSinkId,
                 } = workspace;
 
-                console.log("[WorkspacePersistenceManager] Imported connections:", importedConnections);
-                console.log("[WorkspacePersistenceManager] Imported BPM:", importedBpm);
-                console.log("[WorkspacePersistenceManager] Imported Sink ID:", importedSinkId);
+                // console.log("[WorkspacePersistenceManager] Imported connections:", importedConnections); // REMOVED
+                // console.log("[WorkspacePersistenceManager] Imported BPM:", importedBpm); // REMOVED
+                // console.log("[WorkspacePersistenceManager] Imported Sink ID:", importedSinkId); // REMOVED
 
                 const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
                 importedDefinitions.forEach((def: BlockDefinition) => {
@@ -140,7 +140,7 @@ class WorkspacePersistenceManager {
                 });
                 this.blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
 
-                console.log("[WorkspacePersistenceManager] Importing block instances:", importedInstances);
+                // console.log("[WorkspacePersistenceManager] Importing block instances:", importedInstances); // REMOVED
                 this.blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
                     ...inst,
                     internalState: {
@@ -152,13 +152,13 @@ class WorkspacePersistenceManager {
                     logs: inst.logs || [`Instance '${inst.name}' loaded from file.`],
                     modificationPrompts: inst.modificationPrompts || [],
                 })));
-                console.log("[WorkspacePersistenceManager] Block instances set.");
+                // console.log("[WorkspacePersistenceManager] Block instances set."); // REMOVED
 
-                // New general log for all instances in state
-                console.log('[WorkspacePersistenceManager] Verifying instances in state after import:');
-                this.blockStateManager.getBlockInstances().forEach(instanceInState => {
-                  console.log(`  Instance ID: ${instanceInState.instanceId}, DefID: ${instanceInState.definitionId}, internalState.needsAudioNodeSetup: ${instanceInState.internalState?.needsAudioNodeSetup} ${instanceInState.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
-                });
+                // REMOVED general log for all instances in state
+                // console.log('[WorkspacePersistenceManager] Verifying instances in state after import:');
+                // this.blockStateManager.getBlockInstances().forEach(instanceInState => {
+                //   console.log(`  Instance ID: ${instanceInState.instanceId}, DefID: ${instanceInState.definitionId}, internalState.needsAudioNodeSetup: ${instanceInState.internalState?.needsAudioNodeSetup} ${instanceInState.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
+                // });
 
                 this.connectionState.setAllConnections(importedConnections);
 
