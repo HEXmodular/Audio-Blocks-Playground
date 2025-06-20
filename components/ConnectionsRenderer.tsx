@@ -54,7 +54,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                 // or if their IDs/attributes change. Assuming these elements are stable when this renders.
                 let outputPortElem = document.querySelector(`[data-instance-id="${conn.fromInstanceId}"] [data-port-id="${conn.fromOutputId}"]`);
                 let inputPortElem = document.querySelector(`[data-instance-id="${conn.toInstanceId}"] [data-port-id="${conn.toInputId}"]`);
-                console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId });
+                // console.log({ outputPortElem, inputPortElem, connId: conn.id }, { fromInstanceId: conn.fromInstanceId, toInstanceId: conn.toInstanceId });
 
                 if (!outputPortElem || !inputPortElem) {
                     const currentAttempts = retryAttemptsMap[conn.id] || 0;
