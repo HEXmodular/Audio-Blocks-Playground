@@ -111,17 +111,21 @@ export class OscillatorNativeBlock implements CreatableNode {
         initialParams: BlockParameter[],
         currentBpm?: number
     ): ManagedOscillatorNodeInfo {
-        console.log('[OscillatorNativeBlock createNode]', { instanceId, contextState: Tone.getContext().state });
+        console.log(`[OscillatorNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams);
         if (Tone.getContext().state !== 'running') {
-            console.warn('Tone.js context is not running. Oscillator may not produce sound until context is started.');
+            console.warn(`[OscillatorNativeBlock createNode] Tone.js context is not running for instance ${instanceId}. Oscillator may not produce sound until context is started.`);
         }
 
         const toneOscillator = new Tone.Oscillator();
         const toneGain = new Tone.Gain();
+        console.log(`[OscillatorNativeBlock createNode] Created Tone.Oscillator for ${instanceId}. Initial properties: Frequency: ${toneOscillator.frequency.value}, Type: ${toneOscillator.type}`);
+        console.log(`[OscillatorNativeBlock createNode] Created Tone.Gain for ${instanceId}. Initial properties: Gain: ${toneGain.gain.value}`);
+
         toneOscillator.connect(toneGain);
-        console.log('[OscillatorNativeBlock createNode] Starting oscillator', { instanceId, frequency: toneOscillator.frequency.value, type: toneOscillator.type, gain: toneGain.gain.value });
+
+        console.log(`[OscillatorNativeBlock createNode] Attempting to start Tone.Oscillator for ${instanceId}.`);
         toneOscillator.start();
-        console.log('[OscillatorNativeBlock createNode] Oscillator started', { instanceId });
+        console.log(`[OscillatorNativeBlock createNode] Tone.Oscillator started for ${instanceId}.`);
 
         const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
             ['frequency', toneOscillator.frequency],
@@ -145,7 +149,8 @@ export class OscillatorNativeBlock implements CreatableNode {
             internalState: {},
         };
 
-        console.log('[OscillatorNativeBlock createNode] Created nodeInfo:', { instanceId, nodeInfo });
+        console.log(`[OscillatorNativeBlock createNode] nodeForOutputConnections for ${instanceId}: ${nodeInfo.nodeForOutputConnections?.constructor.name}`);
+        console.log(`[OscillatorNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo);
         const { toneOscillator: currentToneOscFromInfo, toneGain: currentToneGainFromInfo } = nodeInfo;
 
         if (currentToneOscFromInfo && currentToneGainFromInfo) {
@@ -194,9 +199,9 @@ export class OscillatorNativeBlock implements CreatableNode {
         _currentInputs?: Record<string, any>,
         currentBpm?: number
     ): void {
-        console.log('[OscillatorNativeBlock updateNodeParams]', { instanceId: nodeInfo.instanceId, parameters, currentBpm, contextState: Tone.getContext().state });
+        console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters, `Current BPM: ${currentBpm}`);
         if (!nodeInfo.toneOscillator || !nodeInfo.toneGain) {
-            console.warn('Tone.js nodes not found in nodeInfo for OscillatorNativeBlock', nodeInfo);
+            console.warn(`[OscillatorNativeBlock updateNodeParams] Tone.js nodes not found for instance ${nodeInfo.instanceId} in nodeInfo:`, nodeInfo);
             return;
         }
 
@@ -213,41 +218,50 @@ export class OscillatorNativeBlock implements CreatableNode {
             const bpmFractionValue = parseFloat(bpmFractionParam.currentValue as string);
             const calculatedFreq = (currentBpm / 60) / bpmFractionValue;
             const targetFreq = Math.min(200, Math.max(0.01, calculatedFreq));
+            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting BPM-synced frequency to: ${targetFreq}`);
             toneOscillator.frequency.setTargetAtTime(targetFreq, context.currentTime, 0.01);
         } else if (freqParam && toneOscillator.frequency) {
             const maxFreq = nodeInfo.definition.id.includes('-lfo-') ? 200 : 5000;
             const targetFreq = Math.min(maxFreq, Math.max(0.01, Number(freqParam.currentValue)));
+            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting frequency to: ${targetFreq}`);
             toneOscillator.frequency.setTargetAtTime(targetFreq, context.currentTime, 0.01);
         }
 
         if (detuneParam && toneOscillator.detune) {
-            toneOscillator.detune.setTargetAtTime(Number(detuneParam.currentValue), context.currentTime, 0.01);
+            const targetDetune = Number(detuneParam.currentValue);
+            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting detune to: ${targetDetune}`);
+            toneOscillator.detune.setTargetAtTime(targetDetune, context.currentTime, 0.01);
         }
 
         if (waveformParam && toneOscillator.type !== waveformParam.currentValue as Tone.ToneOscillatorType) {
-            const validType = waveformParam.currentValue as Tone.ToneOscillatorType;
-            if (['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse'].includes(validType)) {
-                 toneOscillator.type = validType;
+            const targetType = waveformParam.currentValue as Tone.ToneOscillatorType;
+            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting waveform type to: ${targetType}`);
+            if (['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse'].includes(targetType)) {
+                 toneOscillator.type = targetType;
             } else {
-                console.warn(`Unsupported waveform type for Tone.Oscillator: ${validType}. Defaulting to sine.`);
+                console.warn(`[OscillatorNativeBlock updateNodeParams] Unsupported waveform type for Tone.Oscillator on instance ${nodeInfo.instanceId}: ${targetType}. Defaulting to sine.`);
                 toneOscillator.type = 'sine';
             }
         }
 
         if (gainParam && toneGain.gain) {
-            toneGain.gain.setTargetAtTime(Number(gainParam.currentValue), context.currentTime, 0.01);
+            const targetGain = Number(gainParam.currentValue);
+            console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting gain to: ${targetGain}`);
+            toneGain.gain.setTargetAtTime(targetGain, context.currentTime, 0.01);
         }
     }
 
     dispose(nodeInfo: ManagedOscillatorNodeInfo): void {
-        console.log('[OscillatorNativeBlock dispose]', { instanceId: nodeInfo.instanceId, contextState: Tone.getContext().state });
+        console.log(`[OscillatorNativeBlock dispose] Disposing resources for Instance ID: ${nodeInfo.instanceId}`);
         if (nodeInfo.toneOscillator) {
+            console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Oscillator for Instance ID: ${nodeInfo.instanceId}`);
             nodeInfo.toneOscillator.dispose();
         }
         if (nodeInfo.toneGain) {
+            console.log(`[OscillatorNativeBlock dispose] Disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`);
             nodeInfo.toneGain.dispose();
         }
-        console.log(`Disposed Tone.js nodes for instanceId: ${nodeInfo.instanceId}`);
+        console.log(`[OscillatorNativeBlock dispose] Finished disposing Tone.js nodes for Instance ID: ${nodeInfo.instanceId}`);
     }
 
     connect(_destination: any, _outputIndex?: number, _inputIndex?: number): any {

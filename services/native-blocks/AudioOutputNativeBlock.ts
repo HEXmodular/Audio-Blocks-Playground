@@ -43,20 +43,21 @@ export class AudioOutputNativeBlock implements CreatableNode {
         definition: BlockDefinition,
         initialParams: BlockParameter[]
     ): ManagedAudioOutputNodeInfo {
-        console.log('[AudioOutputNativeBlock createNode]', { instanceId, contextState: Tone.getContext().state });
+        console.log(`[AudioOutputNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams);
         if (Tone.getContext().state !== 'running') {
-            console.warn('Tone.js context is not running. Audio Output may not function correctly.');
+            console.warn(`[AudioOutputNativeBlock createNode] Tone.js context is not running for instance ${instanceId}. Audio Output may not function correctly.`);
         }
 
         const toneGain = new Tone.Gain();
         const volumeParam = initialParams.find(p => p.id === 'volume');
         toneGain.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
+        console.log(`[AudioOutputNativeBlock createNode] Created Tone.Gain for ${instanceId}. Initial gain value: ${toneGain.gain.value}`);
 
         toneGain.connect(Tone.getDestination());
-        console.log('[AudioOutputNativeBlock createNode] Connected internal gain to Tone.getDestination()', { instanceId, gainValue: toneGain.gain.value });
+        console.log(`[AudioOutputNativeBlock createNode] Connected Tone.Gain for ${instanceId} to Tone.getDestination().`);
 
         const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
-            ['volume', toneGain.gain as unknown as Tone.Param<any>], // Correctly cast
+            ['volume', toneGain.gain as unknown as Tone.Param<any>],
         ]);
 
         const nodeInfo: ManagedAudioOutputNodeInfo = {
@@ -74,7 +75,10 @@ export class AudioOutputNativeBlock implements CreatableNode {
             internalState: {},
         };
 
-        this.updateNodeParams(nodeInfo, initialParams);
+        console.log(`[AudioOutputNativeBlock createNode] nodeForInputConnections for ${instanceId}: ${nodeInfo.nodeForInputConnections?.constructor.name}`);
+        console.log(`[AudioOutputNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo);
+
+        this.updateNodeParams(nodeInfo, initialParams); // This will log its own details
 
         return nodeInfo;
     }
@@ -83,25 +87,30 @@ export class AudioOutputNativeBlock implements CreatableNode {
         nodeInfo: ManagedAudioOutputNodeInfo,
         parameters: BlockParameter[]
     ): void {
+        console.log(`[AudioOutputNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters);
         if (!nodeInfo.toneGain) {
-            console.warn("AudioOutputNativeBlock: Tone.Gain not available for update.");
+            console.warn(`[AudioOutputNativeBlock updateNodeParams] Tone.Gain not available for instance ${nodeInfo.instanceId}.`);
             return;
         }
-        const currentToneGain = nodeInfo.toneGain; // Renamed
+        const currentToneGain = nodeInfo.toneGain;
         const context = Tone.getContext();
 
         const volumeParam = parameters.find(p => p.id === 'volume');
         if (volumeParam && currentToneGain.gain) {
-            currentToneGain.gain.setTargetAtTime(Number(volumeParam.currentValue), context.currentTime, 0.01);
+            const targetVolume = Number(volumeParam.currentValue);
+            console.log(`[AudioOutputNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting gain to: ${targetVolume}`);
+            currentToneGain.gain.setTargetAtTime(targetVolume, context.currentTime, 0.01);
         }
     }
 
     dispose(nodeInfo: ManagedAudioOutputNodeInfo): void {
-        console.log('[AudioOutputNativeBlock dispose]', { instanceId: nodeInfo.instanceId, contextState: Tone.getContext().state });
+        console.log(`[AudioOutputNativeBlock dispose] Disposing resources for Instance ID: ${nodeInfo.instanceId}`);
         if (nodeInfo.toneGain) {
+            console.log(`[AudioOutputNativeBlock dispose] Disconnecting Tone.Gain from Tone.getDestination() for Instance ID: ${nodeInfo.instanceId}`);
             nodeInfo.toneGain.disconnect(Tone.getDestination());
+            console.log(`[AudioOutputNativeBlock dispose] Disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`);
             nodeInfo.toneGain.dispose();
-            console.log(`Disposed Tone.Gain in AudioOutput for instanceId: ${nodeInfo.instanceId}`);
+            console.log(`[AudioOutputNativeBlock dispose] Finished disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`);
         }
     }
 

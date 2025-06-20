@@ -46,25 +46,44 @@ class AudioEngineService {
   }
 
   public async initialize(): Promise<void> {
-    const isRunning =  Tone.getContext().state === 'running';
+    console.log(`[AudioEngineService initialize] Starting initialization. Tone.getContext().state: ${Tone.getContext().state}`);
+    // const isRunning =  Tone.getContext().state === 'running';
     // if (isRunning) {
-      // console.log('AudioEngineService: Context already initialized and running.');
-      // Ensure local context property is also set if it wasn't (e.g. if init was somehow bypassed)
-      // if (!this.context) {
-        // this.context = Tone.context;
-        // Tone.setContext(this.context); // Ensure Tone uses this context
-        // Minimal setup if context was externally initialized
-        // this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
-        // console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
-        // this.isAudioGloballyEnabled = true;
-        // this.publishAudioEngineState();
-      // }
-      // return;
+    //   console.log('AudioEngineService: Context already initialized and running.');
+    //   // Ensure local context property is also set if it wasn't (e.g. if init was somehow bypassed)
+    //   if (!this.context) {
+    //     this.context = Tone.context;
+    //     Tone.setContext(this.context); // Ensure Tone uses this context
+    //     // Minimal setup if context was externally initialized
+    //     this.masterVolume = new Tone.Volume(0).connect(Tone.getDestination()); // Default to 0 volume
+    //     console.log(`[AudioEngineService initialize] Master volume created (context already running). Volume: ${this.masterVolume.volume.value}, Mute: ${this.masterVolume.mute}`);
+    //     this.isAudioGloballyEnabled = true;
+    //     this.publishAudioEngineState();
+    //   }
+    //   console.log(`[AudioEngineService initialize] Initialization skipped, context already running. Tone.getContext().state: ${Tone.getContext().state}`);
+    //   return;
     // } 
     try {
-      // Tone.start();
-      const rawCtx = Tone.getContext().rawContext as AudioContext | null; // Get the raw AudioContext from Tone.js context
-      // if (!rawCtx && this.context.rawContext) { // If rawContext exists but is not AudioContext (i.e. OfflineAudioContext)
+      // If Tone.start() were to be used, it would be here.
+      // console.log('[AudioEngineService initialize] Calling Tone.start() if it were enabled.');
+      // await Tone.start();
+      // console.log('[AudioEngineService initialize] Tone.start() completed (if it were enabled).');
+
+      this.context = Tone.getContext(); // Ensure this.context is set
+      Tone.setContext(this.context);
+
+      if (!this.masterVolume) {
+        this.masterVolume = new Tone.Volume(0).connect(Tone.getDestination()); // Default to 0 volume, connect to destination
+        console.log(`[AudioEngineService initialize] MasterVolume created. Volume: ${this.masterVolume.volume.value}, Mute: ${this.masterVolume.mute}`);
+      } else {
+        // Ensure it's connected if it somehow got disconnected but still exists
+        this.masterVolume.disconnect();
+        this.masterVolume.connect(Tone.getDestination());
+        console.log(`[AudioEngineService initialize] MasterVolume already existed, reconnected. Volume: ${this.masterVolume.volume.value}, Mute: ${this.masterVolume.mute}`);
+      }
+
+      const rawCtx = this.context.rawContext as AudioContext | null;
+      // if (!rawCtx && this.context.rawContext) {
       //     console.warn("AudioEngineService: rawContext is OfflineAudioContext, passing null to managers expecting AudioContext.");
       // }
       NativeNodeManager.setAudioContext(rawCtx);
@@ -78,17 +97,16 @@ class AudioEngineService {
         throw new Error('Failed to initialize Tone.Transport.');
       }
 
-      // this.masterVolume = new Tone.Volume(1).connect(Tone.getDestination());
-      // console.log('[AudioEngineService initialize] Master volume initialized and connected.', { volume: this.masterVolume.volume.value, mute: this.masterVolume.mute, contextState: this.context?.state });
       // this.synth = new Tone.Synth().connect(this.masterVolume);
       this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
 
-      console.log('AudioEngineService initialized successfully with Tone.js context.');
+      console.log(`[AudioEngineService initialize] Initialized successfully. Tone.getContext().state: ${Tone.getContext().state}`);
       this.publishAudioEngineState();
     } catch (error) {
-      console.error('Error initializing AudioEngineService:', error);
+      console.error('[AudioEngineService initialize] Error during initialization:', error);
       this.isAudioGloballyEnabled = false;
       this.publishAudioEngineState();
+      console.log(`[AudioEngineService initialize] Initialization failed. Tone.getContext().state: ${Tone.getContext().state}`);
       throw error;
     }
   }
@@ -121,12 +139,14 @@ class AudioEngineService {
 
   // --- Method Implementations (selected) ---
   public async toggleGlobalAudio(): Promise<void> {
-    console.log('[AudioEngineService toggleGlobalAudio] Initial masterVolume check. Volume value:', this.masterVolume?.volume.value, 'Mute state:', this.masterVolume?.mute);
-    console.log('[AudioEngineService toggleGlobalAudio] Called.', { currentGlobalState: this.isAudioGloballyEnabled, contextState: this.context?.state });
+    console.log('[AudioEngineService toggleGlobalAudio] Method called.');
+    console.log(`[AudioEngineService toggleGlobalAudio] isAudioGloballyEnabled before toggle: ${this.isAudioGloballyEnabled}`);
+
     if (!this.context) {
-      await this.initialize(); // Initialize if not already
-      if (!this.context) { // Still no context after init attempt
-        console.error("Cannot toggle audio: AudioContext not available.");
+      console.log('[AudioEngineService toggleGlobalAudio] Context not initialized, attempting to initialize.');
+      await this.initialize();
+      if (!this.context) {
+        console.error("[AudioEngineService toggleGlobalAudio] Cannot toggle audio: AudioContext not available after initialization attempt.");
         this.isAudioGloballyEnabled = false;
         this.publishAudioEngineState();
         return;
@@ -134,32 +154,27 @@ class AudioEngineService {
     }
 
     if (this.context.state === 'suspended') {
+      console.log(`[AudioEngineService toggleGlobalAudio] Context is suspended, attempting to resume. Current state: ${this.context.state}`);
       await this.context.resume();
+      console.log(`[AudioEngineService toggleGlobalAudio] Context resume attempt completed. New state: ${this.context.state}`);
     }
 
     this.isAudioGloballyEnabled = !this.isAudioGloballyEnabled;
-    console.log('[AudioEngineService toggleGlobalAudio] Toggled global audio.', { newGlobalState: this.isAudioGloballyEnabled, masterVolumeMute: this.masterVolume?.mute, masterVolumeLevel: this.masterVolume?.volume.value });
-    if (this.isAudioGloballyEnabled) {
-      // Potentially unmute master output if it was muted when disabled
-      if (this.masterVolume) {
-        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *before* unmuting:', this.masterVolume?.volume.value);
-        this.masterVolume.mute = false; // Or restore previous volume
-        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *after* unmuting:', this.masterVolume?.volume.value);
-        console.log('[AudioEngineService toggleGlobalAudio] Unmuted master volume.', { masterVolumeMute: this.masterVolume.mute });
-      }
-      console.log("Audio globally enabled.");
-      this.stopTransport();   // <--- ADD THIS LINE
-      this.startTransport();  // <--- Existing line
+    console.log(`[AudioEngineService toggleGlobalAudio] isAudioGloballyEnabled after toggle: ${this.isAudioGloballyEnabled}`);
+
+    if (this.masterVolume) {
+      this.masterVolume.mute = !this.isAudioGloballyEnabled;
+      console.log(`[AudioEngineService toggleGlobalAudio] MasterVolume mute set to: ${this.masterVolume.mute}`);
     } else {
-      // Potentially mute master output
-      if (this.masterVolume) {
-        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *before* muting:', this.masterVolume?.volume.value);
-        this.masterVolume.mute = true;
-        console.log('[AudioEngineService toggleGlobalAudio] Master volume value *after* muting:', this.masterVolume?.volume.value);
-        console.log('[AudioEngineService toggleGlobalAudio] Muted master volume.', { masterVolumeMute: this.masterVolume.mute });
-      }
-      console.log("Audio globally disabled.");
-      // Consider stopping transport, etc.
+      console.warn('[AudioEngineService toggleGlobalAudio] MasterVolume node not available to set mute state.');
+    }
+
+    if (this.isAudioGloballyEnabled) {
+      console.log("[AudioEngineService toggleGlobalAudio] Audio globally enabled. Starting transport.");
+      this.stopTransport();
+      this.startTransport();
+    } else {
+      console.log("[AudioEngineService toggleGlobalAudio] Audio globally disabled. Stopping transport.");
       this.stopTransport();
     }
     this.publishAudioEngineState();
@@ -233,12 +248,13 @@ class AudioEngineService {
   // --- AudioGraphConnectorService related ---
   public updateAudioGraphConnections(
   ): void {
-    console.log("updateAudioGraphConnections called with connections:");
-    const rawContextForConnector = Tone.getContext().rawContext; // instanceof AudioContext) ? this.context.rawContext : null;
+    console.log("[AudioEngineService updateAudioGraphConnections] Method called, preparing to update connections.");
+    const rawContextForConnector = Tone.getContext().rawContext;
     // if (!rawContextForConnector && this.context?.rawContext) {
     //     console.warn("AudioEngineService: rawContext for AudioGraphConnectorService is OfflineAudioContext, passing null.");
     // }
-    const instanceUpdates: InstanceUpdatePayload[] = AudioGraphConnectorService.updateConnections()
+    const instanceUpdates: InstanceUpdatePayload[] = AudioGraphConnectorService.updateConnections();
+    console.log("[AudioEngineService updateAudioGraphConnections] Instance updates from AudioGraphConnectorService:", instanceUpdates);
   
 
     if (instanceUpdates && instanceUpdates.length > 0) {
@@ -291,30 +307,31 @@ class AudioEngineService {
   }
 
   public startTransport(): void {
-    const isRunning =  Tone.getContext().state === 'running';
-    console.log('[AudioEngineService startTransport] Attempting to start transport.', { transportState: isRunning });
+    const currentTransportState = Tone.getTransport().state;
+    console.log(`[AudioEngineService startTransport] Attempting to start transport. Current transport state: ${currentTransportState}`);
 
-    if (isRunning) {
-      console.warn('Transport is running. Cannot start transport.');
+    if (currentTransportState === 'started') {
+      console.warn('[AudioEngineService startTransport] Transport is already running. Cannot start again.');
       return;
     }
     try {
       Tone.getTransport().start();
-      console.log('Tone.Transport started.');
+      console.log('[AudioEngineService startTransport] Tone.getTransport().start() called successfully.');
     } catch (error) {
-      console.error('Error starting Tone.Transport:', error);
+      console.error('[AudioEngineService startTransport] Error starting Tone.Transport:', error);
     }
   }
 
   public stopTransport(): void {
-    console.log('[AudioEngineService stopTransport] Attempting to stop transport.', { contextState: this.context?.state, transportState: Tone.getTransport().state });
+    const currentTransportState = Tone.getTransport().state;
+    console.log(`[AudioEngineService stopTransport] Attempting to stop transport. Current transport state: ${currentTransportState}`);
     try {
       Tone.getTransport().stop();
-      console.log('Tone.Transport stopped.');
+      console.log('[AudioEngineService stopTransport] Tone.getTransport().stop() called successfully.');
       // Optionally, cancel all scheduled events upon stopping
       // Tone.getTransport().cancel(0);
     } catch (error) {
-      console.error('Error stopping Tone.Transport:', error);
+      console.error('[AudioEngineService stopTransport] Error stopping Tone.Transport:', error);
     }
   }
 

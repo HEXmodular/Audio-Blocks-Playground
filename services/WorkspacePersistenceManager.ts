@@ -109,6 +109,7 @@ class WorkspacePersistenceManager {
             try {
                 const jsonString = e.target?.result as string;
                 const workspace = JSON.parse(jsonString);
+                console.log("[WorkspacePersistenceManager] Imported workspace data:", workspace);
 
                 if (!workspace || typeof workspace !== 'object' || !this.blockStateManager) {
                     throw new Error("Invalid workspace file format or context not ready.");
@@ -127,6 +128,10 @@ class WorkspacePersistenceManager {
                     selectedSinkId: importedSinkId,
                 } = workspace;
 
+                console.log("[WorkspacePersistenceManager] Imported connections:", importedConnections);
+                console.log("[WorkspacePersistenceManager] Imported BPM:", importedBpm);
+                console.log("[WorkspacePersistenceManager] Imported Sink ID:", importedSinkId);
+
                 const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
                 importedDefinitions.forEach((def: BlockDefinition) => {
                     if (!coreDefsMap.has(def.id)) {
@@ -135,6 +140,7 @@ class WorkspacePersistenceManager {
                 });
                 this.blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
 
+                console.log("[WorkspacePersistenceManager] Importing block instances:", importedInstances);
                 this.blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
                     ...inst,
                     internalState: {
@@ -146,6 +152,7 @@ class WorkspacePersistenceManager {
                     logs: inst.logs || [`Instance '${inst.name}' loaded from file.`],
                     modificationPrompts: inst.modificationPrompts || [],
                 })));
+                console.log("[WorkspacePersistenceManager] Block instances set.");
                 this.connectionState.setAllConnections(importedConnections);
 
                 if (typeof importedBpm === 'number' && importedBpm > 0) {
