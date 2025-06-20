@@ -99,11 +99,11 @@ class AudioEngineService {
 
       // this.synth = new Tone.Synth().connect(this.masterVolume);
       this.isAudioGloballyEnabled = true; // Assume enabled after successful initialization
-
-      console.log(`[AudioEngineService initialize] Initialized successfully. Tone.getContext().state: ${Tone.getContext().state}`);
+      // Removed direct call to this.updateAudioGraphConnections(); from here
+      console.log(`[AudioEngineService initialize] Initialized successfully (node setup and connections handled by setupNodes). Tone.getContext().state: ${Tone.getContext().state}`);
       this.publishAudioEngineState();
     } catch (error) {
-      console.error('[AudioEngineService initialize] Error during initialization:', error);
+      console.error('[AudioEngineService initialize] Error during initialization (which includes setupNodes):', error);
       this.isAudioGloballyEnabled = false;
       this.publishAudioEngineState();
       console.log(`[AudioEngineService initialize] Initialization failed. Tone.getContext().state: ${Tone.getContext().state}`);
@@ -419,9 +419,10 @@ class AudioEngineService {
   public setupNodes = async () => {
     try {
       await AudioNodeManager.processAudioNodeSetupAndTeardown();
+      this.updateAudioGraphConnections(); // Call after nodes are processed
     } catch (error) {
-      console.error("Error during processAudioNodeSetupAndTeardown:", error);
-      // setGlobalError("Failed to process audio nodes: " + (error as Error).message);
+      console.error("Error during processAudioNodeSetupAndTeardown or subsequent connection update:", error);
+      // setGlobalError("Failed to process audio nodes or update connections: " + (error as Error).message);
     }
   };
 }
