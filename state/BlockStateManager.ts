@@ -280,11 +280,18 @@ export class BlockStateManager {
         // Initialize new flags, defaulting to false if not present in loadedInst?.internalState
         loggedWorkletSystemNotReady: loadedInst?.internalState?.loggedWorkletSystemNotReady || false,
         loggedAudioSystemNotActive: loadedInst?.internalState?.loggedAudioSystemNotActive || false,
+        // needsAudioNodeSetup will be determined below
       };
       if (definition) {
-        initialInternalState.needsAudioNodeSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LyriaMasterBlock.getDefinition().id); // Changed
-        if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
+        // Spread existing internalState first as before (already done above)
+        // Determine needsAudioNodeSetup based on new logic
+        if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
             initialInternalState.needsAudioNodeSetup = false;
+        } else {
+            initialInternalState.needsAudioNodeSetup = !!(
+                definition.runsAtAudioRate ||
+                definition.audioWorkletProcessorName
+            );
         }
       }
       // New general log for all instances being processed
@@ -433,17 +440,23 @@ export class BlockStateManager {
       initialOutputs[outPort.id] = getDefaultOutputValue(outPort.type);
     });
 
-    let needsAudioSetup = !!(definition.audioWorkletProcessorName || definition.id.startsWith('native-') || definition.id === 'gain-v1' || definition.id === 'system-audio-output-v1' || definition.id === 'analyser-oscilloscope-v1' || definition.id === LyriaMasterBlock.getDefinition().id); // Changed
-    if (definition.id === RULE_110_BLOCK_DEFINITION.id) { 
+    let needsAudioSetup;
+    if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
         needsAudioSetup = false;
+    } else {
+        needsAudioSetup = !!(
+            definition.runsAtAudioRate ||
+            definition.audioWorkletProcessorName
+        );
     }
     
     let initialInternalState: BlockInstance['internalState'] = {
-        needsAudioNodeSetup: needsAudioSetup,
-        loggedWorkletSystemNotReady: false, // Initialize new flag
-        loggedAudioSystemNotActive: false,   // Initialize new flag
+        needsAudioNodeSetup: needsAudioSetup, // Set based on the new logic above
+        loggedWorkletSystemNotReady: false,
+        loggedAudioSystemNotActive: false,
     };
-    if (definition.id === LyriaMasterBlock.getDefinition().id) { // Changed
+    // Ensure other specific internal state setups (e.g., for LyriaMasterBlock) are preserved
+    if (definition.id === LyriaMasterBlock.getDefinition().id) {
         // Spread initialInternalState to keep the new logging flags
         initialInternalState = {
             ...initialInternalState,
