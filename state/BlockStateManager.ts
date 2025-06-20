@@ -553,12 +553,6 @@ export class BlockStateManager {
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
-    this._blockInstances = newInstances;
-    this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
-  }
-
-  public setAllBlockInstances(newInstances: BlockInstance[]): void {
     const targetInstanceFromFile = newInstances.find(inst => inst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
     if (targetInstanceFromFile) {
         console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. For inst_0d8a9770-06d7-4d8b-8503-1121765a2324, initial internalState.needsAudioNodeSetup from input array: ${targetInstanceFromFile.internalState?.needsAudioNodeSetup}`);
