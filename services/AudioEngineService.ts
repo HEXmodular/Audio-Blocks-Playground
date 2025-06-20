@@ -228,10 +228,10 @@ class AudioEngineService {
 
   // // --- Delegated methods to NativeNodeManager ---
   public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
-    return this.nativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
+    return NativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
   }
   public removeNativeNode(instanceId: string): void {
-    this.nativeNodeManager.removeManagedNativeNode(instanceId);
+    NativeNodeManager.removeManagedNativeNode(instanceId);
   }
 
   // // --- Delegated methods to AudioWorkletManager ---
