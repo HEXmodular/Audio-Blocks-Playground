@@ -123,6 +123,7 @@ export class BlockStateManager {
     this._saveDefinitionsToLocalStorageInternal(); // Save once on init
     this._saveInstancesToLocalStorageInternal();   // Save once on init
     this.getDefinitionForBlock = this.getDefinitionForBlock.bind(this); // Bind the method to the instance context
+    this.updateBlockInstance = this.updateBlockInstance.bind(this); // Ensure 'this' context for updateBlockInstance
   }
 
 

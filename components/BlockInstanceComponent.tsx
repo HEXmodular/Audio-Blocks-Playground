@@ -84,7 +84,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         position: { x: snappedX, y: snappedY },
       });
     }
-  }, [isDragging, dragStart, blockInstance.instanceId]);
+  }, [isDragging, dragStart, blockInstance.instanceId, onUpdateInstancePosition]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
