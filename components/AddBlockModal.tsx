@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Add useCallback
+import BlockStateManager from '@state/BlockStateManager';
 import type { BlockDefinition } from '../interfaces/common'; // Corrected import path
 
 // Local BlockDefinition interface removed, using imported one.
 
 interface AddBlockModalProps {
-  appBlockDefinitionsFromCtx: BlockDefinition[];
-  onAddBlockFromDefinition: (definition: BlockDefinition) => void;
+  // appBlockDefinitionsFromCtx: BlockDefinition[]; // REMOVE THIS LINE
+  // onAddBlockFromDefinition: (definition: BlockDefinition) => void; // REMOVE THIS LINE
   onToggleGeminiPanel: () => void;
   onClose: () => void;
 }
@@ -16,12 +17,23 @@ const GROUP_CONTROL = "Control & Logic Blocks";
 const GROUP_ORDER = [GROUP_AI, GROUP_AUDIO, GROUP_CONTROL];
 
 const AddBlockModal: React.FC<AddBlockModalProps> = ({
-  appBlockDefinitionsFromCtx,
-  onAddBlockFromDefinition,
+  // appBlockDefinitionsFromCtx, // REMOVE THIS
+  // onAddBlockFromDefinition, // REMOVE THIS
   onToggleGeminiPanel,
   onClose,
 }) => {
   const [filterText, setFilterText] = useState('');
+  const [blockDefinitions, setBlockDefinitions] = useState<BlockDefinition[]>([]);
+
+  useEffect(() => {
+    const definitions = BlockStateManager.getBlockDefinitions();
+    setBlockDefinitions(definitions);
+  }, []); // Empty dependency array means this runs once on mount
+
+  const handleSelectBlock = useCallback((definition: BlockDefinition) => {
+    BlockStateManager.addBlockInstance(definition);
+    onClose(); // Call the onClose prop to close the modal
+  }, [onClose]); // Dependency: onClose prop
 
   // Clicks on the modal content should not propagate to the overlay
   const handleModalContentClick = (e: React.MouseEvent) => {
@@ -34,12 +46,12 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
 
   const filteredBlocks = useMemo(() => {
     if (!filterText) {
-      return appBlockDefinitionsFromCtx;
+      return blockDefinitions; // CHANGED
     }
-    return appBlockDefinitionsFromCtx.filter(def =>
+    return blockDefinitions.filter(def => // CHANGED
       def.name.toLowerCase().includes(filterText.toLowerCase())
     );
-  }, [appBlockDefinitionsFromCtx, filterText]);
+  }, [blockDefinitions, filterText]); // CHANGED dependency
 
   const groupedAndFilteredBlocks = useMemo(() => {
     const groups: Record<string, BlockDefinition[]> = {
@@ -103,7 +115,7 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
                       {blocksInGroup.map((def) => (
                         <button // Changed div to button for clickability and semantics
                           key={def.id}
-                          onClick={() => onAddBlockFromDefinition(def)}
+                          onClick={() => handleSelectBlock(def)}
                           className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                           title={def.description || def.name} // Keep title for tooltip, but description not displayed inline
                         >
@@ -116,7 +128,7 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
               }
               return null;
             })
-          ) : appBlockDefinitionsFromCtx.length === 0 ? (
+          ) : blockDefinitions.length === 0 ? ( // CHANGED
             <div className="text-gray-400 text-center py-10">
               No blocks available to add.
             </div>
@@ -130,7 +142,6 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
         <button
           onClick={() => {
             onToggleGeminiPanel();
-            onClose();
           }}
           className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-md transition-colors flex items-center justify-center text-lg flex-shrink-0"
         >

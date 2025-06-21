@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 
@@ -14,7 +14,6 @@ const App: React.FC = () => {
     return BlockStateManager.getInstance().getBlockInstances();
   }, []);
   
-
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">
       {globalError && (
@@ -22,7 +21,7 @@ const App: React.FC = () => {
           Global Error: {globalError} <button onClick={() => setGlobalError(null)}>&times;</button>
         </div>
       )}
-      <Toolbar/>
+      <Toolbar />
       <main className="flex-grow pt-14 relative" id="main-workspace-area">
         <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">
           <ConnectionsRenderer

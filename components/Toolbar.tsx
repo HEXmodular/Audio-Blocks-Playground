@@ -4,18 +4,29 @@ import React, { useMemo, useCallback, useState } from 'react'; // Added useState
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons';
 import * as Tone from 'tone'; // Added Tone import
 import AudioEngineService from '@services/AudioEngineService';
-
+import AddBlockModal from '@components/AddBlockModal'; // Import AddBlockModal
+// import { BlockDefinition } from '@interfaces/common'; // Import BlockDefinition
+// import BlockStateManager from '@state/BlockStateManager'; // Import BlockStateManager
 
 
 interface ToolbarProps {
+  // isAddBlockModalOpen: boolean; // REMOVE
+  // onToggleAddBlockModal: () => void; // REMOVE
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
+  // isAddBlockModalOpen, // REMOVE
+  // onToggleAddBlockModal, // REMOVE
 }) => {
-
-
-  const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false); // New state for modal
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleToolbarToggleGeminiPanel = useCallback(() => {
+    // Placeholder for actual Gemini Panel logic
+    console.log("Toggle Gemini Panel clicked");
+    // Potentially call a service or dispatch an action for Gemini Panel
+    setIsModalVisible(false); // CHANGED
+  }, []); // CHANGED (dependency on onToggleAddBlockModal removed)
 
   // Import function now internal to Toolbar
   // const handleImportWorkspaceTrigger = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +65,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Add Block Button - Toggles Modal */}
       <div className="relative">
         <button
-          onClick={() => setIsAddBlockModalOpen(true)} // Toggle modal
+          onClick={() => setIsModalVisible(true)} // Toggle modal
           className="flex items-center bg-sky-500 hover:bg-sky-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors"
         >
           <PlusIcon className="w-4 h-4 mr-1" />
@@ -63,21 +74,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* AddBlockModal */}
-      {/* {isAddBlockModalOpen && (
+      {isModalVisible && ( // CHANGED
         <AddBlockModal
-          appBlockDefinitionsFromCtx={appBlockDefinitionsFromCtx}
-          onAddBlockFromDefinition={(definition) => {
-            onAddBlockFromDefinition(definition);
-            setIsAddBlockModalOpen(false); // Close modal after adding
-          }}
-          onToggleGeminiPanel={() => {
-            onToggleGeminiPanel();
-            // Optionally close the modal when opening Gemini panel
-            // setIsAddBlockModalOpen(false);
-          }}
-          onClose={() => setIsAddBlockModalOpen(false)}
+          onToggleGeminiPanel={handleToolbarToggleGeminiPanel}
+          onClose={() => setIsModalVisible(false)} // CHANGED
         />
-      )} */}
+      )}
 
       <button
         // Use the new prop and fetch state from Tone.js
