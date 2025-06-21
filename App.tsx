@@ -1,19 +1,39 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
-
-import { BlockStateManager } from './state/BlockStateManager'; // Added
+import BlockDetailPanel from '@components/BlockDetailPanel'; // Import BlockDetailPanel
+import { BlockStateManager } from './state/BlockStateManager';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
 
 const App: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(BlockStateManager.getInstance().getSelectedInstanceId());
   const svgRef = useRef<SVGSVGElement | null>(null);
- 
-  const appBlockInstances = useMemo(() => {
-    return BlockStateManager.getInstance().getBlockInstances();
-  }, []);
   
+  useEffect(() => {
+    const blockStateManager = BlockStateManager.getInstance();
+    const handleStateChange = () => {
+      // This will trigger a re-render if the selectedInstanceId changes.
+      // If only the list of blocks changes but not the selected ID, React might not re-render App.tsx
+      // if setSelectedInstanceId is called with the same ID.
+      // This relies on the assumption that any change in BlockStateManager that App.tsx
+      // needs to react to will also involve a change in selectedInstanceId, or that
+      // BlockStateManager.getInstance().getBlockInstances() is cheap enough to call on every render
+      // and that *some* other state change will eventually trigger a re-render.
+      // This was the point of the setForceUpdate or explicitly setting block instances in state.
+      setSelectedInstanceId(blockStateManager.getSelectedInstanceId());
+    };
+
+    blockStateManager.subscribe(handleStateChange);
+    return () => {
+      blockStateManager.unsubscribe(handleStateChange);
+    };
+  }, []);
+
+  // Get the latest block instances on every render.
+  // If handleStateChange doesn't reliably cause a re-render when appBlockInstances list changes
+  // (but selectedInstanceId does not), then this list might become stale in the UI.
+  const appBlockInstances = BlockStateManager.getInstance().getBlockInstances();
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">
@@ -35,18 +55,13 @@ const App: React.FC = () => {
             key={instance.instanceId}
             blockInstance={instance}
             isSelected={instance.instanceId === selectedInstanceId}
-            onSelect={(id: string | null) => setSelectedInstanceId(id)}
+            onSelect={(id: string | null) => BlockStateManager.getInstance().setSelectedInstanceId(id)} // Update BlockStateManager
           />
         ))}
       </main>
 
-        {/* <BlockDetailPanel
-          blockInstance={selectedBlockInstance}
-          // blockInstances={appBlockInstances} // Added prop
-          // connections={connections}
-          onClosePanel={() => setSelectedInstanceId(null)}
-          // onUpdateConnections={connectionState.updateConnections}
-        /> */}
+      {/* Render BlockDetailPanel if an instance is selected */}
+      {selectedInstanceId && <BlockDetailPanel />}
 
         {/* <GeminiChatPanel
        ref={geminiChatPanelRef}

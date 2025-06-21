@@ -1,27 +1,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BlockInstance, BlockPort, Connection, BlockDefinition } from '@interfaces/common'; // Added BlockDefinition
+import type { BlockInstance, BlockPort, Connection, BlockDefinition } from '@interfaces/common';
 import { BlockView } from '@interfaces/common';
 import CodeLogToggle from '@components/CodeLogToggle';
 import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
-import {  NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; // NATIVE_LOGIC_CODE_PLACEHOLDER removed
-// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
-import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
+import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
-// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
 import { BlockStateManager } from '../state/BlockStateManager';
-import AudioEngineServiceInstance from '@/services/AudioEngineService'; // Corrected import
+import AudioEngineServiceInstance from '@/services/AudioEngineService';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 
-
 interface BlockDetailPanelProps {
-  blockInstance: BlockInstance | null;
-  blockInstances: BlockInstance[]; // Added blockInstances prop
-  connections: Connection[];
-  onClosePanel: () => void;
-  onUpdateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
+  // Props are removed as per the task
 }
 
 const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean => {
@@ -35,17 +28,41 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
   }
 };
 
-const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
-  blockInstance,
-  blockInstances, 
-  connections,
-  onClosePanel,
-  onUpdateConnections,
-}) => {
+const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   const blockStateManager = BlockStateManager.getInstance();
+  const [, forceUpdate] = useState(0); // To trigger re-renders
+
+  useEffect(() => {
+    const handleStateChange = () => {
+      forceUpdate(prev => prev + 1);
+    };
+
+    blockStateManager.subscribe(handleStateChange);
+    return () => {
+      blockStateManager.unsubscribe(handleStateChange);
+    };
+  }, [blockStateManager]); // Only re-subscribe if blockStateManager instance changes (it shouldn't)
+
+  // Directly get values from BlockStateManager on each render
+  const selectedInstanceId = blockStateManager.getSelectedInstanceId();
+  const blockInstances = blockStateManager.getBlockInstances();
+  const connections = blockStateManager.getConnections();
+  const blockInstance = selectedInstanceId
+    ? blockInstances.find(b => b.instanceId === selectedInstanceId) || null
+    : null;
+
   const getDefinitionById = (definitionId: string): BlockDefinition | undefined => blockStateManager.getDefinitionForBlock(definitionId);
   const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager);
   const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager);
+
+  const onClosePanel = () => {
+    blockStateManager.setSelectedInstanceId(null);
+  };
+
+  const onUpdateConnections = (updater: (prev: Connection[]) => Connection[]) => {
+    blockStateManager.updateConnections(updater);
+  };
+
 
   const [currentViewInternal, setCurrentViewInternal] = useState<BlockView>(BlockView.UI);
   const [editableName, setEditableName] = useState('');
@@ -54,12 +71,11 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
   const [numberInputTextValues, setNumberInputTextValues] = useState<Record<string, string>>({});
   const prevInstanceIdRef = useRef<string | null>(null);
 
-
-  const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null; // Use context version
+  const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null;
 
   const isSimplifiedNativeBlock = blockInstance && blockDefinition &&
                                     !blockDefinition.audioWorkletCode &&
-                                    !blockDefinition.logicCode && // logicCode is undefined or empty for these blocks now
+                                    !blockDefinition.logicCode &&
                                     (!blockInstance.modificationPrompts || blockInstance.modificationPrompts.length === 0) &&
                                     blockDefinition.id !== NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id;
 
@@ -67,10 +83,8 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
       ? [BlockView.UI, BlockView.CONNECTIONS]
       : [BlockView.UI, BlockView.CONNECTIONS, BlockView.CODE, BlockView.LOGS, BlockView.PROMPT, BlockView.TESTS];
 
-
   useEffect(() => {
     if (blockInstance) {
-      // Only update editableName if the instance ID has changed or the name itself has changed externally
       if (blockInstance.instanceId !== prevInstanceIdRef.current || blockInstance.name !== editableName) {
         setEditableName(blockInstance.name);
       }
@@ -86,7 +100,6 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
         }
       });
 
-      // Only update numberInputTextValues if instance ID changed or the actual values changed
       if (
         blockInstance.instanceId !== prevInstanceIdRef.current ||
         JSON.stringify(newInitialTextValues) !== JSON.stringify(numberInputTextValues)
@@ -95,7 +108,6 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
       }
       prevInstanceIdRef.current = blockInstance.instanceId;
     } else {
-      // Reset states if no block is selected, only if there was a previous block
       if (prevInstanceIdRef.current !== null) {
         setEditableName('');
         setCurrentViewInternal(BlockView.UI);
@@ -105,19 +117,25 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
     }
   }, [blockInstance, blockDefinition, currentViewInternal, availableViewsForToggle, editableName, numberInputTextValues]);
 
-
   if (!blockInstance || !blockDefinition) {
-    return (
-      <div className="fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] bg-gray-800 border-l border-gray-700 shadow-xl flex flex-col p-4 z-20 text-gray-400 items-center justify-center">
-        <p className="text-center mb-2">No block selected or definition missing.</p>
-        <button onClick={onClosePanel} className="mt-4 text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded">Close Panel</button>
-      </div>
-    );
+    // If no block is selected (selectedInstanceId is null), don't render the panel at all or render a minimal version.
+    // For this task, we'll not render it if selectedInstanceId is null, which will be handled in App.tsx
+    // This return is for the case where an instance ID is selected, but the instance or definition is somehow missing.
+    if (selectedInstanceId) {
+        return (
+            <div className="fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] bg-gray-800 border-l border-gray-700 shadow-xl flex flex-col p-4 z-20 text-gray-400 items-center justify-center">
+                <p className="text-center mb-2">Selected block data missing or invalid.</p>
+                <button onClick={onClosePanel} className="mt-4 text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded">Close Panel</button>
+            </div>
+        );
+    }
+    return null; // Don't render anything if no block is selected
   }
 
+
   const handleParameterChange = (paramId: string, value: any) => {
-    // console.log("handleParameterChange", {paramId, value});
-    updateBlockInstance(blockInstance.instanceId, (prevInstance) => { // Use context function
+    if (!blockInstance) return;
+    updateBlockInstance(blockInstance.instanceId, (prevInstance) => {
         const updatedParams = prevInstance.parameters.map(p =>
             p.id === paramId ? { ...p, currentValue: value } : p
         );
@@ -125,7 +143,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({
         if (changedParamDef && changedParamDef.type === 'number_input') {
             setNumberInputTextValues(prevTextValues => ({
                 ...prevTextValues,
-                [paramId]: String(value) 
+                [paramId]: String(value)
             }));
         }
         return { ...prevInstance, parameters: updatedParams };
