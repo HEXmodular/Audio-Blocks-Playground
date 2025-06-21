@@ -9,9 +9,10 @@ import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'
 import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
-import { BlockStateManager } from '../state/BlockStateManager';
-import AudioEngineServiceInstance from '@/services/AudioEngineService';
+import BlockStateManager from '@state/BlockStateManager';
+import AudioEngineServiceInstance from '@services/AudioEngineService';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
+import  ConnectionState  from '@services/ConnectionState';
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
@@ -29,40 +30,26 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
 };
 
 const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
-  const blockStateManager = BlockStateManager.getInstance();
-  const [, forceUpdate] = useState(0); // To trigger re-renders
-
-  useEffect(() => {
-    const handleStateChange = () => {
-      forceUpdate(prev => prev + 1);
-    };
-
-    blockStateManager.subscribe(handleStateChange);
-    return () => {
-      blockStateManager.unsubscribe(handleStateChange);
-    };
-  }, [blockStateManager]); // Only re-subscribe if blockStateManager instance changes (it shouldn't)
-
+ 
   // Directly get values from BlockStateManager on each render
-  const selectedInstanceId = blockStateManager.getSelectedInstanceId();
-  const blockInstances = blockStateManager.getBlockInstances();
-  const connections = blockStateManager.getConnections();
+  const selectedInstanceId = BlockStateManager.getSelectedBlockInstanceId();
+  const blockInstances = BlockStateManager.getBlockInstances();
+  const connections = ConnectionState.getConnections();
   const blockInstance = selectedInstanceId
     ? blockInstances.find(b => b.instanceId === selectedInstanceId) || null
     : null;
 
-  const getDefinitionById = (definitionId: string): BlockDefinition | undefined => blockStateManager.getDefinitionForBlock(definitionId);
-  const updateBlockInstance = blockStateManager.updateBlockInstance.bind(blockStateManager);
-  const ctxDeleteBlockInstance = blockStateManager.deleteBlockInstance.bind(blockStateManager);
+  const getDefinitionById = (definitionId: string): BlockDefinition | undefined => BlockStateManager.getDefinitionForBlock(definitionId);
+  const updateBlockInstance = BlockStateManager.updateBlockInstance.bind(BlockStateManager);
+  const ctxDeleteBlockInstance = BlockStateManager.deleteBlockInstance.bind(BlockStateManager);
 
   const onClosePanel = () => {
-    blockStateManager.setSelectedInstanceId(null);
+    BlockStateManager.setSelectedBlockInstanceId(null);
   };
 
   const onUpdateConnections = (updater: (prev: Connection[]) => Connection[]) => {
-    blockStateManager.updateConnections(updater);
+    ConnectionState.updateConnections(updater);
   };
-
 
   const [currentViewInternal, setCurrentViewInternal] = useState<BlockView>(BlockView.UI);
   const [editableName, setEditableName] = useState('');
