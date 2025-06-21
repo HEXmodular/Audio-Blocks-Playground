@@ -31,9 +31,13 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     const blockInstances = BlockStateManager.getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
     const onUpdateConnections = ConnectionState.updateConnections;
+    const connectionDragHandler = ConnectionDragHandler.getInstance();
+    const pendingConnection = connectionDragHandler.pendingConnection;
+
 
     // forceUpdateKey is implicitly used by being part of the component's state,
     // so changing it will trigger a re-render of ConnectionsRenderer.
+    // The _connectionDragStateCounter in App.tsx now serves this purpose globally.
 
     return (
         <>
@@ -95,14 +99,15 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                     />
                 );
             })}
-            {/* {pendingConnection && (
+            {pendingConnection && (
                 <line
                     x1={pendingConnection.startX} y1={pendingConnection.startY}
                     x2={pendingConnection.currentX} y2={pendingConnection.currentY}
                     className={`connection-line stroke-dashed ${getBlockPortBgColor(pendingConnection.fromPort.type).replace('bg-', 'stroke-')}`}
                     strokeWidth="2.5"
+                    style={{ pointerEvents: 'none' }} // Ensure pending line doesn't interfere with mouse events
                 />
-            )} */}
+            )}
         </>
     );
 };

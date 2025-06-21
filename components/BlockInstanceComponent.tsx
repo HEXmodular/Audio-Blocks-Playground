@@ -52,8 +52,10 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const blockDefinition = BlockStateManager.getInstance().getDefinitionForBlock(blockInstance);
-  const pendingConnection = ConnectionDragHandler.getInstance().pendingConnection;
-  const onStartConnectionDrag = ConnectionDragHandler.getInstance().handleStartConnectionDrag;
+  const connectionDragHandler = ConnectionDragHandler.getInstance();
+  const pendingConnection = connectionDragHandler.pendingConnection;
+  const draggedOverPortState = connectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
+  const onStartConnectionDrag = connectionDragHandler.handleStartConnectionDrag;
   
 
   const onUpdateInstancePosition = BlockStateManager.getInstance().updateBlockInstance;
@@ -212,7 +214,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {blockDefinition?.inputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.inputs.length, blockHeight);
         const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
-        const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
+        // Use draggedOverPortState from the singleton
+        const isDraggedOver = draggedOverPortState?.instanceId === blockInstance.instanceId && draggedOverPortState?.portId === port.id;
         return (
           <div
             key={port.id}
@@ -243,7 +246,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {blockDefinition?.outputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.outputs.length, blockHeight);
         const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
-        const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
+        // Use draggedOverPortState from the singleton
+        const isDraggedOver = draggedOverPortState?.instanceId === blockInstance.instanceId && draggedOverPortState?.portId === port.id;
         return (
           <div
             key={port.id}
