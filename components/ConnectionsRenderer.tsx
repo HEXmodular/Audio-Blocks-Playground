@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
-import { ConnectionState } from '@services/ConnectionState';
-import { BlockStateManager } from '@state/BlockStateManager';
+import ConnectionState from '@services/ConnectionState';
+import BlockStateManager from '@state/BlockStateManager';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
@@ -27,10 +27,10 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
     const [, setForceUpdateKey] = useState<number>(0); // Value of forceUpdateKey is not directly used, only its change
 
-    const connections = ConnectionState.getInstance().getConnections();
-    const blockInstances = BlockStateManager.getInstance().getBlockInstances();
-    const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
-    const onUpdateConnections = ConnectionState.getInstance().updateConnections;
+    const connections = ConnectionState.getConnections();
+    const blockInstances = BlockStateManager.getBlockInstances();
+    const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
+    const onUpdateConnections = ConnectionState.updateConnections;
 
     // forceUpdateKey is implicitly used by being part of the component's state,
     // so changing it will trigger a re-render of ConnectionsRenderer.

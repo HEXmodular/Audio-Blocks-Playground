@@ -15,8 +15,8 @@ import {
   ManagedLyriaServiceInfo,
   EmitterProvider // Added import
 } from '@interfaces/common';
-import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
-import { ConnectionState } from './ConnectionState';
+import  BlockStateManager, {InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
+import ConnectionState from './ConnectionState';
 import  NativeNodeManager  from './NativeNodeManager';
 import AudioWorkletManager from './AudioWorkletManager';
 import LyriaServiceManager from './LyriaServiceManager';
@@ -60,9 +60,9 @@ class AudioGraphConnectorService {
     // managedLyriaServices: Map<string, ManagedLyriaServiceInfo>
   ): InstanceUpdatePayload[] {
 
-    const connections = ConnectionState.getInstance().getConnections();
-    const blockInstances = BlockStateManager.getInstance().getBlockInstances();
-    const getDefinitionForBlock = BlockStateManager.getInstance().getDefinitionForBlock;
+    const connections = ConnectionState.getConnections();
+    const blockInstances = BlockStateManager.getBlockInstances();
+    const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
 
     const localManagedWorkletNodes = AudioWorkletManager.getManagedNodesMap();
     const localManagedNativeNodes = NativeNodeManager.getManagedNodesMap();

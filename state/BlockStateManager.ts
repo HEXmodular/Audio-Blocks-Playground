@@ -92,6 +92,7 @@ export class BlockStateManager {
   private _initializationDone: boolean = false;
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
+  private _selectedBlockInstanceId: string | null = null; // Added selected instance ID state
 
   public static getInstance(): BlockStateManager {
     if (BlockStateManager._instance === null) {
@@ -622,6 +623,14 @@ export class BlockStateManager {
       this._saveInstancesToLocalStorage(); // Call the debounced save
       if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
     }
+  }
+
+  public setSelectedBlockInstanceId(instanceId: string | null): void {
+   this._selectedBlockInstanceId = instanceId;
+  }
+  
+  public getSelectedBlockInstanceId(): string | null {
+    return this._selectedBlockInstanceId;
   }
 }
 

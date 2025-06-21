@@ -11,7 +11,7 @@ const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
 type ConnectionStateListener = (connections: Connection[]) => void;
 
-export class ConnectionState {
+class ConnectionState {
   private static instance: ConnectionState | null = null; // Singleton instance
   private connections: Connection[] = [];
   private listeners: ConnectionStateListener[] = [];
@@ -82,3 +82,5 @@ export class ConnectionState {
     };
   }
 }
+
+export default ConnectionState.getInstance();
