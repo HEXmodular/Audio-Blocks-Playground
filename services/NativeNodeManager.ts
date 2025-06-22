@@ -59,6 +59,17 @@ class NativeNodeManager implements INativeNodeManager {
         this.initializeBlockHandlers();
     }
 
+        // private constructor() {
+        //     // Private constructor to prevent direct instantiation
+        //     BlockStateManager.init(
+        //         () => {}, // For onDefinitionsChange, do nothing for now
+        //         (instances) => { // For onInstancesChange
+        //             // console.log('[AudioNodeManager] Received instance updates from BlockStateManager.');
+        //             this.updateAudioNodeParameters(instances);
+        //         }
+        //     );
+        // }
+
     // Public method to get the singleton instance
     public static getInstance(onStateChangeForReRender?: () => void): NativeNodeManager {
         if (!NativeNodeManager.instance) {
