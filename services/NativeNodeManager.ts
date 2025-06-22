@@ -160,6 +160,18 @@ class NativeNodeManager implements INativeNodeManager {
             //     const storedNode = this.managedNativeNodesRef.get(instanceId);
             //     console.log(`[NativeNodeManager.setupManagedNativeNode] VERIFY Stored AudioOutput: ID ${instanceId}, retrieved nodeForInputConnections: ${storedNode?.nodeForInputConnections?.constructor?.name}`);
             // }
+
+            // If the node is supposed to run at audio rate but doesn't have a main processing node,
+            // it's likely because the audio context wasn't ready (e.g., for Oscilloscope).
+            // In this case, consider the setup as not fully successful so it can be retried.
+            if (definition.runsAtAudioRate && !nodeInfo.mainProcessingNode) {
+                console.warn(`[NativeManager Setup] Node for '${definition.name}' (ID: ${instanceId}) created, but mainProcessingNode is null. Context might not be running. Returning false to allow retry.`);
+                this.managedNativeNodesRef.set(instanceId, nodeInfo); // Store the 'degraded' node
+                this.onStateChangeForReRender();
+                return false; // Signal that setup is not fully complete
+            }
+
+            this.managedNativeNodesRef.set(instanceId, nodeInfo);
             this.onStateChangeForReRender();
             return true;
         } catch (e) {

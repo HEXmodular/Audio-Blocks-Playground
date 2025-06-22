@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 interface OscilloscopeDisplayProps {
-  analyserNode: AnalyserNode;
+  analyserNode: AnalyserNode | null; // Allow analyserNode to be null
   fftSize: number; // This determines the buffer size for getTimeDomainData
   width?: number;
   height?: number;
@@ -21,6 +21,23 @@ const OscilloscopeDisplay: React.FC<OscilloscopeDisplayProps> = ({
   const animationFrameIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!analyserNode) {
+      // If analyserNode is null, clear the canvas or display a message
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = backgroundColor;
+          ctx.fillRect(0, 0, width, height);
+          ctx.font = '14px Arial';
+          ctx.fillStyle = lineColor;
+          ctx.textAlign = 'center';
+          ctx.fillText('Oscilloscope not available', width / 2, height / 2);
+        }
+      }
+      return; // Don't proceed with drawing if analyserNode is null
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -28,16 +45,13 @@ const OscilloscopeDisplay: React.FC<OscilloscopeDisplayProps> = ({
     if (!canvasCtx) return;
 
     // Ensure analyserNode's fftSize is consistent with the buffer we'll use.
-    // Note: AnalyserNode.fftSize must be a power of 2. The time domain data buffer
-    // will have `analyserNode.frequencyBinCount` elements, which is `fftSize / 2`.
-    // However, getTimeDomainData uses a buffer of size `analyserNode.fftSize`.
-    // Let's assume the fftSize prop is correctly set on the AnalyserNode.
     // analyserNode.fftSize = fftSize; // This should be set when AnalyserNode is created/updated
 
-    const bufferLength = analyserNode.fftSize; // Use fftSize for time domain data buffer
+    const bufferLength = analyserNode.fftSize;
     const dataArray = new Float32Array(bufferLength);
 
     const draw = () => {
+      if (!analyserNode) return; // Check again in case it becomes null during animation loop
       animationFrameIdRef.current = requestAnimationFrame(draw);
 
       analyserNode.getFloatTimeDomainData(dataArray);
@@ -53,9 +67,8 @@ const OscilloscopeDisplay: React.FC<OscilloscopeDisplayProps> = ({
       let x = 0;
 
       for (let i = 0; i < bufferLength; i++) {
-        // dataArray values are typically between -1.0 and 1.0
-        const v = dataArray[i] / 1.0; // Normalize if needed, though it usually is already
-        const y = (v * height) / 2 + height / 2; // Scale and shift to canvas coordinates
+        const v = dataArray[i];
+        const y = (v * height) / 2 + height / 2;
 
         if (i === 0) {
           canvasCtx.moveTo(x, y);
@@ -65,7 +78,7 @@ const OscilloscopeDisplay: React.FC<OscilloscopeDisplayProps> = ({
         x += sliceWidth;
       }
 
-      canvasCtx.lineTo(width, height / 2); // Draw line to the end at center
+      canvasCtx.lineTo(width, height / 2);
       canvasCtx.stroke();
     };
 
@@ -78,14 +91,13 @@ const OscilloscopeDisplay: React.FC<OscilloscopeDisplayProps> = ({
     };
   }, [analyserNode, fftSize, width, height, lineColor, backgroundColor]);
 
-  // Set ARIA attributes for accessibility
-  const ariaLabel = "Oscilloscope displaying audio waveform";
+  const ariaLabel = analyserNode ? "Oscilloscope displaying audio waveform" : "Oscilloscope not available";
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      width={width} 
-      height={height} 
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
       className="rounded-md border border-gray-600"
       role="img"
       aria-label={ariaLabel}
