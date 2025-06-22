@@ -8,6 +8,7 @@ import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/native
 import { RULE_110_BLOCK_DEFINITION } from '@constants/automata';
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
 import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
+import { debounce } from '@utils/utils';
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
   ...CONSTANT_DEFINITIONS,
@@ -67,18 +68,7 @@ const CORE_DEFINITION_IDS_SET = new Set(INITIAL_DEFINITIONS_FROM_CODE.map(def =>
 
 // --- BlockStateManager Class ---
 
-// Simple debounce function
-function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: number | undefined;
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = window.setTimeout(later, wait);
-  };
-}
+
 
 const DEBOUNCE_WAIT_MS = 300; // Or another suitable value
 
@@ -462,25 +452,25 @@ export class BlockStateManager {
         // Spread initialInternalState to keep the new logging flags
         initialInternalState = {
             ...initialInternalState,
-            lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
-            reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
-            promptsUpdateNeeded: true, // Start with true to send initial prompt
-            trackMuteUpdateNeeded: true, autoPlayInitiated: false,
-                lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
-            lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
-            lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
-            lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
-            lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
-            lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
-            lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
-            lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-                lastEffectivePrompts: [],
-                wasPausedDueToGateLow: false,
-                prevStopTrigger: false,
-                prevReconnectTrigger: false,
-                lastMuteBass: false,
-                lastMuteDrums: false,
-                lastOnlyBassDrums: false,
+            // lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
+            // reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
+            // promptsUpdateNeeded: true, // Start with true to send initial prompt
+            // trackMuteUpdateNeeded: true, autoPlayInitiated: false,
+            //     lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
+            // lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
+            // lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
+            // lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
+            // lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
+            // lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
+            // lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
+            // lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
+            //     lastEffectivePrompts: [],
+            //     wasPausedDueToGateLow: false,
+            //     prevStopTrigger: false,
+            //     prevReconnectTrigger: false,
+            //     lastMuteBass: false,
+            //     lastMuteDrums: false,
+            //     lastOnlyBassDrums: false,
         };
     }
 
@@ -515,8 +505,10 @@ export class BlockStateManager {
           newBlockState = { ...currentBlockInst, ...updates };
         }
 
+        if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
         return newBlockState;
       }
+      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
       return currentBlockInst;
     });
 
@@ -595,6 +587,13 @@ export class BlockStateManager {
   
   public getSelectedBlockInstanceId(): string | null {
     return this._selectedBlockInstanceId;
+  }
+
+  public onBlockInstanceChaged(callback: (instances: BlockInstance[]) => void): void {
+    this._onInstancesChangeCallback = callback;
+    if (this._initializationDone) {
+      callback([...this._blockInstances]); // Call immediately with current instances
+    }
   }
 }
 

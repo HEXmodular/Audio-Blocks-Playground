@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
+
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 import ConnectionState from '@services/ConnectionState';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
+import { debounce } from '@utils/utils';
+import { BlockInstance } from '@interfaces/common';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
@@ -28,10 +31,20 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
     const [, setForceUpdateKey] = useState<number>(0); // Value of forceUpdateKey is not directly used, only its change
     const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
-
+    const [blockInstances, setBlockInstances] = useState(BlockStateManager.getBlockInstances());
 
     const connections = ConnectionState.getConnections();
-    const blockInstances = BlockStateManager.getBlockInstances();
+    const isCallbackSetted = useRef({setted: false}); // Use useRef to keep track of whether the callback is set
+    if (!isCallbackSetted.current.setted) {
+    BlockStateManager.onBlockInstanceChaged((blockInstances: BlockInstance[]) => {
+        isCallbackSetted.current.setted = true; // Set the callback only once
+        debounce(() => {
+            // Update the block instances state when block instances change
+            setBlockInstances(blockInstances);
+        }, 200)();
+    });
+}
+
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
     const onUpdateConnections = ConnectionState.updateConnections;
 
@@ -41,7 +54,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
         } else {
             setPendingConnection(null);
         }
-    }; 
+    };
 
 
     // forceUpdateKey is implicitly used by being part of the component's state,

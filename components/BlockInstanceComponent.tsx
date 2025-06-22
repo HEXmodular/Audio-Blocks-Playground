@@ -1,16 +1,17 @@
 
-import React, { useState, useCallback, useEffect, use } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/common';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
-import { BlockStateManager } from '@/state/BlockStateManager';
+import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
+import { debounce } from '@utils/utils';
 
 const GRID_STEP = 20;
-const COMPACT_BLOCK_WIDTH = 120; 
+const COMPACT_BLOCK_WIDTH = 120;
 const COMPACT_BLOCK_HEADER_HEIGHT = 38;
 const PARAM_DISPLAY_HEIGHT = 20; // Height for the single parameter display line
-const PORT_STUB_DIAMETER = 12; 
+const PORT_STUB_DIAMETER = 12;
 const COMPACT_BLOCK_VERTICAL_PADDING = 5; // Top/bottom padding inside the block
 
 // Calculate total height based on content
@@ -20,9 +21,9 @@ const calculateBlockHeight = (hasParam: boolean): number => {
   if (hasParam) {
     contentHeight += PARAM_DISPLAY_HEIGHT + COMPACT_BLOCK_VERTICAL_PADDING;
   } else {
-    contentHeight += COMPACT_BLOCK_VERTICAL_PADDING * 2; 
+    contentHeight += COMPACT_BLOCK_VERTICAL_PADDING * 2;
   }
-   // Ensure minimum height to make the block tappable and visually balanced
+  // Ensure minimum height to make the block tappable and visually balanced
   return Math.max(COMPACT_BLOCK_HEADER_HEIGHT + contentHeight, 60);
 };
 
@@ -51,16 +52,17 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
   // const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
-  const blockDefinition = BlockStateManager.getInstance().getDefinitionForBlock(blockInstance);
+  const blockDefinition = BlockStateManager.getDefinitionForBlock(blockInstance);
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
-  
-  const onUpdateInstancePosition = BlockStateManager.getInstance().updateBlockInstance;
+
+  const onUpdateInstancePosition = BlockStateManager.updateBlockInstance;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
-        return;
+      return;
     }
     e.preventDefault();
     e.stopPropagation();
@@ -76,13 +78,17 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     if (isDragging) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      
+
       const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
       const snappedY = Math.round(newY / GRID_STEP) * GRID_STEP;
 
-      onUpdateInstancePosition(blockInstance.instanceId, { 
-        position: { x: snappedX, y: snappedY },
-      });
+      debounce(() => {
+        onUpdateInstancePosition(blockInstance.instanceId, {
+          position: { x: snappedX, y: snappedY },
+        });
+      }, 50)(); // Debounce to reduce updates
+
+      setPosition({ x: snappedX, y: snappedY });
     }
   }, [isDragging, dragStart, blockInstance.instanceId, onUpdateInstancePosition]);
 
@@ -106,27 +112,27 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
 
   if (!blockDefinition && blockInstance) {
-  const errorBlockHeight = calculateBlockHeight(false);
+    const errorBlockHeight = calculateBlockHeight(false);
     return (
-        <div 
-            style={{ 
-                transform: `translate(${blockInstance.position?.x}px, ${blockInstance?.position?.y}px)`,
-                width: `${COMPACT_BLOCK_WIDTH}px`,
-                height: `${errorBlockHeight}px`,
-            }}
-            className="absolute bg-red-800 border-2 border-red-600 rounded-md shadow-lg p-3 text-white text-xs flex flex-col justify-center items-center"
+      <div
+        style={{
+          transform: `translate(${position?.x}px, ${position?.y}px)`,
+          width: `${COMPACT_BLOCK_WIDTH}px`,
+          height: `${errorBlockHeight}px`,
+        }}
+        className="absolute bg-red-800 border-2 border-red-600 rounded-md shadow-lg p-3 text-white text-xs flex flex-col justify-center items-center"
+      >
+        <p className="text-center">Error: Def '{blockInstance.definitionId}' not found for '{blockInstance.name}'.</p>
+        <button
+          // onClick={() => onDeleteInstance(blockInstance.instanceId)}
+          className="mt-1.5 bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-xs js-interactive-element"
         >
-            <p className="text-center">Error: Def '{blockInstance.definitionId}' not found for '{blockInstance.name}'.</p>
-            <button
-                // onClick={() => onDeleteInstance(blockInstance.instanceId)}
-                className="mt-1.5 bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-xs js-interactive-element"
-            >
-                Delete
-            </button>
-        </div>
+          Delete
+        </button>
+      </div>
     );
   }
-  
+
   // const firstNumericalParamDef = blockDefinition.parameters.find(
   //   p => p.type === 'slider' || p.type === 'knob' || p.type === 'number_input'
   // );
@@ -138,17 +144,17 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
-    const marginTop =  10; 
-    const portAreaHeight = usableHeight * 0.70; 
+    const marginTop = 10;
+    const portAreaHeight = usableHeight * 0.70;
     if (count === 0) return marginTop + portAreaHeight / 2;
     if (count === 1) return marginTop + portAreaHeight / 2;
-    return marginTop + (portAreaHeight / (count -1)) * index;
+    return marginTop + (portAreaHeight / (count - 1)) * index;
   };
 
   return (
     <div
-      style={{ 
-        transform: `translate(${blockInstance.position.x}px, ${blockInstance.position.y}px)`,
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
         width: `${COMPACT_BLOCK_WIDTH}px`,
         height: `${blockHeight}px`,
       }}
@@ -156,20 +162,20 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
                   ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
                   transition-all duration-150 cursor-grab active:cursor-grabbing`}
       onMouseDown={handleMouseDown}
-      onClickCapture={(e) => { 
+      onClickCapture={(e) => {
         if (!(e.target as HTMLElement).closest('.js-interactive-element') && !(e.target as HTMLElement).closest('[data-port-id]')) {
           onSelect(blockInstance.instanceId);
         }
       }}
       aria-labelledby={`${blockInstance.instanceId}-compact-name`}
-      data-instance-id={blockInstance.instanceId} 
+      data-instance-id={blockInstance.instanceId}
     >
       {/* Header */}
-      <div 
+      <div
         className="flex items-center justify-between px-2.5 py-1 border-b border-gray-700/70"
         style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px`, flexShrink: 0 }}
       >
-        <h3 
+        <h3
           id={`${blockInstance.instanceId}-compact-name`}
           className="text-xs font-semibold text-gray-100 truncate"
           title={blockInstance.name}
@@ -226,13 +232,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
                         transition-all duration-100 cursor-pointer js-port-stub`}
             style={{
               width: `${PORT_STUB_DIAMETER}px`, height: `${PORT_STUB_DIAMETER}px`,
-              left: `${-PORT_STUB_DIAMETER / 1.5}px`, 
+              left: `${-PORT_STUB_DIAMETER / 1.5}px`,
               top: `${portY - PORT_STUB_DIAMETER / 2}px`,
-              transform: 'translateX(0%)', 
+              transform: 'translateX(0%)',
             }}
             title={`Input: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
             onMouseDown={(e) => {
-              e.stopPropagation(); 
+              e.stopPropagation();
               onStartConnectionDrag(blockInstance.instanceId, port, false, e.currentTarget as HTMLDivElement);
             }}
           />
@@ -257,13 +263,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
                         transition-all duration-100 cursor-pointer js-port-stub`}
             style={{
               width: `${PORT_STUB_DIAMETER}px`, height: `${PORT_STUB_DIAMETER}px`,
-              right: `${-PORT_STUB_DIAMETER / 2}px`, 
+              right: `${-PORT_STUB_DIAMETER / 2}px`,
               top: `${portY - PORT_STUB_DIAMETER / 2}px`,
               transform: 'translateX(0%)',
             }}
             title={`Output: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
             onMouseDown={(e) => {
-              e.stopPropagation(); 
+              e.stopPropagation();
               onStartConnectionDrag(blockInstance.instanceId, port, true, e.currentTarget as HTMLDivElement);
             }}
           />

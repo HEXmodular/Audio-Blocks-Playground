@@ -6,6 +6,19 @@
  * These utilities are foundational for services that handle encoded audio or binary data, such as the `LiveMusicService`.
  */
 
+// Simple debounce function
+export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: number | undefined;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = window.setTimeout(later, wait);
+  };
+}
+
 // Base64 decoding utility
 export function decode(base64String: string): Uint8Array
 {
