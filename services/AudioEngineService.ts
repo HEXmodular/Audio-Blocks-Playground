@@ -1,14 +1,16 @@
 import * as Tone from 'tone';
-import AudioContextService from './AudioContextService';
+// import AudioContextService from './AudioContextService';
 // import NativeNodeManager from './NativeNodeManager'; // Removed, functionality merged into AudioNodeManager
-import AudioWorkletManager from './AudioWorkletManager';
-import LyriaServiceManager from './LyriaServiceManager';
-import  AudioGraphConnectorService  from './AudioGraphConnectorService';
-import { BlockDefinition, BlockInstance, BlockParameter, Connection, AudioEngineState, OutputDevice } from '@interfaces/common';
-import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added imports
+import AudioWorkletManager from '@services/AudioWorkletManager';
+import LyriaServiceManager from '@services/LyriaServiceManager';
+import  AudioGraphConnectorService  from '@services/AudioGraphConnectorService';
+import AudioNodeManager from '@services/AudioNodeManager';
 
+import { AudioEngineState, OutputDevice } from '@interfaces/common';
+
+import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added imports
 import BlockStateManager from '@state/BlockStateManager';
-import AudioNodeManager from './AudioNodeManager';
+
 
 // Removed onStateChangeForReRender constant as NativeNodeManager is merged
 
@@ -184,86 +186,16 @@ class AudioEngineService {
     }
   }
 
-  // public removeAllManagedNodes(): void {
-  //   this.nativeNodeManager.removeAllManagedNativeNodes();
-  //   this.audioWorkletManager.removeAllManagedAudioWorkletNodes();
-  //   // Lyria services might need similar cleanup
-  //   this.lyriaServiceManager.removeAllServices?.();
-  //   console.log("All managed nodes removed from AudioEngineService.");
-  //   this.publishAudioEngineState(); // State might change (e.g. if nodes were part of metrics)
-  // }
-
-  // // --- Delegated methods to NativeNodeManager ---
-  // These methods are no longer needed as AudioNodeManager handles this internally.
-  // public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
-  //   return NativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
-  // }
-  // public removeNativeNode(instanceId: string): void {
-  //   NativeNodeManager.removeManagedNativeNode(instanceId);
-  // }
-
-  // // --- Delegated methods to AudioWorkletManager ---
-  // public async addManagedAudioWorkletNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> {
-  //   return this.audioWorkletManager.setupManagedAudioWorkletNode(instanceId, definition, initialParams);
-  // }
-  // public removeManagedAudioWorkletNode(instanceId: string): void {
-  //   this.audioWorkletManager.removeManagedAudioWorkletNode(instanceId);
-  // }
-  //  public sendManagedAudioWorkletNodeMessage(instanceId: string, message: any): void {
-  //   this.audioWorkletManager.sendManagedAudioWorkletNodeMessage(instanceId, message);
-  // }
-
   // --- AudioGraphConnectorService related ---
   public updateAudioGraphConnections(
   ): void {
     // console.log("[AudioEngineService updateAudioGraphConnections] Method called, preparing to update connections."); // REMOVED
-    const rawContextForConnector = Tone.getContext().rawContext;
+    // const rawContextForConnector = Tone.getContext().rawContext;
     const instanceUpdates: InstanceUpdatePayload[] = AudioGraphConnectorService.updateConnections();
     // console.log("[AudioEngineService updateAudioGraphConnections] Instance updates from AudioGraphConnectorService:", instanceUpdates); // REMOVED
   
-
     if (instanceUpdates && instanceUpdates.length > 0) {
       BlockStateManager.updateMultipleBlockInstances(instanceUpdates);
-
-      // BlockStateManager has updated the instances.
-      // Now, notify relevant node managers if their managed instances were affected,
-      // especially for internal state changes like emitter propagation.
-      // instanceUpdates.forEach(payload => {
-      //     const updatedInstance = blockInstances.find(b => b.instanceId === payload.instanceId);
-      //     if (updatedInstance) {
-      //         const definition = getDefinitionForBlock(updatedInstance);
-      //         if (definition) {
-      //             // Check if this is a native block that NativeNodeManager would handle
-      //             const isNativeBlock = this.nativeNodeManager.getNodeInfo(updatedInstance.instanceId) !== undefined;
-
-      //             if (isNativeBlock) {
-      //                 // Check if the update likely involved internalState.emitters.
-      //                 let internalStateChanged = false;
-      //                 if (typeof payload.updates === 'function') {
-      //                     // If it's a function, it's harder to inspect here without re-running it.
-      //                     // Assume for now it might have changed internalState if it's an emitter-related update.
-      //                     internalStateChanged = true;
-      //                 } else {
-      //                     internalStateChanged = payload.updates.internalState !== undefined;
-      //                 }
-
-      //                 if (internalStateChanged) {
-      //                     console.log(`[AudioEngineService] Notifying NativeNodeManager for instance ${updatedInstance.instanceId} due to potential emitter change.`);
-      //                     // We need the currentBpm. Assuming it's available globally or via a service.
-      //                     // For now, let's retrieve it from Tone.Transport as a fallback.
-      //                     const currentBpm = Tone.getTransport().bpm.value;
-      //                     this.nativeNodeManager.updateManagedNativeNodeParams(
-      //                         updatedInstance.instanceId,
-      //                         updatedInstance.parameters, // Pass current parameters
-      //                         undefined, // currentInputs is undefined as per new design
-      //                         currentBpm
-      //                     );
-      //                 }
-      //             }
-      //             // TODO: Similar logic for AudioWorkletManager if its blocks also use emitters via internalState
-      //         }
-      //     }
-      // });
     }
   }
 

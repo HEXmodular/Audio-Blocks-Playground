@@ -12,7 +12,7 @@ import { BlockInstance, BlockDefinition, Connection, PlaybackState } from '@inte
 import { getDefaultOutputValue } from '@state/BlockStateManager';
 
 import BlockStateManager from '@state/BlockStateManager';
-import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants'; 
+import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import LyriaServiceManager from './LyriaServiceManager';
 import AudioWorkletManager from './AudioWorkletManager';
@@ -49,7 +49,7 @@ class AudioNodeManager {
     private constructor() {
         // Private constructor to prevent direct instantiation
         BlockStateManager.init(
-            () => {}, // For onDefinitionsChange, do nothing for now
+            () => { }, // For onDefinitionsChange, do nothing for now
             (instances) => { // For onInstancesChange
                 // console.log('[AudioNodeManager] Received instance updates from BlockStateManager.');
                 this.updateAudioNodeParameters(instances);
@@ -127,7 +127,7 @@ class AudioNodeManager {
             } else {
                 const oscilloscopeHandler = this.blockHandlers.get(OscilloscopeNativeBlock.getDefinition().id) as OscilloscopeNativeBlock | undefined;
                 oscilloscopeHandler?.setAudioContext(null);
-                 // Potentially other handlers might need context updates too
+                // Potentially other handlers might need context updates too
             }
 
             this.onStateChangeForReRender(); // Call the (potentially no-op) state change handler
@@ -181,25 +181,6 @@ class AudioNodeManager {
         }
     }
 
-    public updateManagedNativeNodeParams(
-        instanceId: string,
-        parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
-        currentBpm: number = 120
-    ): void {
-        const info = this.managedNativeNodesRef.get(instanceId);
-        console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
-        if (!info) return;
-
-        const handler = this.blockHandlers.get(info.definition.id);
-        if (handler) {
-            handler.setAudioContext(this.getRawAudioContext()); // Ensure handler has current context
-            handler.updateNodeParams(info, parameters, currentInputs, currentBpm);
-        } else {
-            console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition.id}'.`);
-        }
-    }
-
     public removeManagedNativeNode(instanceId: string): void {
         const nodeInfo = this.managedNativeNodesRef.get(instanceId);
         if (nodeInfo) {
@@ -250,11 +231,11 @@ class AudioNodeManager {
 
     public async processAudioNodeSetupAndTeardown(
     ) {
-        const blockInstances= BlockStateManager.getBlockInstances();
+        const blockInstances = BlockStateManager.getBlockInstances();
         // console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Entry. GlobalAudioEnabled:', isAudioGloballyEnabled, 'WorkletSystemReady:', isWorkletSystemReady, 'AudioContext State:', audioContextCurrent?.state);
         console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Number of blockInstances received:', blockInstances.length);
         if (blockInstances.length > 0) {
-          console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
+            console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
         }
         // console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
         // The erroneous if (audioContextCurrent?.rawContext) block is removed by not including it here.
@@ -426,13 +407,19 @@ class AudioNodeManager {
                         }
                     }
                 }
-                // Directly call the merged method.
-                this.updateManagedNativeNodeParams(
-                    instance.instanceId,
-                    instance.parameters,
-                    Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined,
-                    globalBpm
-                );
+
+                const info = this.managedNativeNodesRef.get(instance.instanceId);
+                // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
+                if (!info) return;
+
+                const handler = this.blockHandlers.get(info.definition.id);
+                if (handler) {
+                    handler.setAudioContext(this.getRawAudioContext()); // Ensure handler has current context
+                    const currentInputs = Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined
+                    handler.updateNodeParams(info, instance.parameters, currentInputs);
+                } else {
+                    console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition.id}'.`);
+                }
             }
         });
     }
