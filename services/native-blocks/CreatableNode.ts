@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
 
 export interface CreatableNode {
     createNode(
@@ -10,9 +10,7 @@ export interface CreatableNode {
 
     updateNodeParams(
         nodeInfo: ManagedNativeNodeInfo,
-        parameters: BlockParameter[],
-        currentInputs?: Record<string, any>, // For blocks that react to input values directly on params
-        currentBpm?: number
+        instance: BlockInstance,
     ): void;
 
     setAudioContext(context: any): void; // Made 'any' for flexibility with Tone.Context / AudioContext

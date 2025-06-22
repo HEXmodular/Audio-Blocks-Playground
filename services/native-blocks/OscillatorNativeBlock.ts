@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
 // AudioParam is a global type, removed from this import
 import { createParameterDefinitions } from '../../constants/constants';
 import { CreatableNode } from './CreatableNode';
@@ -195,9 +195,7 @@ export class OscillatorNativeBlock implements CreatableNode {
 
     updateNodeParams(
         nodeInfo: ManagedOscillatorNodeInfo,
-        parameters: BlockParameter[],
-        _currentInputs?: Record<string, any>,
-        currentBpm?: number
+        instance: BlockInstance,
     ): void {
         // console.log(`[OscillatorNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters, `Current BPM: ${currentBpm}`); // REMOVED
         if (!nodeInfo.toneOscillator || !nodeInfo.toneGain) {
@@ -207,6 +205,8 @@ export class OscillatorNativeBlock implements CreatableNode {
 
         const { toneOscillator, toneGain } = nodeInfo;
         const context = Tone.getContext();
+        const parameters = instance.parameters || [];
+        const currentBpm = context.transport.bpm.value; // Get current BPM from Tone.js context
 
         const freqParam = parameters.find(p => p.id === 'frequency');
         const waveformParam = parameters.find(p => p.id === 'waveform');

@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import {
     BlockDefinition,
+    BlockInstance,
     BlockParameter,
     ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo
 } from '@interfaces/common';
@@ -11,32 +12,32 @@ import { createParameterDefinitions } from '@constants/constants';
 // Tone types like Tone.ToneAudioNode should be used with the Tone prefix.
 
 export interface ManagedAudioOutputNodeInfo extends OriginalManagedNativeNodeInfo {
-  toneGain?: Tone.Gain;
+    toneGain?: Tone.Gain;
 }
 
 export class AudioOutputNativeBlock implements CreatableNode {
     public static getDefinition(): BlockDefinition {
-      return {
-        id: 'system-audio-output-tone-v1',
-        name: 'Audio Output (Tone)',
-        description: 'Plays the incoming audio signal through Tone.Destination. Contains an internal Tone.Gain for volume control.',
-        runsAtAudioRate: true,
-        inputs: [
-            { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume Tone.Gain.' },
-            { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
-        ],
-        outputs: [],
-        parameters: createParameterDefinitions([
-            { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal Tone.Gain).' }
-        ]),
-        isAiGenerated: false,
-        initialPrompt: '',
-      };
+        return {
+            id: 'system-audio-output-tone-v1',
+            name: 'Audio Output (Tone)',
+            description: 'Plays the incoming audio signal through Tone.Destination. Contains an internal Tone.Gain for volume control.',
+            runsAtAudioRate: true,
+            inputs: [
+                { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume Tone.Gain.' },
+                { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
+            ],
+            outputs: [],
+            parameters: createParameterDefinitions([
+                { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal Tone.Gain).' }
+            ]),
+            isAiGenerated: false,
+            initialPrompt: '',
+        };
     }
 
-    constructor() {}
+    constructor() { }
 
-    setAudioContext(_context: any): void {} // Matched CreatableNode
+    setAudioContext(_context: any): void { } // Matched CreatableNode
 
     createNode(
         instanceId: string,
@@ -85,7 +86,7 @@ export class AudioOutputNativeBlock implements CreatableNode {
 
     updateNodeParams(
         nodeInfo: ManagedAudioOutputNodeInfo,
-        parameters: BlockParameter[]
+        insctance: BlockInstance,
     ): void {
         // console.log(`[AudioOutputNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters); // REMOVED
         if (!nodeInfo.toneGain) {
@@ -94,6 +95,7 @@ export class AudioOutputNativeBlock implements CreatableNode {
         }
         const currentToneGain = nodeInfo.toneGain;
         const context = Tone.getContext();
+        const parameters = insctance.parameters || [];
 
         const volumeParam = parameters.find(p => p.id === 'volume');
         if (volumeParam && currentToneGain.gain) {

@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
 // AudioParam is a global type
 import { createParameterDefinitions } from '../../constants/constants';
 import { CreatableNode } from './CreatableNode';
@@ -45,6 +45,8 @@ export class EnvelopeNativeBlock implements CreatableNode {
     }
 
     constructor() {}
+
+    gateSubscription: Tone.Emitter<string> | undefined; // Subscription to the gate emitter for this instance
 
     setAudioContext(_context: any): void {}
 
@@ -104,17 +106,15 @@ export class EnvelopeNativeBlock implements CreatableNode {
 
     updateNodeParams(
         nodeInfo: ManagedEnvelopeNodeInfo,
-        parameters: BlockParameter[],
-        currentInputs?: Record<string, any>,
-        _currentBpm?: number
+        blockInstance: BlockInstance,
     ): void {
         if (!nodeInfo.toneAmplitudeEnvelope) {
             console.warn('Tone.AmplitudeEnvelope not found in nodeInfo for EnvelopeNativeBlock', nodeInfo);
             return;
         }
         const envelope = nodeInfo.toneAmplitudeEnvelope;
-        const context = Tone.getContext();
-
+        const parameters = blockInstance.parameters;
+        
         parameters.forEach(param => {
             switch (param.id) {
                 case 'attack':
@@ -131,20 +131,12 @@ export class EnvelopeNativeBlock implements CreatableNode {
         });
 
         // --- Emitter-based gate control ---
-        // Correctly retrieve the newDesignatedEmitter from currentInputs, which is populated by AudioGraphConnectorService
-        const newDesignatedEmitter = currentInputs?.['gate_in']?.emitter as Tone.Emitter | undefined;
-        console.log(`[EnvelopeNativeBlock] Instance ${nodeInfo.instanceId} checking gate emitter. Current: ${nodeInfo.gateEmitter}, New: ${newDesignatedEmitter}`);
 
-        if (newDesignatedEmitter !== nodeInfo.gateEmitter) {
-            // Unsubscribe from the old emitter
-            if (nodeInfo.gateSubscription) {
-                nodeInfo.gateSubscription.off();
-                nodeInfo.gateSubscription = undefined;
-            }
+        const newDesignatedEmitter = blockInstance.internalState.emitters?.gate_in
 
             // Subscribe to the new emitter
-            if (newDesignatedEmitter) {
-                nodeInfo.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
+            if (newDesignatedEmitter?.on) {
+                this.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
                     if (!nodeInfo.toneAmplitudeEnvelope) return;
                     const now = Tone.getContext().currentTime;
                     const currentEnvelopeState = nodeInfo.prevGateState;
@@ -157,20 +149,19 @@ export class EnvelopeNativeBlock implements CreatableNode {
                     nodeInfo.prevGateState = payload.newState;
                     console.log(`[EnvelopeNativeBlock] Instance ${nodeInfo.instanceId} received gate_change: ${payload.newState}`);
                 });
-                nodeInfo.gateEmitter = newDesignatedEmitter;
             } else {
                 // No new emitter, so clear the current one
-                nodeInfo.gateEmitter = undefined;
+                this.gateSubscription = undefined;
             }
-        }
+        
         // --- End of Emitter-based gate control ---
         // The old logic based on currentInputs.gate_in has been removed.
     }
 
     dispose(nodeInfo: ManagedEnvelopeNodeInfo): void {
-        if (nodeInfo.gateSubscription) { // Unsubscribe on dispose
-            nodeInfo.gateSubscription.off();
-            nodeInfo.gateSubscription = undefined;
+        if (this.gateSubscription) { // Unsubscribe on dispose
+            this.gateSubscription.off('gate_change');
+            this.gateSubscription = undefined;
         }
         if (nodeInfo.toneAmplitudeEnvelope) {
             nodeInfo.toneAmplitudeEnvelope.dispose();
