@@ -143,6 +143,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
 
             // Subscribe to the new emitter
             if (newDesignatedEmitter) {
+                console.log("[EnvelopeNativeBlock] Instance", nodeInfo.instanceId, "subscribing to new gate emitter:", newDesignatedEmitter);
                 nodeInfo.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
                     if (!nodeInfo.toneAmplitudeEnvelope) return;
                     const now = Tone.getContext().currentTime;
