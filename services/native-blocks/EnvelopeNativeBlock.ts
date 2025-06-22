@@ -132,6 +132,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
 
         // --- Emitter-based gate control ---
         const newDesignatedEmitter = nodeInfo.internalState?.emitters?.['gate_in'] as Tone.Emitter | undefined;
+        console.log(`[EnvelopeNativeBlock] Instance ${nodeInfo.gateEmitter} checking gate emitter:`, newDesignatedEmitter);
 
         if (newDesignatedEmitter !== nodeInfo.gateEmitter) {
             // Unsubscribe from the old emitter

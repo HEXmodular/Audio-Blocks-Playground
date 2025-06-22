@@ -12,7 +12,6 @@ import {
     ManagedNativeNodeInfo,
     // AllpassInternalNodes, // Removed unused import - implicitly used by ManagedNativeNodeInfo
 } from '@interfaces/common';
-import { BlockStateManager } from '@state/BlockStateManager'; // Added import
 
 // Removed direct imports of BlockDefinition constants
 
@@ -187,6 +186,7 @@ class NativeNodeManager implements INativeNodeManager {
         currentBpm: number = 120
     ): void {
         const info = this.managedNativeNodesRef.get(instanceId);
+        console.log(`[↔ NativeManager Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
         if (!info) return;
 
         const handler = this.blockHandlers.get(info.definition.id);
