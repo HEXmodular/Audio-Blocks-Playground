@@ -1,4 +1,3 @@
-// Force recompile to address potential caching issue with async keyword detection
 /**
  * This service orchestrates the lifecycle and parameterization of audio nodes within a block-based audio graph.
  * It acts as an intermediary between high-level block instance representations and the underlying `AudioEngineService`, translating block configurations into concrete audio node setups and updates.
@@ -18,12 +17,20 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import LyriaServiceManager from './LyriaServiceManager';
 import AudioWorkletManager from './AudioWorkletManager';
 import NativeNodeManager from './NativeNodeManager';
+import ConnectionState from './ConnectionState'; // Added import
 
 class AudioNodeManager {
     private static instance: AudioNodeManager;
 
     private constructor() {
         // Private constructor to prevent direct instantiation
+        BlockStateManager.init(
+            () => {}, // For onDefinitionsChange, do nothing for now
+            (instances) => { // For onInstancesChange
+                // console.log('[AudioNodeManager] Received instance updates from BlockStateManager.');
+                this.updateAudioNodeParameters(instances);
+            }
+        );
     }
 
     // Static method to get the singleton instance
@@ -188,8 +195,10 @@ class AudioNodeManager {
         }
     }
 
-    public updateAudioNodeParameters(blockInstances: BlockInstance[], connections: Connection[], globalBpm: number) {
+    public updateAudioNodeParameters(blockInstances: BlockInstance[]) {
         if (!Tone.getContext() || Tone.getContext().state !== 'running') return;
+        const connections = ConnectionState.getConnections();
+        const globalBpm = Tone.getTransport().bpm.value;
 
         blockInstances.forEach(instance => {
             const definition = BlockStateManager.getDefinitionForBlock(instance);
@@ -308,8 +317,6 @@ class AudioNodeManager {
     }
 
     public updateAudioGraphConnections(
-        connections: Connection[],
-        blockInstances: BlockInstance[],
         isAudioGloballyEnabled: boolean
     ) {
         // Check Tone.js context state for updating graph connections
