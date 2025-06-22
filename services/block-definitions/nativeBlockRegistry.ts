@@ -12,11 +12,13 @@ import { GainControlNativeBlock } from '../native-blocks/GainControlNativeBlock'
 import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock';
 import { LyriaMasterBlock } from '../lyria-blocks/LyriaMaster';
 import { ManualGateNativeBlock } from '../native-blocks/ManualGateNativeBlock';
+import { StepSequencerNativeBlock } from '../native-blocks/sequencers/StepSequencerNativeBlock';
 
 // Import services that provide definitions
 // import { AudioEngineService } from '../AudioEngineService'; // Removed as no longer needed
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
+    StepSequencerNativeBlock.getDefinition(), // Added Step Sequencer
     OscillatorNativeBlock.getOscillatorDefinition(),
     OscillatorNativeBlock.getLfoDefinition(),
     OscillatorNativeBlock.getLfoBpmSyncDefinition(),
