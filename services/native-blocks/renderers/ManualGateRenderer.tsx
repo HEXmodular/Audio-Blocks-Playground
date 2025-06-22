@@ -15,21 +15,18 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
     // console.log(`[ManualGateRenderer handleParameterChange]`, paramId, value, targetParam)
     // TODO надо этот код вынести как-то
     updateBlockInstance(blockInstance.instanceId, (prevInstance) => { // Use context function
-      const updatedParam = prevInstance.parameters.find(p => p.id === paramId)
-      if (!updatedParam) {
-        return { ...prevInstance }
-      }
-      updatedParam.currentValue = value;
-      const updatedParams = [...prevInstance.parameters, { ...updatedParam, currentValue: value }]
-      // const changedParamDef = blockDefinition.parameters.find(pDef => pDef.id === paramId);
-      // if (changedParamDef && changedParamDef.type === 'number_input') {
-      //     setNumberInputTextValues(prevTextValues => ({
-      //         ...prevTextValues,
-      //         [paramId]: String(value) 
-      //     }));
-      // }
-      return { ...prevInstance, parameters: updatedParams };
+      const newParameters = prevInstance.parameters.map(p =>
+        p.id === paramId ? { ...p, currentValue: value } : p
+      );
+      return { ...prevInstance, parameters: newParameters };
     });
+
+    // Also, explicitly trigger the audio engine to update the node's parameters
+    // This was the missing piece for ManualGateNativeBlock's updateNodeParams
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const audioEngineService = AudioEngineService.getInstance();
+    audioEngineService.updateNodeParams(blockInstance.instanceId, [{ id: paramId, currentValue: value }]);
   };
 
   if (!gateParam) {

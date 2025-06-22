@@ -199,6 +199,11 @@ class AudioEngineService {
     }
   }
 
+  // This method is called by components to update parameters of a specific node instance
+  public updateNodeParams(instanceId: string, parameters: { id: string, currentValue: any }[]): void {
+    AudioNodeManager.updateSpecificNodeParameters(instanceId, parameters);
+  }
+
    public getSampleRate(): number | null {
     return this.context?.sampleRate ?? null;
   }
