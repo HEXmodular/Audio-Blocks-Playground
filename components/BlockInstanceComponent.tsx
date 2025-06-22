@@ -137,8 +137,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const blockHeight = calculateBlockHeight(true); // Content area is always active for a renderer
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
-    const usableHeight = totalBlockHeight - COMPACT_BLOCK_HEADER_HEIGHT;
-    const marginTop = COMPACT_BLOCK_HEADER_HEIGHT + usableHeight * 0.15; 
+    const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
+    const marginTop =  10; 
     const portAreaHeight = usableHeight * 0.70; 
     if (count === 0) return marginTop + portAreaHeight / 2;
     if (count === 1) return marginTop + portAreaHeight / 2;
@@ -226,7 +226,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
                         transition-all duration-100 cursor-pointer js-port-stub`}
             style={{
               width: `${PORT_STUB_DIAMETER}px`, height: `${PORT_STUB_DIAMETER}px`,
-              left: `${-PORT_STUB_DIAMETER / 2}px`, 
+              left: `${-PORT_STUB_DIAMETER / 1.5}px`, 
               top: `${portY - PORT_STUB_DIAMETER / 2}px`,
               transform: 'translateX(0%)', 
             }}

@@ -90,11 +90,9 @@ class AudioGraphConnectorService {
       if (!outputPortDef || !inputPortDef) return;
 
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
-        console.log("[AudioGraphConnectorService] Processing gate/trigger connection from", fromDef.name, "to", toDef.name, `(${conn.id})`); // REMOVED
         const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
         const emitter = sourceManagedNodeInfo?.providerInstance?.getEmitter(conn.fromOutputId)
         if (emitter) {
-            console.log(`[AudioGraphConnectorService] Successfully propagated emitter for connection ${conn.id} from ${conn.fromInstanceId}.${conn.fromOutputId} to ${conn.toInstanceId}.${conn.toInputId}`); // REMOVED
             BlockStateManager.updateBlockInstance(
               toInstance.instanceId,   
               {internalState: { emitters: { [conn.toInputId]: emitter } }}

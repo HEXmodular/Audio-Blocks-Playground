@@ -1,43 +1,42 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
 // AudioParam is a global type, removed from common import
 import { CreatableNode } from './CreatableNode';
 import { createParameterDefinitions } from '@constants/constants';
 
 export interface ManagedGainNodeInfo extends OriginalManagedNativeNodeInfo {
-  toneGain?: Tone.Gain;
+    toneGain?: Tone.Gain;
 }
 
 export class GainControlNativeBlock implements CreatableNode {
     public static getDefinition(): BlockDefinition {
-      return {
-        id: 'tone-gain-v1',
-        name: 'Gain Control (Tone)',
-        description: 'A Tone.Gain node. Controls signal amplitude.',
-        runsAtAudioRate: true,
-        inputs: [
-          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Gain input.' },
-          { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain (Tone.Param).', audioParamTarget: 'gain' }
-        ],
-        outputs: [
-          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.Gain.' }
-        ],
-        parameters: createParameterDefinitions([
-          { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (linear gain).' }
-        ]),
-        compactRendererId: 'gain',
-      };
+        return {
+            id: 'tone-gain-v1',
+            name: 'Gain Control (Tone)',
+            description: 'A Tone.Gain node. Controls signal amplitude.',
+            runsAtAudioRate: true,
+            inputs: [
+                { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Gain input.' },
+                { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates gain (Tone.Param).', audioParamTarget: 'gain' }
+            ],
+            outputs: [
+                { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.Gain.' }
+            ],
+            parameters: createParameterDefinitions([
+                { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 2, step: 0.01, defaultValue: 1, description: 'Signal amplitude (linear gain).' }
+            ]),
+            compactRendererId: 'gain',
+        };
     }
 
-    constructor() {}
+    constructor() { }
 
-    setAudioContext(_context: any): void {}
+    setAudioContext(_context: any): void { }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        _currentBpm?: number
     ): ManagedGainNodeInfo {
         if (Tone.getContext().state !== 'running') {
             console.warn('Tone.js context is not running. Gain node may not function correctly until context is started.');
@@ -60,21 +59,20 @@ export class GainControlNativeBlock implements CreatableNode {
             mainProcessingNode: toneGain as unknown as Tone.ToneAudioNode,
             paramTargetsForCv: specificParamTargetsForCv,
             internalGainNode: undefined,
-            allpassInternalNodes: undefined,
-            constantSourceValueNode: undefined,
+
+
             internalState: {},
         };
 
-        this.updateNodeParams(nodeInfo, initialParams);
+        // this.updateNodeParams(nodeInfo, initialParams);
 
         return nodeInfo;
     }
 
     updateNodeParams(
         nodeInfo: ManagedGainNodeInfo,
-        parameters: BlockParameter[],
-        _currentInputs?: Record<string, any>,
-        _currentBpm?: number
+        blockInstance: BlockInstance,
+
     ): void {
         if (!nodeInfo.toneGain) {
             console.warn('Tone.Gain node not found in nodeInfo for GainControlNativeBlock', nodeInfo);
@@ -82,6 +80,7 @@ export class GainControlNativeBlock implements CreatableNode {
         }
         const toneGainCurrent = nodeInfo.toneGain;
         const context = Tone.getContext();
+        const parameters = blockInstance.parameters;
 
         const gainParam = parameters.find(p => p.id === 'gain');
         if (gainParam && toneGainCurrent.gain) {

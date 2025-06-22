@@ -93,8 +93,8 @@ export class EnvelopeNativeBlock implements CreatableNode {
             mainProcessingNode: toneAmplitudeEnvelope as unknown as Tone.ToneAudioNode,
             paramTargetsForCv: specificParamTargetsForCv,
             internalGainNode: undefined,
-            allpassInternalNodes: undefined,
-            constantSourceValueNode: undefined,
+
+
             prevGateState: false,
             internalState: {},
             // Initialize new properties

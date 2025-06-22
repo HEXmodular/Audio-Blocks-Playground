@@ -138,13 +138,8 @@ class AudioNodeManager {
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm: number = 120
     ): Promise<boolean> {
         console.log(`[AudioNodeManager/Native Setup] Setting up Tone.js based node for '${definition.name}' (ID: ${instanceId})`);
-        const toneContext = Tone.getContext();
-        if (definition.id !== OscilloscopeNativeBlock.getDefinition().id && (!toneContext || toneContext.state !== 'running')) {
-            console.warn(`[AudioNodeManager/Native Setup] Tone.js context not running. Node for '${definition.name}' (ID: ${instanceId}) may not process audio until context starts.`);
-        }
 
         const handler = this.blockHandlers.get(definition.id);
         if (!handler) {
@@ -162,7 +157,7 @@ class AudioNodeManager {
 
         try {
             handler.setAudioContext(this.getRawAudioContext()); // Ensure handler has current context
-            const nodeInfo = handler.createNode(instanceId, definition, initialParams, currentBpm);
+            const nodeInfo = handler.createNode(instanceId, definition, initialParams);
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
 
             if (definition.runsAtAudioRate && !nodeInfo.mainProcessingNode) {
@@ -304,7 +299,7 @@ class AudioNodeManager {
                         // instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number
                         // AudioEngineService.addNativeNode was called with: instanceId, definition, instance.parameters
                         // So, this should be a direct replacement. The globalBpm is optional and defaults to 120.
-                        setupSuccess = await this.setupManagedNativeNode(instance.instanceId, definition, instance.parameters, Tone.getTransport().bpm.value);
+                        setupSuccess = await this.setupManagedNativeNode(instance.instanceId, definition, instance.parameters);
                         if (setupSuccess) {
                             this.updateInstance(instance.instanceId, currentInst => ({
                                 ...currentInst,

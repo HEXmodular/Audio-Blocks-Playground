@@ -1,8 +1,9 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
 // AudioParam is a global type, removed from common import
 import { createParameterDefinitions } from '../../constants/constants';
-import { CreatableNode } from './CreatableNode';
+import { CreatableNode } from '@services/native-blocks/CreatableNode';
+import { ManagedEnvelopeNodeInfo } from './EnvelopeNativeBlock';
 
 export interface ManagedFilterNodeInfo extends OriginalManagedNativeNodeInfo {
   toneFilter?: Tone.Filter;
@@ -78,21 +79,18 @@ export class BiquadFilterNativeBlock implements CreatableNode {
             mainProcessingNode: toneFilter as unknown as Tone.ToneAudioNode,
             paramTargetsForCv: specificParamTargetsForCv,
             internalGainNode: undefined,
-            allpassInternalNodes: undefined,
-            constantSourceValueNode: undefined,
+
             internalState: {},
         };
 
-        this.updateNodeParams(nodeInfo, initialParams);
+        // this.updateNodeParams(nodeInfo, );
 
         return nodeInfo;
     }
 
     updateNodeParams(
-        nodeInfo: ManagedFilterNodeInfo,
-        parameters: BlockParameter[],
-        _currentInputs?: Record<string, any>,
-        _currentBpm?: number
+        nodeInfo: ManagedEnvelopeNodeInfo,
+        blockInstance: BlockInstance,
     ): void {
         if (!nodeInfo.toneFilter) {
             console.warn('Tone.Filter node not found in nodeInfo for BiquadFilterNativeBlock', nodeInfo);
@@ -100,6 +98,7 @@ export class BiquadFilterNativeBlock implements CreatableNode {
         }
         const currentToneFilter = nodeInfo.toneFilter;
         const context = Tone.getContext();
+        const parameters = blockInstance.parameters;
 
         parameters.forEach(param => {
             switch (param.id) {

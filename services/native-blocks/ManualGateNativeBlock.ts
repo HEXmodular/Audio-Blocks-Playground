@@ -47,7 +47,6 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
     instanceId: string,
     definition: BlockDefinition,
     initialParams: BlockParameter[],
-    _currentBpm?: number
   ): ManagedNativeNodeInfo {
     if (!this.context) throw new Error("AudioContext not initialized for ManualGateNativeBlock");
 

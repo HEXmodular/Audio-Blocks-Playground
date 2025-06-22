@@ -75,30 +75,30 @@ export interface BlockInstance {
   internalState: {
     emitters?: { [inputId: string]: Tone.Emitter }; // Restored
     needsAudioNodeSetup?: boolean;
-    lyriaServiceReady?: boolean;
-    autoPlayInitiated?: boolean;
-    playRequest?: boolean;
-    pauseRequest?: boolean;
-    stopRequest?: boolean;
-    reconnectRequest?: boolean;
-    configUpdateNeeded?: boolean;
-    promptsUpdateNeeded?: boolean;
-    trackMuteUpdateNeeded?: boolean;
-    lastScale?: any;
-    lastBrightness?: any;
-    lastDensity?: any;
-    lastSeed?: any;
-    lastTemperature?: any;
-    lastGuidanceScale?: any;
-    lastTopK?: any;
-    lastBpm?: any;
-    lastEffectivePrompts?: any[];
-    wasPausedDueToGateLow?: boolean;
-    prevStopTrigger?: boolean;
-    prevReconnectTrigger?: boolean;
-    lastMuteBass?: boolean;
-    lastMuteDrums?: boolean;
-    lastOnlyBassDrums?: boolean;
+    // lyriaServiceReady?: boolean;
+    // autoPlayInitiated?: boolean;
+    // playRequest?: boolean;
+    // pauseRequest?: boolean;
+    // stopRequest?: boolean;
+    // reconnectRequest?: boolean;
+    // configUpdateNeeded?: boolean;
+    // promptsUpdateNeeded?: boolean;
+    // trackMuteUpdateNeeded?: boolean;
+    // lastScale?: any;
+    // lastBrightness?: any;
+    // lastDensity?: any;
+    // lastSeed?: any;
+    // lastTemperature?: any;
+    // lastGuidanceScale?: any;
+    // lastTopK?: any;
+    // lastBpm?: any;
+    // lastEffectivePrompts?: any[];
+    // wasPausedDueToGateLow?: boolean;
+    // prevStopTrigger?: boolean;
+    // prevReconnectTrigger?: boolean;
+    // lastMuteBass?: boolean;
+    // lastMuteDrums?: boolean;
+    // lastOnlyBassDrums?: boolean;
     loggedWorkletSystemNotReady?: boolean;
     loggedAudioSystemNotActive?: boolean;
     [key: string]: any;
@@ -108,7 +108,7 @@ export interface BlockInstance {
   isRunning?: boolean; 
   error?: string | null; 
   audioWorkletNodeId?: string; 
-  lyriaServiceInstanceId?: string;
+  lyriaServiceInstanceId?: string; //?
 }
 
 export interface EmitterProvider {
@@ -213,14 +213,6 @@ export interface ManagedWorkletNodeInfo {
   definition: BlockDefinition;
 }
 
-export interface AllpassInternalNodes {
-    inputPassthroughNode: GainNode;
-    inputGain1: GainNode;
-    inputDelay: DelayNode;
-    feedbackGain: GainNode;
-    feedbackDelay: DelayNode;
-    summingNode: GainNode;
-}
 
 export interface ManagedNativeNodeInfo {
     node: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
@@ -228,22 +220,21 @@ export interface ManagedNativeNodeInfo {
     nodeForOutputConnections: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
     mainProcessingNode?: Tone.ToneAudioNode | AudioNode | AudioWorkletNode | null;
     internalGainNode?: GainNode | Tone.Gain;
-    allpassInternalNodes?: AllpassInternalNodes | null;
     paramTargetsForCv?: Map<string, AudioParam | Tone.Param | Tone.Signal<any>>;
     definition: BlockDefinition;
     instanceId: string;
-    constantSourceValueNode?: ConstantSourceNode;
+    // constantSourceValueNode?: ConstantSourceNode;
     internalState?: any;
     emitter?: Tone.Emitter;
     providerInstance?: EmitterProvider;
 
     // Add specific Tone.js node references, used by refactored blocks
-    toneOscillator?: Tone.Oscillator;
-    toneGain?: Tone.Gain;
-    toneFilter?: Tone.Filter;
-    toneFeedbackDelay?: Tone.FeedbackDelay;
-    toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
-    toneAnalyser?: Tone.Analyser;
+    // toneOscillator?: Tone.Oscillator;
+    // toneGain?: Tone.Gain;
+    // toneFilter?: Tone.Filter;
+    // toneFeedbackDelay?: Tone.FeedbackDelay;
+    // toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
+    // toneAnalyser?: Tone.Analyser;
 }
 
 export interface ManagedLyriaServiceInfo {

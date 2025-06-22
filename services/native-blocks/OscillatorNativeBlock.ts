@@ -109,7 +109,6 @@ export class OscillatorNativeBlock implements CreatableNode {
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm?: number
     ): ManagedOscillatorNodeInfo {
         // console.log(`[OscillatorNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams); // REMOVED
         if (Tone.getContext().state !== 'running') {
@@ -144,8 +143,8 @@ export class OscillatorNativeBlock implements CreatableNode {
             nodeForOutputConnections: toneGain as unknown as Tone.ToneAudioNode,
             mainProcessingNode: toneOscillator as unknown as Tone.ToneAudioNode,
             internalGainNode: toneGain as unknown as Tone.Gain,
-            allpassInternalNodes: undefined,
-            constantSourceValueNode: undefined,
+
+
             internalState: {},
         };
 

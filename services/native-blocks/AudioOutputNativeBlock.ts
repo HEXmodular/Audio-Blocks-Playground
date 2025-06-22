@@ -71,15 +71,15 @@ export class AudioOutputNativeBlock implements CreatableNode {
             mainProcessingNode: toneGain as unknown as Tone.ToneAudioNode,
             paramTargetsForCv: specificParamTargetsForCv,
             internalGainNode: toneGain as unknown as Tone.Gain,
-            allpassInternalNodes: undefined,
-            constantSourceValueNode: undefined,
+
+
             internalState: {},
         };
 
         // console.log(`[AudioOutputNativeBlock createNode] nodeForInputConnections for ${instanceId}: ${nodeInfo.nodeForInputConnections?.constructor.name}`); // REMOVED
         // console.log(`[AudioOutputNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo); // REMOVED
 
-        this.updateNodeParams(nodeInfo, initialParams);
+        // this.updateNodeParams(nodeInfo, initialParams);
 
         return nodeInfo;
     }

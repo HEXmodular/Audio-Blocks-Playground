@@ -5,7 +5,6 @@ export interface CreatableNode {
         instanceId: string,
         definition: BlockDefinition,
         initialParams: BlockParameter[],
-        currentBpm?: number // Optional for BPM-dependent nodes
     ): ManagedNativeNodeInfo;
 
     updateNodeParams(

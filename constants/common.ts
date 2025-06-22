@@ -202,14 +202,6 @@ export interface ManagedWorkletNodeInfo {
   definition: BlockDefinition;
 }
 
-export interface AllpassInternalNodes {
-    inputPassthroughNode: GainNode;
-    inputGain1: GainNode;
-    inputDelay: DelayNode;
-    feedbackGain: GainNode;
-    feedbackDelay: DelayNode;
-    summingNode: GainNode;
-}
 
 export interface ManagedNativeNodeInfo {
     node: AudioNode | null;
@@ -217,7 +209,6 @@ export interface ManagedNativeNodeInfo {
     nodeForOutputConnections: AudioNode | null;
     mainProcessingNode?: AudioNode | null;
     internalGainNode?: GainNode;
-    allpassInternalNodes?: AllpassInternalNodes | null;
     paramTargetsForCv?: Map<string, AudioParam>;
     definition: BlockDefinition;
     instanceId: string;
