@@ -217,7 +217,7 @@ class NativeNodeManager implements INativeNodeManager {
     public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
         const nodeInfo = this.managedNativeNodesRef.get(instanceId);
         if (nodeInfo?.definition.id === OscilloscopeNativeBlock.getDefinition().id) {
-            return nodeInfo.mainProcessingNode instanceof AnalyserNode ? nodeInfo.mainProcessingNode : null;
+            return nodeInfo.mainProcessingNode as AnalyserNode;
         }
         return null;
     }

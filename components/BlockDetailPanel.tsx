@@ -10,9 +10,9 @@ import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster';
 import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
-import AudioEngineServiceInstance from '@services/AudioEngineService';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import  ConnectionState  from '@services/ConnectionState';
+import NativeNodeManager from '@services/NativeNodeManager';
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
@@ -35,9 +35,20 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   const selectedInstanceId = BlockStateManager.getSelectedBlockInstanceId();
   const blockInstances = BlockStateManager.getBlockInstances();
   const connections = ConnectionState.getConnections();
-  const blockInstance = selectedInstanceId
-    ? blockInstances.find(b => b.instanceId === selectedInstanceId) || null
-    : null;
+  const [blockInstance, setBlockInstance] = useState<BlockInstance | null>(null);
+  useEffect(() => {
+    console.log("BlockDetailPanel: useEffect for selectedInstanceId change", selectedInstanceId);
+    if (BlockStateManager.getSelectedBlockInstanceId()) {
+      const instance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
+      setBlockInstance(instance);
+    } else {
+      setBlockInstance(null);
+    }
+  }, [BlockStateManager.getSelectedBlockInstanceId()])
+
+  // const blockInstance = selectedInstanceId
+  //   ? blockInstances.find(b => b.instanceId === selectedInstanceId) || null
+  //   : null;
 
   const getDefinitionById = (definitionId: string): BlockDefinition | undefined => BlockStateManager.getDefinitionForBlock(definitionId);
   const updateBlockInstance = BlockStateManager.updateBlockInstance.bind(BlockStateManager);
@@ -133,6 +144,8 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
                 [paramId]: String(value)
             }));
         }
+        // для отображения изменения параметров контролов
+        setBlockInstance({ ...prevInstance, parameters: updatedParams });
         return { ...prevInstance, parameters: updatedParams };
     });
   };
@@ -211,7 +224,8 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
     let oscilloscopeUI = null;
     if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
       // Assuming nativeNodeManager is a property on AudioEngineServiceInstance, or accessed differently
-      const analyserNode = AudioEngineServiceInstance.nativeNodeManager?.getAnalyserNodeForInstance(blockInstance.instanceId);
+      const analyserNode = NativeNodeManager.getAnalyserNodeForInstance(blockInstance.instanceId);
+      console.log("BlockDetailPanel: AnalyserNode for OscilloscopeNativeBlock", analyserNode);
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 
