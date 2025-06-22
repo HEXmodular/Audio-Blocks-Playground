@@ -1,11 +1,15 @@
+// для обеспечения функций протягивания соединений в редакторе блоков.
+// нужно для того чтобы два разных компонента могли использовать один и тот же обработчик перетаскивания соединений
+// BlockInstanceComponent и ConnectionsRenderer
+
 import { RefObject } from 'react';
-import { PendingConnection, BlockPort, Connection, BlockInstance, BlockDefinition } from '@interfaces/common';
+import { PendingConnection, BlockPort, Connection } from '@interfaces/common';
 import { v4 as uuidv4 } from 'uuid';
+import BlockStateManager from '@/state/BlockStateManager';
+import ConnectionState from '@/services/ConnectionState';
 
 export interface ConnectionDragHandlerProps {
   svgRef: RefObject<SVGSVGElement>;
-  blockInstances: BlockInstance[];
-  getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined;
   updateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
   onStateChange: () => void;
 }
@@ -17,61 +21,52 @@ export interface IConnectionDragHandler {
     instanceId: string,
     port: BlockPort,
     isOutput: boolean,
-    portElement: HTMLDivElement
+    portElement: HTMLDivElement,
   ) => void;
   dispose: () => void;
 }
 
-export class ConnectionDragHandler implements IConnectionDragHandler {
+class ConnectionDragHandler implements IConnectionDragHandler {
   private static instance: ConnectionDragHandler | null = null;
 
   public pendingConnection: PendingConnection | null = null;
   public draggedOverPort: { instanceId: string; portId: string } | null = null;
 
   private svgRef!: RefObject<SVGSVGElement>;
-  private blockInstances!: BlockInstance[];
-  private getDefinitionForBlock!: (instance: BlockInstance) => BlockDefinition | undefined;
-  private updateConnections!: (updater: (prev: Connection[]) => Connection[]) => void;
-  private onStateChange!: () => void;
+  // private blockInstances!: BlockInstance[];
+  // private getDefinitionForBlock!: (instance: BlockInstance) => BlockDefinition | undefined;
+  // private updateConnections!: (updater: (prev: Connection[]) => Connection[]) => void;
+  public onStateChange = () => {};
 
   private constructor() {
     // Private constructor to prevent direct instantiation
-  }
-
-  public static getInstance(props?: ConnectionDragHandlerProps): ConnectionDragHandler {
-    if (!ConnectionDragHandler.instance) {
-      ConnectionDragHandler.instance = new ConnectionDragHandler();
-      if (props) {
-        ConnectionDragHandler.instance.initialize(props);
-      }
-    }
-    return ConnectionDragHandler.instance;
-  }
-
-  private initialize(props: ConnectionDragHandlerProps): void {
-    this.svgRef = props.svgRef;
-    this.blockInstances = props.blockInstances;
-    this.getDefinitionForBlock = props.getDefinitionForBlock;
-    this.updateConnections = props.updateConnections;
-    this.onStateChange = props.onStateChange;
-
-    // Bind event handlers
     this.handleGlobalMouseMove = this.handleGlobalMouseMove.bind(this);
     this.handleGlobalMouseUp = this.handleGlobalMouseUp.bind(this);
     this.handleStartConnectionDrag = this.handleStartConnectionDrag.bind(this);
+    this.pendingConnectionValue = this.pendingConnectionValue.bind(this);
 
-    // Add event listeners
     document.addEventListener('mousemove', this.handleGlobalMouseMove);
     document.addEventListener('mouseup', this.handleGlobalMouseUp);
   }
 
-  private getPortElementCenter(portElement: HTMLElement): { x: number; y: number } {
+  public pendingConnectionValue(): PendingConnection | null {
+    return this.pendingConnection;  
+  }
+
+  public static getInstance(): ConnectionDragHandler {
+    if (!ConnectionDragHandler.instance) {
+      ConnectionDragHandler.instance = new ConnectionDragHandler();
+    }
+    return ConnectionDragHandler.instance;
+  }
+
+  private getPortElementCenter(portElement: HTMLElement, svgRef?: RefObject<SVGSVGElement>): { x: number; y: number } {
     const rect = portElement.getBoundingClientRect();
-    const svgRect = this.svgRef.current?.getBoundingClientRect();
-    if (!svgRect) return { x: 0, y: 0 };
+    // const svgRect = svgRef?.current?.getBoundingClientRect();
+    // if (!svgRect) return { x: 0, y: 0 };
     return {
-      x: rect.left + rect.width / 2 - svgRect.left,
-      y: rect.top + rect.height / 2 - svgRect.top,
+      x: rect.left + rect.width / 2, //- svgRect.left,
+      y: rect.top + rect.height / 2, //- svgRect.top,
     };
   }
 
@@ -79,7 +74,7 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
     instanceId: string,
     port: BlockPort,
     isOutput: boolean,
-    portElement: HTMLDivElement
+    portElement: HTMLDivElement,
   ): void {
     const portCenter = this.getPortElementCenter(portElement);
     this.pendingConnection = {
@@ -91,19 +86,19 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
       currentX: portCenter.x,
       currentY: portCenter.y,
     };
-    this.onStateChange();
+    this.onStateChange?.();
   }
 
   private handleGlobalMouseMove(e: MouseEvent): void {
-    if (this.pendingConnection && this.svgRef.current) {
-      const svgRect = this.svgRef.current.getBoundingClientRect();
+    if (this.pendingConnection ) { //&& this.svgRef?.current
+      // const svgRect = this.svgRef.current.getBoundingClientRect();
       const previousPendingX = this.pendingConnection.currentX;
       const previousPendingY = this.pendingConnection.currentY;
 
       this.pendingConnection = {
         ...this.pendingConnection,
-        currentX: e.clientX - svgRect.left,
-        currentY: e.clientY - svgRect.top,
+        currentX: e.clientX, //- svgRect.left,
+        currentY: e.clientY, //- svgRect.top,
       };
 
       let stateChanged = false;
@@ -140,8 +135,8 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
           else if (sourcePortType === 'boolean' && targetPortType === 'boolean') typesCompatible = true;
           else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;
 
-          const toInstance = this.blockInstances.find((i) => i.instanceId === targetInstanceId);
-          const toDef = toInstance ? this.getDefinitionForBlock(toInstance) : undefined;
+          const toInstance = BlockStateManager.getBlockInstances().find((i) => i.instanceId === targetInstanceId);
+          const toDef = toInstance ? BlockStateManager.getDefinitionForBlock(toInstance) : undefined;
           const toPortDef = toDef?.inputs.find((p) => p.id === targetPortId);
           if (
             this.pendingConnection.fromIsOutput &&
@@ -196,7 +191,7 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
             ? targetPortId
             : this.pendingConnection.fromPort.id,
         };
-        this.updateConnections((prev) => {
+        ConnectionState.updateConnections((prev) => {
           const filtered = prev.filter(
             (c) => !(c.toInstanceId === newConnection.toInstanceId && c.toInputId === newConnection.toInputId)
           );
@@ -214,3 +209,5 @@ export class ConnectionDragHandler implements IConnectionDragHandler {
     document.removeEventListener('mouseup', this.handleGlobalMouseUp);
   }
 }
+
+export default ConnectionDragHandler.getInstance();

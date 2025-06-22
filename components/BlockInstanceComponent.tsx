@@ -1,10 +1,10 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, use } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/common';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import { BlockStateManager } from '@/state/BlockStateManager';
-import { ConnectionDragHandler } from '@utils/ConnectionDragHandler';
+import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120; 
@@ -47,15 +47,15 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   blockInstance,
   isSelected,
   onSelect,
-  draggedOverPort,
+  // draggedOverPort,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  // const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
   const blockDefinition = BlockStateManager.getInstance().getDefinitionForBlock(blockInstance);
-  const pendingConnection = ConnectionDragHandler.getInstance().pendingConnection;
-  const onStartConnectionDrag = ConnectionDragHandler.getInstance().handleStartConnectionDrag;
+  const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
+  const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
   
-
   const onUpdateInstancePosition = BlockStateManager.getInstance().updateBlockInstance;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -211,7 +211,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {/* Input Port Stubs */}
       {blockDefinition?.inputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.inputs.length, blockHeight);
-        const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
+        const isPendingSource = ConnectionDragHandler.pendingConnection?.fromInstanceId === blockInstance.instanceId && ConnectionDragHandler.pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
           <div
@@ -242,7 +242,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {/* Output Port Stubs */}
       {blockDefinition?.outputs.map((port, index) => {
         const portY = getPortY(index, blockDefinition.outputs.length, blockHeight);
-        const isPendingSource = pendingConnection?.fromInstanceId === blockInstance.instanceId && pendingConnection.fromPort.id === port.id;
+        const isPendingSource = ConnectionDragHandler.pendingConnection?.fromInstanceId === blockInstance.instanceId && ConnectionDragHandler.pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
           <div

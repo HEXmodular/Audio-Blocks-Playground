@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 import ConnectionState from '@services/ConnectionState';
 import BlockStateManager from '@state/BlockStateManager';
+import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
@@ -26,11 +27,22 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
 }) => {
     const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
     const [, setForceUpdateKey] = useState<number>(0); // Value of forceUpdateKey is not directly used, only its change
+    const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
+
 
     const connections = ConnectionState.getConnections();
     const blockInstances = BlockStateManager.getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
     const onUpdateConnections = ConnectionState.updateConnections;
+
+    ConnectionDragHandler.onStateChange = () => {
+        if (ConnectionDragHandler.pendingConnection) {
+            setPendingConnection(ConnectionDragHandler.pendingConnection);
+        } else {
+            setPendingConnection(null);
+        }
+    }; 
+
 
     // forceUpdateKey is implicitly used by being part of the component's state,
     // so changing it will trigger a re-render of ConnectionsRenderer.
@@ -95,16 +107,17 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                     />
                 );
             })}
-            {/* {pendingConnection && (
+            {pendingConnection && (
                 <line
                     x1={pendingConnection.startX} y1={pendingConnection.startY}
                     x2={pendingConnection.currentX} y2={pendingConnection.currentY}
                     className={`connection-line stroke-dashed ${getBlockPortBgColor(pendingConnection.fromPort.type).replace('bg-', 'stroke-')}`}
                     strokeWidth="2.5"
                 />
-            )} */}
+            )}
         </>
     );
 };
 
 export default ConnectionsRenderer;
+
