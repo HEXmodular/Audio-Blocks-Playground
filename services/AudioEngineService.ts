@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import AudioContextService from './AudioContextService';
-import  NativeNodeManager from './NativeNodeManager';
+// import NativeNodeManager from './NativeNodeManager'; // Removed, functionality merged into AudioNodeManager
 import AudioWorkletManager from './AudioWorkletManager';
 import LyriaServiceManager from './LyriaServiceManager';
 import  AudioGraphConnectorService  from './AudioGraphConnectorService';
@@ -10,13 +10,7 @@ import { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added impor
 import BlockStateManager from '@state/BlockStateManager';
 import AudioNodeManager from './AudioNodeManager';
 
-// Callback for NativeNodeManager to signal UI re-render if necessary
-const onStateChangeForReRender = () => {
-  // This function would typically be connected to a state management system (e.g., Zustand, Redux)
-  // or directly call a React state updater if AudioEngineService were a hook or context.
-  // For now, it's a placeholder.
-  // console.log("NativeNodeManager requested a re-render.");
-};
+// Removed onStateChangeForReRender constant as NativeNodeManager is merged
 
 class AudioEngineService {
   private static instance: AudioEngineService;
@@ -61,7 +55,7 @@ class AudioEngineService {
       }
 
       const rawCtx = this.context.rawContext as AudioContext | null;
-      NativeNodeManager.setAudioContext(rawCtx);
+      AudioNodeManager.setAudioContext(rawCtx); // Changed from NativeNodeManager
       AudioWorkletManager.setAudioContext(rawCtx);
       LyriaServiceManager.setAudioContext(rawCtx);
       this.setupNodes();
@@ -200,12 +194,13 @@ class AudioEngineService {
   // }
 
   // // --- Delegated methods to NativeNodeManager ---
-  public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
-    return NativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
-  }
-  public removeNativeNode(instanceId: string): void {
-    NativeNodeManager.removeManagedNativeNode(instanceId);
-  }
+  // These methods are no longer needed as AudioNodeManager handles this internally.
+  // public async addNativeNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number): Promise<boolean> {
+  //   return NativeNodeManager.setupManagedNativeNode(instanceId, definition, initialParams, currentBpm);
+  // }
+  // public removeNativeNode(instanceId: string): void {
+  //   NativeNodeManager.removeManagedNativeNode(instanceId);
+  // }
 
   // // --- Delegated methods to AudioWorkletManager ---
   // public async addManagedAudioWorkletNode(instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[]): Promise<boolean> {

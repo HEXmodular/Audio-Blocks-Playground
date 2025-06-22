@@ -17,7 +17,7 @@ import {
 } from '@interfaces/common';
 import  BlockStateManager, {InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 import ConnectionState from './ConnectionState';
-import  NativeNodeManager  from './NativeNodeManager';
+import AudioNodeManager from './AudioNodeManager'; // Changed from NativeNodeManager
 import AudioWorkletManager from './AudioWorkletManager';
 import LyriaServiceManager from './LyriaServiceManager';
 
@@ -65,7 +65,7 @@ class AudioGraphConnectorService {
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
 
     const localManagedWorkletNodes = AudioWorkletManager.getManagedNodesMap();
-    const localManagedNativeNodes = NativeNodeManager.getManagedNodesMap();
+    const localManagedNativeNodes = AudioNodeManager.getManagedNodesMap(); // Changed from NativeNodeManager
     const localManagedLyriaServices = LyriaServiceManager.getManagedServicesMap();
 
 
