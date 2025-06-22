@@ -18,12 +18,22 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 import LyriaServiceManager from './LyriaServiceManager';
 import AudioWorkletManager from './AudioWorkletManager';
 import NativeNodeManager from './NativeNodeManager';
+import ConnectionState from './ConnectionState'; // Added import
 
 class AudioNodeManager {
     private static instance: AudioNodeManager;
 
     private constructor() {
         // Private constructor to prevent direct instantiation
+        BlockStateManager.init(
+            () => {}, // For onDefinitionsChange, do nothing for now
+            (instances) => { // For onInstancesChange
+                // console.log('[AudioNodeManager] Received instance updates from BlockStateManager.');
+                const connections = ConnectionState.getConnections();
+                const globalBpm = Tone.getTransport().bpm.value;
+                this.updateAudioNodeParameters(instances, connections, globalBpm);
+            }
+        );
     }
 
     // Static method to get the singleton instance
