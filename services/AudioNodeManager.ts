@@ -221,7 +221,7 @@ class AudioNodeManager {
     }
 
     // Original AudioNodeManager methods start here
-    private updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
+    public updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
         BlockStateManager.updateBlockInstance(instanceId, updates);
     }
 
@@ -237,38 +237,6 @@ class AudioNodeManager {
         if (blockInstances.length > 0) {
             console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
         }
-        // console.log(`[AudioNodeManager DEBUG] Entered processAudioNodeSetupAndTeardown. GlobalAudioEnabled: ${isAudioGloballyEnabled}, WorkletSystemReady: ${isWorkletSystemReady}, AudioContext State: ${audioContextCurrent?.state}`);
-        // The erroneous if (audioContextCurrent?.rawContext) block is removed by not including it here.
-
-        // Determine the actual usable AudioContext (native) or null
-        // const usableContext = audioContextCurrent?.rawContext as AudioContext | null; // Corrected type cast
-
-        // if (!usableContext || usableContext.state !== 'running') {
-        //     blockInstances.forEach(instance => {
-        //         // console.log(`[AudioNodeManager DEBUG] Processing instance (no audio context): ${instance.instanceId}, Def ID: ${instance.definitionId}`);
-        //         const definition = this.getDefinition(instance);
-        //         if (definition && definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) {
-        //             // Node was set up, but audio context is now gone. Mark for setup and log if not already.
-        //             const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
-        //             this.updateInstance(instance.instanceId, currentInst => ({
-        //                 ...currentInst,
-        //                 internalState: {
-        //                     ...currentInst.internalState,
-        //                     needsAudioNodeSetup: true,
-        //                     lyriaServiceReady: false, // Reset related flags
-        //                     autoPlayInitiated: false,
-        //                     loggedAudioSystemNotActive: true // Set the flag
-        //                 }
-        //             }));
-        //             if (needsToLog) {
-        //                 // Use a more accurate log message here
-        //                 this.addLog(instance.instanceId, "Context not running. Node marked for setup.", "warn");
-        //                 console.warn(instance.instanceId, "Context not running. Node marked for setup.", "warn");
-        //             }
-        //         }
-        //     });
-        //     return; // Exit if context is not ready
-        // }
 
         for (const instance of blockInstances) {
             const definition = BlockStateManager.getDefinitionForBlock(instance);
@@ -382,8 +350,6 @@ class AudioNodeManager {
 
     public updateAudioNodeParameters(blockInstances: BlockInstance[]) {
         if (!Tone.getContext() || Tone.getContext().state !== 'running') return;
-        const connections = ConnectionState.getConnections();
-        const globalBpm = Tone.getTransport().bpm.value;
 
         blockInstances.forEach(instance => {
             const definition = BlockStateManager.getDefinitionForBlock(instance);
@@ -394,19 +360,6 @@ class AudioNodeManager {
             if (definition.audioWorkletProcessorName) {
                 AudioWorkletManager.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
             } else {
-                const currentInputsForParamUpdate: Record<string, any> = {};
-                if (definition.id === NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id) {
-                    const inputPort = definition.inputs.find(ip => ip.id === 'number_in');
-                    if (inputPort) {
-                        const conn = connections.find(c => c.toInstanceId === instance.instanceId && c.toInputId === inputPort.id);
-                        if (conn) {
-                            const sourceInstance = blockInstances.find(bi => bi.instanceId === conn.fromInstanceId);
-                            currentInputsForParamUpdate[inputPort.id] = sourceInstance?.lastRunOutputs?.[conn.fromOutputId] ?? getDefaultOutputValue(inputPort.type);
-                        } else {
-                            currentInputsForParamUpdate[inputPort.id] = getDefaultOutputValue(inputPort.type);
-                        }
-                    }
-                }
 
                 const info = this.managedNativeNodesRef.get(instance.instanceId);
                 // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
@@ -415,8 +368,7 @@ class AudioNodeManager {
                 const handler = this.blockHandlers.get(info.definition.id);
                 if (handler) {
                     handler.setAudioContext(this.getRawAudioContext()); // Ensure handler has current context
-                    const currentInputs = Object.keys(currentInputsForParamUpdate).length > 0 ? currentInputsForParamUpdate : undefined
-                    handler.updateNodeParams(info, instance.parameters, currentInputs);
+                    handler.updateNodeParams(info, instance);
                 } else {
                     console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition.id}'.`);
                 }

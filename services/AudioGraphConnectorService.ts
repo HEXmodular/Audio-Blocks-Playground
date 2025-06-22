@@ -6,15 +6,6 @@
  * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
  */
 import * as Tone from 'tone'; // Import Tone
-import {
-  Connection,
-  BlockInstance,
-  BlockDefinition,
-  ManagedWorkletNodeInfo,
-  ManagedNativeNodeInfo,
-  ManagedLyriaServiceInfo,
-  EmitterProvider // Added import
-} from '@interfaces/common';
 import  BlockStateManager, {InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 import ConnectionState from './ConnectionState';
 import AudioNodeManager from './AudioNodeManager'; // Changed from NativeNodeManager
@@ -50,14 +41,6 @@ class AudioGraphConnectorService {
   }
 
   public updateConnections(
-    // _audioContext: AudioContext | null,
-    // isAudioGloballyEnabled: boolean,
-    // connections: Connection[],
-    // blockInstances: BlockInstance[],
-    // getDefinitionForBlock: (instance: BlockInstance) => BlockDefinition | undefined,
-    // managedWorkletNodes: Map<string, ManagedWorkletNodeInfo>,
-    // managedNativeNodes: Map<string, ManagedNativeNodeInfo>,
-    // managedLyriaServices: Map<string, ManagedLyriaServiceInfo>
   ): InstanceUpdatePayload[] {
 
     const connections = ConnectionState.getConnections();
@@ -94,75 +77,33 @@ class AudioGraphConnectorService {
       const fromInstance = blockInstances.find(b => b?.instanceId === conn.fromInstanceId);
       const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
 
-      // if (fromInstance) {
-      //   console.log(`[AudioGraphConnectorService] From instance: ${fromInstance.name} (ID: ${fromInstance.instanceId})`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] From instance with ID ${conn.fromInstanceId} not found.`); // REMOVED
-      // }
-      // if (toInstance) {
-      //   console.log(`[AudioGraphConnectorService] To instance: ${toInstance.name} (ID: ${toInstance.instanceId})`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] To instance with ID ${conn.toInstanceId} not found.`); // REMOVED
-      // }
-
       if (!fromInstance || !toInstance) return;
 
       const fromDef = getDefinitionForBlock(fromInstance);
       const toDef = getDefinitionForBlock(toInstance);
-
-      // if (fromDef) {
-      //   console.log(`[AudioGraphConnectorService] From definition: ${fromDef.name} (ID: ${fromDef.id})`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] From definition for instance ${fromInstance.instanceId} not found.`); // REMOVED
-      // }
-      // if (toDef) {
-      //   console.log(`[AudioGraphConnectorService] To definition: ${toDef.name} (ID: ${toDef.id})`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] To definition for instance ${toInstance.instanceId} not found.`); // REMOVED
-      // }
 
       if (!fromDef || !toDef) return;
 
       const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
       const inputPortDef = toDef.inputs.find(p => p.id === conn.toInputId);
 
-      // if (outputPortDef) {
-      //   console.log(`[AudioGraphConnectorService] Output port: ${outputPortDef.id}, Type: ${outputPortDef.type}`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] Output port with ID ${conn.fromOutputId} not found in definition ${fromDef.id}.`); // REMOVED
-      // }
-      // if (inputPortDef) {
-      //   console.log(`[AudioGraphConnectorService] Input port: ${inputPortDef.id}, Type: ${inputPortDef.type}`); // REMOVED
-      // } else {
-      //   console.log(`[AudioGraphConnectorService] Input port with ID ${conn.toInputId} not found in definition ${toDef.id}.`); // REMOVED
-      // }
-
       if (!outputPortDef || !inputPortDef) return;
 
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
-        // Ensure this uses the local map as well, if this logic is still relevant.
-        // For now, focusing on the `fromWorkletInfo` etc. for audio connections as per subtask.
-        // Assuming this part might be correct or out of scope for the current specific fix.
+        console.log("[AudioGraphConnectorService] Processing gate/trigger connection from", fromDef.name, "to", toDef.name, `(${conn.id})`); // REMOVED
         const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
-        if (sourceManagedNodeInfo && (sourceManagedNodeInfo as any).providerInstance &&
-          typeof ((sourceManagedNodeInfo as any).providerInstance as EmitterProvider).getEmitter === 'function') {
-          const provider = (sourceManagedNodeInfo as any).providerInstance as EmitterProvider;
-          const emitter = provider.getEmitter(conn.fromOutputId);
-
-          if (emitter) {
-            if (!toInstance.internalState) {
-              toInstance.internalState = {};
-            }
-            if (!toInstance.internalState.emitters) {
-              toInstance.internalState.emitters = {};
-            }
-            toInstance.internalState.emitters[conn.toInputId] = emitter;
+        const emitter = sourceManagedNodeInfo?.providerInstance?.getEmitter(conn.fromOutputId)
+        if (emitter) {
+            console.log(`[AudioGraphConnectorService] Successfully propagated emitter for connection ${conn.id} from ${conn.fromInstanceId}.${conn.fromOutputId} to ${conn.toInstanceId}.${conn.toInputId}`); // REMOVED
+            BlockStateManager.updateBlockInstance(
+              toInstance.instanceId,   
+              {internalState: { emitters: { [conn.toInputId]: emitter } }}
+            );
+            
             instanceUpdates.push({
               instanceId: toInstance.instanceId,
               updates: { internalState: { ...toInstance.internalState } }
             });
-            // console.log(`[AudioGraphConnectorService] Propagated emitter for connection ${conn.id} from ${conn.fromInstanceId}.${conn.fromOutputId} to ${conn.toInstanceId}.${conn.toInputId}`); // REMOVED
-          }
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {

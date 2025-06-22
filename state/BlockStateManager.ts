@@ -499,30 +499,14 @@ export class BlockStateManager {
     this._blockInstances = [...this._blockInstances, newInstance];
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
-
-    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-    // if (newInstance.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-    //     console.log(`[BlockStateManager.addBlockInstance] Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 created with internalState.needsAudioNodeSetup: ${newInstance.internalState.needsAudioNodeSetup}`);
-    // }
     return newInstance;
   }
 
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
-    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-    // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-    //     const updatesToLog = typeof updates === 'function' ? 'Function update' : JSON.stringify(updates);
-    //     console.log(`[BlockStateManager.updateBlockInstance] Updating inst_0d8a9770-06d7-4d8b-8503-1121765a2324 with updates: ${updatesToLog}`);
-    // }
     let wasUpdated = false;
     this._blockInstances = this._blockInstances.map(currentBlockInst => {
       if (currentBlockInst?.instanceId === instanceId) {
         wasUpdated = true;
-
-        const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
-        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-        // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            // console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE update: ${beforeNeedsAudioNodeSetup}`);
-        // }
 
         let newBlockState: BlockInstance;
         if (typeof updates === 'function') {
@@ -530,16 +514,6 @@ export class BlockStateManager {
         } else {
           newBlockState = { ...currentBlockInst, ...updates };
         }
-
-        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-        // if (instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            // const updatesString = typeof updates === 'function' ? "{Function update}" : JSON.stringify(updates);
-            // console.log(`[BlockStateManager.updateBlockInstance] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${newBlockState.internalState?.needsAudioNodeSetup}. Updates applied: ${updatesString}`);
-        // }
-
-        // Call Rule 110 specific logic using the helper method
-        // Pass the state *after* generic updates (newBlockState)
-        // and the state *before* generic updates (currentBlockInst)
 
         return newBlockState;
       }
@@ -593,11 +567,6 @@ export class BlockStateManager {
       if (updatesForThisInstance.length > 0) {
         wasAnyInstanceUpdated = true;
 
-        const beforeNeedsAudioNodeSetup = currentBlockInst.internalState?.needsAudioNodeSetup;
-        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-        // if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            // console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup BEFORE batch update: ${beforeNeedsAudioNodeSetup}`);
-        // }
 
         const updatedBlockInst = updatesForThisInstance.reduce((accInst, currentUpdatePayload) => {
           let newBlockStatePartial: BlockInstance;
@@ -609,11 +578,6 @@ export class BlockStateManager {
           return newBlockStatePartial;
         }, currentBlockInst);
 
-        // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-        // if (currentBlockInst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324') {
-            // const updatesString = JSON.stringify(updatesForThisInstance.map(u => typeof u.updates === 'function' ? {functionUpdate: true} : u.updates));
-            // console.log(`[BlockStateManager.updateMultipleBlockInstances] inst_0d8a9770-06d7-4d8b-8503-1121765a2324: needsAudioNodeSetup PRE: ${beforeNeedsAudioNodeSetup}, POST: ${updatedBlockInst.internalState?.needsAudioNodeSetup}. Updates: ${updatesString}`);
-        // }
         return updatedBlockInst;
       }
       return currentBlockInst;

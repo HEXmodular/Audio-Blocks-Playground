@@ -3,7 +3,7 @@ import * as Tone from 'tone';
 // import NativeNodeManager from './NativeNodeManager'; // Removed, functionality merged into AudioNodeManager
 import AudioWorkletManager from '@services/AudioWorkletManager';
 import LyriaServiceManager from '@services/LyriaServiceManager';
-import  AudioGraphConnectorService  from '@services/AudioGraphConnectorService';
+import AudioGraphConnectorService from '@services/AudioGraphConnectorService';
 import AudioNodeManager from '@services/AudioNodeManager';
 
 import { AudioEngineState, OutputDevice } from '@interfaces/common';
@@ -168,21 +168,21 @@ class AudioEngineService {
 
   private async queryOutputDevices(): Promise<void> {
     if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            this.availableOutputDevices = devices.filter(
-                (device): device is OutputDevice => device.kind === 'audiooutput'
-            );
-            if (!this.selectedSinkId && this.availableOutputDevices.length > 0) {
-                // If no sinkId is selected, and we have devices, select the default one.
-                // Or, if current selectedSinkId is not in the new list, reset to default.
-                const defaultDevice = this.availableOutputDevices.find(d => d.deviceId === 'default');
-                this.selectedSinkId = defaultDevice ? 'default' : (this.availableOutputDevices[0]?.deviceId || null);
-            }
-             this.publishAudioEngineState();
-        } catch (error) {
-            console.error("Error enumerating audio devices:", error);
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        this.availableOutputDevices = devices.filter(
+          (device): device is OutputDevice => device.kind === 'audiooutput'
+        );
+        if (!this.selectedSinkId && this.availableOutputDevices.length > 0) {
+          // If no sinkId is selected, and we have devices, select the default one.
+          // Or, if current selectedSinkId is not in the new list, reset to default.
+          const defaultDevice = this.availableOutputDevices.find(d => d.deviceId === 'default');
+          this.selectedSinkId = defaultDevice ? 'default' : (this.availableOutputDevices[0]?.deviceId || null);
         }
+        this.publishAudioEngineState();
+      } catch (error) {
+        console.error("Error enumerating audio devices:", error);
+      }
     }
   }
 
@@ -193,13 +193,12 @@ class AudioEngineService {
     // const rawContextForConnector = Tone.getContext().rawContext;
     const instanceUpdates: InstanceUpdatePayload[] = AudioGraphConnectorService.updateConnections();
     // console.log("[AudioEngineService updateAudioGraphConnections] Instance updates from AudioGraphConnectorService:", instanceUpdates); // REMOVED
-  
+
     if (instanceUpdates && instanceUpdates.length > 0) {
       BlockStateManager.updateMultipleBlockInstances(instanceUpdates);
     }
   }
-
-   public getSampleRate(): number | null {
+  public getSampleRate(): number | null {
     return this.context?.sampleRate ?? null;
   }
 
