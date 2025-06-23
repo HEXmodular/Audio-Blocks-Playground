@@ -1,8 +1,10 @@
+import * as Tone from 'tone'; // Added Tone import
 import {
   BlockDefinition,
   BlockParameter,
   ManagedNativeNodeInfo,
-  Scale as AppScale, // Renamed from 'Scale' to 'AppScale' as in constants/lyria.ts
+  Scale as AppScale,
+  BlockInstance, // Renamed from 'Scale' to 'AppScale' as in constants/lyria.ts
 } from '@interfaces/common';
 import { CreatableNode } from '../native-blocks/CreatableNode';
 import { createParameterDefinitions } from '../../constants/constants'; // Adjusted path
@@ -18,7 +20,7 @@ const LYRIA_SCALE_OPTIONS = Object.entries(AppScale).map(([label, value]) => ({
 }));
 
 export class LyriaMasterBlock implements CreatableNode {
-  private audioContext: AudioContext | null = null;
+  private audioContext: Tone.BaseContext | null = null; // Use Tone.js context if available, or fallback to AudioContext
   private liveMusicService: LiveMusicService | null = null;
   private prevParams: Record<string, any> = {};
   private prevInputs: Record<string, any> = {};
@@ -31,13 +33,13 @@ export class LyriaMasterBlock implements CreatableNode {
   private nextBufferStartTime: number = 0;
   private readonly serviceBufferTimeSec = 2; // Corresponds to bufferTime in LiveMusicService for initial scheduling
 
-  private outputGainNode: GainNode | null = null; // To store the block's main output node
+  private outputGainNode: Tone.Gain| null = null; // To store the block's main output node
   private isPlayingAudio: boolean = false; // Flag to control the scheduling loop
   private schedulerIntervalId: NodeJS.Timeout | null = null; // To store setInterval ID
   private readonly SCHEDULING_INTERVAL_MS = 50; // How often to check the queue
 
-  constructor(context: AudioContext) {
-    this.audioContext = context;
+  constructor() {
+    this.audioContext = Tone.getContext(); // Use Tone.js context if available, or fallback to AudioContext
   }
 
   // setAudioContext(context: AudioContext | null): void {
@@ -110,7 +112,7 @@ export class LyriaMasterBlock implements CreatableNode {
     // Create a placeholder GainNode as the main audio node.
     // The actual audio will be routed from LiveMusicService to the global output
     // by the AudioGraphConnectorService, not directly through this block's audio node.
-    const placeholderNode = this.audioContext.createGain();
+    const placeholderNode = new Tone.Gain(1) //this.audioContext.createGain();
     // placeholderNode.gain.value = 0; // Ensure it doesn't output sound itself
     this.outputGainNode = placeholderNode;
 
@@ -142,11 +144,10 @@ export class LyriaMasterBlock implements CreatableNode {
         // this callback might just be for logging or specific advanced scenarios.
         // The service's internal output node might not be directly used by LyriaMasterBlock's main output path.
       },
-      onAudioBufferProcessed: ((buffer: AudioBuffer, bpm: number) => {
+      onAudioBufferProcessed: ((buffer: AudioBuffer) => {
         // console.log(`[LyriaMasterBlock ${instanceId}] Audio buffer received for processing. Duration: ${buffer.duration}, BPM: ${bpm}`, this.isPlayingAudio);
-        if (!this.audioContext) return;
 
-        this.audioBufferQueue.push({ buffer, bpm });
+        this.audioBufferQueue.push({ buffer, bpm: 666 }); // bpm ?!
 
         // const currentServiceState = this.liveMusicService?.getPlaybackState();
         // If playback is active and the queue was empty, we might want to kickstart scheduling immediately
@@ -231,16 +232,17 @@ export class LyriaMasterBlock implements CreatableNode {
 
   public updateNodeParams(
     nodeInfo: ManagedNativeNodeInfo,
-    parameters: BlockParameter[],
-    currentInputs?: Record<string, any>
+    instance: BlockInstance,
   ): void {
     // instanceId parameter removed as nodeInfo.instanceId is used
-    if (!this.liveMusicService || !this.audioContext) {
+    if (!this.liveMusicService) {
       console.warn(`👩‍🦳 [LyriaMasterBlock ${nodeInfo.instanceId}] LiveMusicService or AudioContext not available in updateNodeParams.`);
       return;
     }
 
+    const parameters = instance.parameters || [];
     const currentParamsMap = new Map(parameters.map(p => [p.id, p.currentValue]));
+    const currentInputs = currentParamsMap;
 
     this.handleConfigurationChanges(nodeInfo.instanceId, currentParamsMap, currentInputs);
     this.handlePromptChanges(nodeInfo.instanceId, currentParamsMap, currentInputs);
@@ -518,8 +520,9 @@ export class LyriaMasterBlock implements CreatableNode {
       const audioItem = this.audioBufferQueue.shift();
       if (!audioItem) continue;
 
-      const source = this.audioContext.createBufferSource();
-      source.buffer = audioItem.buffer;
+      const source = new Tone.ToneBufferSource();
+      // TODO нужно отрафачить на Tone.ToneAudioBuffer
+      source.buffer = audioItem.buffer as Tone.ToneAudioBuffer;
       source.connect(this.outputGainNode);
 
       // console.log("source.start");

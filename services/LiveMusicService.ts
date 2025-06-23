@@ -8,6 +8,7 @@
 // Fix: Import LiveMusicGenerationConfig instead of MusicGenerationConfig
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value
+import * as Tone from 'tone'; // Added Tone import
 import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig } from '@google/genai';
 import { PlaybackState } from '@interfaces/common'; // Import PlaybackState ENUM
 import { decode, decodeAudioData } from '@utils/utils';
@@ -33,7 +34,7 @@ export interface LiveMusicServiceCallbacks {
   onError: (error: string) => void;
   onClose: (message: string) => void;
   onOutputNodeChanged: (newNode: AudioNode) => void;
-  onAudioBufferProcessed?: (buffer: AudioBuffer, bpm: number) => void; // New callback for looper
+  onAudioBufferProcessed?: (buffer: AudioBuffer) => void; // New callback for looper
 }
 
 // Re-export MusicGenerationConfig and enums if they are to be used externally by consuming UI
@@ -64,7 +65,7 @@ export class LiveMusicService {
   private ai: GoogleGenAI;
   private session: LiveMusicSession | null = null;
   private audioContext: AudioContext;
-  private outputNode: GainNode;
+  private outputNode: Tone.Gain;
   // private nextStartTime = 0; // Removed as playback scheduling is delegated
   // private readonly bufferTime = 2; // Removed as buffering logic is delegated
   private connectionError = false;
@@ -98,7 +99,7 @@ export class LiveMusicService {
       });
     this.audioContext = audioCtx;
     this.callbacks = callbacks;
-    this.outputNode = this.audioContext.createGain();
+    this.outputNode = new Tone.Gain(1); //this.audioContext.createGain();
     this.musicConfig = { ...DEFAULT_MUSIC_GENERATION_CONFIG, ...initialConfig };
     if (initialMode) {
         this.localMusicMode = initialMode;
@@ -136,7 +137,7 @@ export class LiveMusicService {
     }
   }
 
-  public getOutputNode(): AudioNode {
+  public getOutputNode(): Tone.Gain {
     return this.outputNode;
   }
 
@@ -291,11 +292,8 @@ export class LiveMusicService {
           2,
         );
 
-        // console.log(`[LiveMusicService _handleAudioChunksMessage] Decoded audio buffer. Duration: ${(audioBuffer.duration * 1000).toFixed(3)}ms. Channels: ${audioBuffer.numberOfChannels}, Sample Rate: ${audioBuffer.sampleRate}`, {audioBuffer});
-
         if (this.callbacks.onAudioBufferProcessed) {
-          const config = this.getCurrentMusicGenerationConfig();
-          this.callbacks.onAudioBufferProcessed(audioBuffer, config.bpm ?? DEFAULT_MUSIC_GENERATION_CONFIG.bpm ?? 120);
+          this.callbacks.onAudioBufferProcessed(audioBuffer);
         }
 
         // Playback scheduling and source node creation are now delegated to the consumer.
@@ -460,16 +458,6 @@ export class LiveMusicService {
 
   async play(initialPromptsForFirstPlay?: WeightedPrompt[]) {
     console.log(`[LiveMusicService play] Play called. initialPrompts: ${initialPromptsForFirstPlay ? initialPromptsForFirstPlay.length : 'none'}, Current state: ${this.currentPlaybackState}`);
-    try {
-        await this.audioContext.resume();
-    } catch (err: any) {
-        console.error("[LiveMusicService play] AudioContext resume failed:", err);
-        this.callbacks.onError(`Could not resume audio context: ${err.message}`);
-        if (this.currentPlaybackState !== PlaybackState.STOPPED) {
-            this.setPlaybackState(PlaybackState.STOPPED);
-        }
-        return;
-    }
 
     let justConnected = false;
     if (!this.isConnected()) {
@@ -518,10 +506,6 @@ export class LiveMusicService {
         console.log(`[LiveMusicService play] Calling session.play(). Current state before session.play(): ${this.currentPlaybackState}`);
         this.session.play();
         this.setPlaybackState(PlaybackState.LOADING); // Now waiting for audio chunks
-        // this.nextStartTime = 0; // Removed as scheduling is delegated
-        this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-        this.outputNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Start from 0 for fade-in
-        this.outputNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.2);
     } else if (this.currentPlaybackState === PlaybackState.PLAYING) {
         console.warn(`[LiveMusicService play] Already playing. Command ignored.`);
     } else if (this.currentPlaybackState === PlaybackState.LOADING && !justConnected) {
@@ -532,18 +516,7 @@ export class LiveMusicService {
   }
 
   private resetOutputNode() {
-    console.log('[LiveMusicService resetOutputNode] Resetting output node.');
-    const oldOutputNode = this.outputNode;
-    this.outputNode = this.audioContext.createGain();
-    this.callbacks.onOutputNodeChanged(this.outputNode);
-
-    if (oldOutputNode) {
-        try {
-            oldOutputNode.disconnect();
-        } catch(e: any) {
-            console.warn("[LiveMusicService resetOutputNode] Error disconnecting old output node:", e.message);
-        }
-    }
+    console.warn('[LiveMusicService resetOutputNode] Resetting output node.', 'not realised');
   }
 
   pause() {
@@ -564,16 +537,7 @@ export class LiveMusicService {
       }
     }
     this.setPlaybackState(PlaybackState.PAUSED);
-    if (this.outputNode) {
-        try {
-            this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-            this.outputNode.gain.setValueAtTime(this.outputNode.gain.value, this.audioContext.currentTime);
-            this.outputNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.1);
-        } catch (e: any) {
-            console.warn("[LiveMusicService pause] Error manipulating gain on outputNode:", e.message);
-        }
-    }
-    // this.nextStartTime = 0; // Removed as scheduling is delegated
+
   }
 
   private stopInternally(shouldStopSession: boolean) {
@@ -589,27 +553,6 @@ export class LiveMusicService {
         }
     }
     this.setPlaybackState(PlaybackState.STOPPED);
-     if (this.outputNode) {
-        try {
-            this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-            if (!this.isReconnecting || shouldStopSession) { // Avoid gain manipulation if it's a reconnect stop without session stop
-                this.outputNode.gain.setValueAtTime(this.outputNode.gain.value, this.audioContext.currentTime);
-                this.outputNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.1);
-            }
-        } catch (e: any) {
-             console.warn("[LiveMusicService stopInternally] Error manipulating gain on outputNode:", e.message);
-        }
-    }
-    // this.nextStartTime = 0; // Removed as scheduling is delegated
-
-    if (wasPlayingOrLoading) {
-        this.resetOutputNode();
-    } else {
-        // If not playing/loading, ensure gain is 0 if it's not a reconnect soft-stop
-        if (this.outputNode && (!this.isReconnecting || shouldStopSession)) {
-             this.outputNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        }
-    }
   }
 
   stop() {
@@ -644,14 +587,6 @@ export class LiveMusicService {
     }
     
     this.setPlaybackState(PlaybackState.STOPPED);
-    if (this.outputNode) {
-        try {
-            this.outputNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-            this.outputNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Ensure gain is 0
-        } catch (e: any) {
-            console.warn("[LiveMusicService reconnect] Error setting gain to 0 on outputNode before reset:", e.message);
-        }
-    }
     this.resetOutputNode(); 
 
     this.connectionError = false;

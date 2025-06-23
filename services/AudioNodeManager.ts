@@ -84,6 +84,8 @@ class AudioNodeManager {
         this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
         this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
         this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
+        this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
+
     }
 
     public async setupManagedNativeNode(

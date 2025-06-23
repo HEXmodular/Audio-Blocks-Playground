@@ -132,6 +132,8 @@ class LyriaServiceManager implements ILyriaServiceManager {
         try {
             if (!this.audioContext) throw new Error("AudioContext not available for LiveMusicService");
             const service = LiveMusicService.getInstance(process.env.API_KEY!, this.audioContext, serviceCallbacks, initialMusicConfig);
+            // говнокод как он есть, сервису не нужна своя gainnode
+            // нужно отрефачить
             const lyriaOutputNode = service.getOutputNode();
             if (this.masterGainNode) {
                 lyriaOutputNode.connect(this.masterGainNode);
