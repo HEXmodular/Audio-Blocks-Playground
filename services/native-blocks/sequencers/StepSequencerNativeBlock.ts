@@ -123,18 +123,12 @@ export class StepSequencerNativeBlock implements CreatableNode {
         if (instance.parameters) {
             this.updateSequenceFromParams(instance.parameters, nodeInfo.internalState);
             // console.log("[StepSequencerNativeBlock] Updated sequence from parameters:", instance);
-            const newDesignatedEmitter = instance.internalState.emitters?.gate_in
-
-            // Unsubscribe from the old emitter if there was one
-            if (this.gateSubscription && typeof this.gateSubscription.off === 'function') {
-                this.gateSubscription.off('gate_change');
-                this.gateSubscription = undefined;
-            }
+            const newDesignatedEmitter = instance.internalState.emitters?.gate_in           
 
             // Subscribe to the new emitter
-            if (newDesignatedEmitter?.on) {
+            if (this.gateSubscription != newDesignatedEmitter?.toString && newDesignatedEmitter?.on) {
                 this.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
-                    // console.log(`[StepSequencerNativeBlock] Instance ${nodeInfo.instanceId} received gate_change event from emitter:`, payload);
+                    console.log(`[StepSequencerNativeBlock] Instance ${nodeInfo.instanceId} received gate_change event from emitter:`, payload);
                     // const currentStep = instance.internalState.currentStep
                     if (payload.newState) {
                         this._currentStep += 1;
