@@ -40,9 +40,9 @@ export class LyriaMasterBlock implements CreatableNode {
     this.audioContext = context;
   }
 
-  setAudioContext(context: AudioContext | null): void {
-    this.audioContext = context;
-  }
+  // setAudioContext(context: AudioContext | null): void {
+  //   this.audioContext = context;
+  // }
 
   static getDefinition(): BlockDefinition {
     // Definition directly from LYRIA_MASTER_BLOCK_DEFINITION in constants/lyria.ts

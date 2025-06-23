@@ -100,8 +100,7 @@ export interface BlockInstance {
   modificationPrompts: string[]; 
   isRunning?: boolean; 
   error?: string | null; 
-  audioWorkletNodeId?: string; 
-  lyriaServiceInstanceId?: string;
+  // audioWorkletNodeId?: string; 
 }
 
 export interface Connection {

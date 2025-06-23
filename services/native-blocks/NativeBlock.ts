@@ -12,13 +12,6 @@ export abstract class NativeBlock {
     this.audioContext = context; // Assign to this.audioContext
   }
 
-  /**
-   * Sets a new AudioContext for the block.
-   * @param newContext The new audio context.
-   */
-  public setAudioContext(newContext: AudioContext | null): void {
-    this.audioContext = newContext;
-  }
 
   /**
    * Checks if the AudioContext has been initialized for this block.

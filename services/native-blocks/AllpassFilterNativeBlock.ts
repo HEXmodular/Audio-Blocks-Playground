@@ -32,9 +32,6 @@ export class AllpassFilterNativeBlock implements CreatableNode {
         this.context = context;
     }
 
-    setAudioContext(context: AudioContext | null): void {
-        this.context = context!; // TODO: Handle null context more gracefully if needed
-    }
 
     createNode(
         instanceId: string,

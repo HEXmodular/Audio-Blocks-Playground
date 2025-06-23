@@ -7,9 +7,9 @@ export interface RenderParameterControlProps {
   blockInstance: BlockInstance;
   blockDefinition: BlockDefinition;
   handleParameterChange: (paramId: string, value: any) => void;
-  numberInputTextValues: Record<string, string>;
-  handleNumberInputTextChange: (paramId: string, textValue: string) => void;
-  processNumberInput: (paramId: string) => void;
+  numberInputTextValues?: Record<string, string>;
+  handleNumberInputTextChange?: (paramId: string, textValue: string) => void;
+  processNumberInput?: (paramId: string) => void;
 }
 
 export const renderParameterControl = (props: RenderParameterControlProps): React.JSX.Element | null => {

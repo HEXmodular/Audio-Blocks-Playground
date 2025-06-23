@@ -74,9 +74,9 @@ const DEBOUNCE_WAIT_MS = 300; // Or another suitable value
 
 export class BlockStateManager {
   private static _instance: BlockStateManager | null = null;
-
   private _blockDefinitions: BlockDefinition[];
   private _blockInstances: BlockInstance[];
+
   private _onDefinitionsChangeCallback: ((definitions: BlockDefinition[]) => void) | null = null;
   private _onInstancesChangeCallback: ((instances: BlockInstance[]) => void) | null = null;
   private _initializationDone: boolean = false;
@@ -105,10 +105,10 @@ export class BlockStateManager {
 
     this._blockDefinitions = this._loadDefinitions(); // Loads from LS
     this._blockInstances = this._loadAndProcessInstances(this._blockDefinitions); // Loads from LS
-    
+
     // this._onDefinitionsChangeCallback([...this._blockDefinitions]); // Removed
     // this._onInstancesChangeCallback([...this._blockInstances]); // Removed
-    
+
     this._initializationDone = true;
     // Initial saves should still happen directly
     this._saveDefinitionsToLocalStorageInternal(); // Save once on init
@@ -136,18 +136,18 @@ export class BlockStateManager {
                 typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
               } else if (p.type === 'toggle') {
                 typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
-              } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: {value:any}) => opt.value === p.defaultValue)) {
+              } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
                 typedDefaultValue = p.options[0].value;
               } else if (p.type === 'step_sequencer_ui') {
                 if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
-                    typedDefaultValue = p.defaultValue;
+                  typedDefaultValue = p.defaultValue;
                 } else {
-                    const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
-                    typedDefaultValue = Array(numSteps).fill(false);
+                  const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
+                  typedDefaultValue = Array(numSteps).fill(false);
                 }
               }
               const paramDef: BlockParameterDefinition = {
-                id: p.id, name: p.name, type: p.type, defaultValue: typedDefaultValue, 
+                id: p.id, name: p.name, type: p.type, defaultValue: typedDefaultValue,
                 options: p.options, min: p.min, max: p.max, step: p.step, description: p.description,
                 steps: p.steps, isFrequency: p.isFrequency,
               };
@@ -165,23 +165,23 @@ export class BlockStateManager {
       mergedDefinitions = mergedDefinitions.map(def => ({
         ...def,
         parameters: def.parameters.map((p: any) => {
-            let typedDefaultValue = p.defaultValue;
-             if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
-                const parsedDefault = parseFloat(p.defaultValue as string);
-                typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
-              } else if (p.type === 'toggle') {
-                typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
-              } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: {value:any}) => opt.value === p.defaultValue)) {
-                typedDefaultValue = p.options[0].value;
-              } else if (p.type === 'step_sequencer_ui') {
-                 if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
-                    typedDefaultValue = p.defaultValue;
-                } else {
-                    const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
-                    typedDefaultValue = Array(numSteps).fill(false);
-                }
-              }
-            return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameterDefinition; 
+          let typedDefaultValue = p.defaultValue;
+          if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
+            const parsedDefault = parseFloat(p.defaultValue as string);
+            typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
+          } else if (p.type === 'toggle') {
+            typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
+          } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
+            typedDefaultValue = p.options[0].value;
+          } else if (p.type === 'step_sequencer_ui') {
+            if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
+              typedDefaultValue = p.defaultValue;
+            } else {
+              const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
+              typedDefaultValue = Array(numSteps).fill(false);
+            }
+          }
+          return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameterDefinition;
         }),
         isAiGenerated: false,
       }));
@@ -238,25 +238,25 @@ export class BlockStateManager {
             let rehydratedCurrentValue = savedInstParam.currentValue;
             // Type coercion for loaded parameter values
             if (defParamCopy.type === 'slider' || defParamCopy.type === 'knob' || defParamCopy.type === 'number_input') {
-                const parsedSaved = parseFloat(savedInstParam.currentValue as string);
-                rehydratedCurrentValue = isNaN(parsedSaved) ? defParamCopy.defaultValue : parsedSaved;
+              const parsedSaved = parseFloat(savedInstParam.currentValue as string);
+              rehydratedCurrentValue = isNaN(parsedSaved) ? defParamCopy.defaultValue : parsedSaved;
             } else if (defParamCopy.type === 'toggle') {
-                rehydratedCurrentValue = typeof savedInstParam.currentValue === 'boolean' 
-                    ? savedInstParam.currentValue 
-                    : (String(savedInstParam.currentValue).toLowerCase() === 'true');
+              rehydratedCurrentValue = typeof savedInstParam.currentValue === 'boolean'
+                ? savedInstParam.currentValue
+                : (String(savedInstParam.currentValue).toLowerCase() === 'true');
             } else if (defParamCopy.type === 'select') {
-                rehydratedCurrentValue = defParamCopy.options?.find(opt => opt.value === savedInstParam.currentValue) 
-                    ? savedInstParam.currentValue 
-                    : defParamCopy.defaultValue; 
+              rehydratedCurrentValue = defParamCopy.options?.find(opt => opt.value === savedInstParam.currentValue)
+                ? savedInstParam.currentValue
+                : defParamCopy.defaultValue;
             } else if (defParamCopy.type === 'step_sequencer_ui') {
-                if (Array.isArray(savedInstParam.currentValue) && savedInstParam.currentValue.every((v:any) => typeof v === 'boolean')) {
-                    rehydratedCurrentValue = [...savedInstParam.currentValue];
-                } else if (Array.isArray(defParamCopy.defaultValue) && defParamCopy.defaultValue.every((v:any) => typeof v === 'boolean')) {
-                    rehydratedCurrentValue = [...defParamCopy.defaultValue];
-                } else {
-                    const numSteps = typeof defParamCopy.steps === 'number' && defParamCopy.steps > 0 ? defParamCopy.steps : 4;
-                    rehydratedCurrentValue = Array(numSteps).fill(false);
-                }
+              if (Array.isArray(savedInstParam.currentValue) && savedInstParam.currentValue.every((v: any) => typeof v === 'boolean')) {
+                rehydratedCurrentValue = [...savedInstParam.currentValue];
+              } else if (Array.isArray(defParamCopy.defaultValue) && defParamCopy.defaultValue.every((v: any) => typeof v === 'boolean')) {
+                rehydratedCurrentValue = [...defParamCopy.defaultValue];
+              } else {
+                const numSteps = typeof defParamCopy.steps === 'number' && defParamCopy.steps > 0 ? defParamCopy.steps : 4;
+                rehydratedCurrentValue = Array(numSteps).fill(false);
+              }
             }
             return { ...defParamCopy, currentValue: rehydratedCurrentValue };
           }
@@ -278,12 +278,13 @@ export class BlockStateManager {
         // Spread existing internalState first as before (already done above)
         // Determine needsAudioNodeSetup based on new logic
         if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
-            initialInternalState.needsAudioNodeSetup = false;
+          initialInternalState.needsAudioNodeSetup = false;
         } else {
-            initialInternalState.needsAudioNodeSetup = !!(
-                definition.runsAtAudioRate ||
-                definition.audioWorkletProcessorName
-            );
+          initialInternalState.needsAudioNodeSetup = true;
+          // !!(
+          //     // definition.runsAtAudioRate ||
+          //     definition.audioWorkletProcessorName
+          // );
         }
       }
       // New general log for all instances being processed // REMOVED
@@ -297,7 +298,7 @@ export class BlockStateManager {
           logs: loadedInst?.logs || [],
           modificationPrompts: loadedInst?.modificationPrompts || [],
           audioWorkletNodeId: undefined,
-          lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
+          // lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
         } as BlockInstance;
       }
 
@@ -311,7 +312,7 @@ export class BlockStateManager {
         logs: loadedInst?.logs || [],
         modificationPrompts: loadedInst?.modificationPrompts || [],
         audioWorkletNodeId: undefined,
-        lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
+        // lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
       } as BlockInstance;
     });
   }
@@ -362,20 +363,20 @@ export class BlockStateManager {
   public getBlockInstances(): BlockInstance[] {
     return this._blockInstances;
   }
-  
+
   public getDefinitionForBlock(instanceOrDefinitionId: BlockInstance | string): BlockDefinition | undefined {
     const id = typeof instanceOrDefinitionId === 'string' ? instanceOrDefinitionId : instanceOrDefinitionId?.definitionId;
     return this._blockDefinitions.find(def => def.id === id);
   }
 
   public addLogToBlockInstance(instanceId: string, message: string): void {
-    this._blockInstances = this._blockInstances.map(b =>
-      b?.instanceId === instanceId
-        ? { ...b, logs: [`${new Date().toLocaleTimeString()} - ${message}`, ...(b.logs || []).slice(0, 49)] }
-        : b
-    );
-    this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    // this._blockInstances = this._blockInstances.map(b =>
+    //   b?.instanceId === instanceId
+    //     ? { ...b, logs: [`${new Date().toLocaleTimeString()} - ${message}`, ...(b.logs || []).slice(0, 49)] }
+    //     : b
+    // );
+    // this._saveInstancesToLocalStorage();
+    // if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
 
   public addBlockDefinition(definition: BlockDefinition): void {
@@ -401,7 +402,7 @@ export class BlockStateManager {
     this._saveDefinitionsToLocalStorage();
     if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
-  
+
   public deleteBlockDefinition(definitionId: string): boolean {
     if (CORE_DEFINITION_IDS_SET.has(definitionId)) {
       console.warn(`BlockStateManager: Cannot delete core block definition: ${definitionId}`);
@@ -434,44 +435,44 @@ export class BlockStateManager {
 
     let needsAudioSetup;
     if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
-        needsAudioSetup = false;
+      needsAudioSetup = false;
     } else {
-        needsAudioSetup = !!(
-            definition.runsAtAudioRate ||
-            definition.audioWorkletProcessorName
-        );
+      needsAudioSetup = !!(
+        definition.runsAtAudioRate ||
+        definition.audioWorkletProcessorName
+      );
     }
-    
+
     let initialInternalState: BlockInstance['internalState'] = {
-        needsAudioNodeSetup: needsAudioSetup, // Set based on the new logic above
-        loggedWorkletSystemNotReady: false,
-        loggedAudioSystemNotActive: false,
+      needsAudioNodeSetup: needsAudioSetup, // Set based on the new logic above
+      loggedWorkletSystemNotReady: false,
+      loggedAudioSystemNotActive: false,
     };
     // Ensure other specific internal state setups (e.g., for LyriaMasterBlock) are preserved
     if (definition.id === LyriaMasterBlock.getDefinition().id) {
-        // Spread initialInternalState to keep the new logging flags
-        initialInternalState = {
-            ...initialInternalState,
-            // lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
-            // reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
-            // promptsUpdateNeeded: true, // Start with true to send initial prompt
-            // trackMuteUpdateNeeded: true, autoPlayInitiated: false,
-            //     lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
-            // lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
-            // lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
-            // lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
-            // lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
-            // lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
-            // lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
-            // lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-            //     lastEffectivePrompts: [],
-            //     wasPausedDueToGateLow: false,
-            //     prevStopTrigger: false,
-            //     prevReconnectTrigger: false,
-            //     lastMuteBass: false,
-            //     lastMuteDrums: false,
-            //     lastOnlyBassDrums: false,
-        };
+      // Spread initialInternalState to keep the new logging flags
+      initialInternalState = {
+        ...initialInternalState,
+        // lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
+        // reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
+        // promptsUpdateNeeded: true, // Start with true to send initial prompt
+        // trackMuteUpdateNeeded: true, autoPlayInitiated: false,
+        //     lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
+        // lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
+        // lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
+        // lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
+        // lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
+        // lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
+        // lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
+        // lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
+        //     lastEffectivePrompts: [],
+        //     wasPausedDueToGateLow: false,
+        //     prevStopTrigger: false,
+        //     prevReconnectTrigger: false,
+        //     lastMuteBass: false,
+        //     lastMuteDrums: false,
+        //     lastOnlyBassDrums: false,
+      };
     }
 
     const newInstance: BlockInstance = {
@@ -513,8 +514,8 @@ export class BlockStateManager {
     });
 
     if (wasUpdated) {
-        this._saveInstancesToLocalStorage();
-        if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+      this._saveInstancesToLocalStorage();
+      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
     }
   }
 
@@ -582,24 +583,24 @@ export class BlockStateManager {
   }
 
   public setSelectedBlockInstanceId(instanceId: string | null): void {
-   this._selectedBlockInstanceId = instanceId;
+    this._selectedBlockInstanceId = instanceId;
   }
-  
+
   public getSelectedBlockInstanceId(): string | null {
     return this._selectedBlockInstanceId;
   }
 
   public onBlockInstanceChaged(callback: (instances: BlockInstance[]) => void): void {
-    this._onInstancesChangeCallback = callback;
-    if (this._initializationDone) {
-      callback([...this._blockInstances]); // Call immediately with current instances
-    }
+    // this._onInstancesChangeCallback = callback;
+    // if (this._initializationDone) {
+    //   callback([...this._blockInstances]); // Call immediately with current instances
+    // }
   }
 }
 
 export type InstanceUpdatePayload = {
-    instanceId: string;
-    updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance);
+  instanceId: string;
+  updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance);
 };
 
 export default BlockStateManager.getInstance(); // Export the singleton instance directly;

@@ -49,17 +49,11 @@ class AudioEngineService {
 
       if (!this.masterVolume) {
         this.masterVolume = new Tone.Volume(0).connect(Tone.getDestination());
-        // console.log(`[AudioEngineService initialize] MasterVolume created. Volume: ${this.masterVolume.volume.value}, Mute: ${this.masterVolume.mute}`); // REMOVED
       } else {
         this.masterVolume.disconnect();
         this.masterVolume.connect(Tone.getDestination());
-        // console.log(`[AudioEngineService initialize] MasterVolume already existed, reconnected. Volume: ${this.masterVolume.volume.value}, Mute: ${this.masterVolume.mute}`); // REMOVED
       }
 
-      const rawCtx = this.context.rawContext as AudioContext | null;
-      AudioNodeManager.setAudioContext(rawCtx); // Changed from NativeNodeManager
-      AudioWorkletManager.setAudioContext(rawCtx);
-      LyriaServiceManager.setAudioContext(rawCtx);
       this.setupNodes();
 
 
@@ -89,7 +83,7 @@ class AudioEngineService {
       selectedSinkId: this.selectedSinkId,
       audioContextState: this.context?.state ?? null,
       sampleRate: this.context?.sampleRate ?? null,
-      isWorkletSystemReady: AudioWorkletManager.isAudioWorkletSystemReady,
+      // isWorkletSystemReady: AudioWorkletManager.isAudioWorkletSystemReady,
     };
   }
 

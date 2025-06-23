@@ -4,7 +4,6 @@ import { createParameterDefinitions } from '@constants/constants';
 import * as Tone from 'tone'; // Added Tone
 
 export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { // Implemented EmitterProvider
-  private context: AudioContext | null;
   private _emitter: Tone.Emitter; // Added emitter property
 
   public static getDefinition(): BlockDefinition {
@@ -24,33 +23,34 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
     };
   }
 
-  constructor(context: AudioContext | null) {
-    this.context = context;
+  constructor() {
     this._emitter = new Tone.Emitter(); // Initialized emitter
   }
 
   public getEmitter(outputId: string): Tone.Emitter | undefined { // Implemented getEmitter
     if (outputId === 'gate_out' && this._emitter) {
       this._emitter.on('gate_change', (data) => {
-        console.log("[ManualGateNativeBlock] Gate change event emitted:", data.newState); // Log gate changes
       })
       return this._emitter;
     }
     return undefined;
   }
 
-  setAudioContext(context: AudioContext | null): void {
-    this.context = context;
-  }
 
   createNode(
     instanceId: string,
     definition: BlockDefinition,
     initialParams: BlockParameter[],
   ): ManagedNativeNodeInfo {
-    if (!this.context) throw new Error("AudioContext not initialized for ManualGateNativeBlock");
+    // if (!this.context) throw new Error("AudioContext not initialized for ManualGateNativeBlock");
+    const context = Tone.getContext();
+    if (context.state !== 'running') {
+      console.warn('Tone.js context is not running. Envelope may not function correctly.');
+    }
 
-    const constantSourceNode = this.context.createConstantSource();
+    // скореее всего лучше удалить вообще
+    const constantSourceNode = context.createConstantSource();
+
     constantSourceNode.offset.value = 0; // Default to 0 (gate off)
 
     const gateActiveParam = initialParams.find(p => p.id === 'gate_active');
@@ -68,7 +68,7 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
       paramTargetsForCv: new Map<string, AudioParam>(), // No CV inputs for this simple gate
       definition,
       instanceId,
-      constantSourceValueNode: constantSourceNode, // Specific for nodes that are ConstantSourceNode-like
+      // constantSourceValueNode: constantSourceNode, // Specific for nodes that are ConstantSourceNode-like
       // Added emitter, providerInstance, and internalState
       emitter: this._emitter,
       providerInstance: this,
@@ -80,13 +80,10 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
     nodeInfo: ManagedNativeNodeInfo,
     instance: BlockInstance,
   ): void {
-    if (!this.context) return;
-
-    const constantSourceNode = nodeInfo.mainProcessingNode;
     const parameters = instance.parameters || [];
     const gateActiveParam = parameters.find(p => p.id === 'gate_active');
-
     if (gateActiveParam) {
+      
       const newGateValue = !!gateActiveParam.currentValue;
       const prevGateValue = nodeInfo.internalState?.prevGateValue;
 
@@ -95,14 +92,8 @@ export class ManualGateNativeBlock implements CreatableNode, EmitterProvider { /
         if (nodeInfo.internalState) {
           nodeInfo.internalState.prevGateValue = newGateValue;
         }
-        console.log(`[ManualGateNativeBlock] Emitted gate_change: ${newGateValue} for instance ${nodeInfo.instanceId}`);
       }
 
-      // Existing ConstantSourceNode update (kept as per instructions)
-      if ((constantSourceNode as ConstantSourceNode).offset) {
-        // Avoids clicks if possible, though for a gate, direct change is often fine.
-        (constantSourceNode as ConstantSourceNode).offset.setTargetAtTime(newGateValue ? 1 : 0, this.context.currentTime, 0.01);
-      }
     }
   }
 

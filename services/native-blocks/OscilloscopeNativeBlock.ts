@@ -36,18 +36,6 @@ export class OscilloscopeNativeBlock implements CreatableNode {
         this.context = context;
     }
 
-    setAudioContext(context: AudioContext | null): void {
-        this.context = context!;
-        // If context changes, existing analyserNode becomes invalid if it was created with old context
-        if (!context && this.analyserNode) {
-            try { this.analyserNode.disconnect(); } catch(e) {/*ignore*/}
-            this.analyserNode = null;
-        } else if (context && this.analyserNode && this.analyserNode.context !== context) {
-            // This case is tricky; ideally, nodes are recreated. For now, nullify.
-            try { this.analyserNode.disconnect(); } catch(e) {/*ignore*/}
-            this.analyserNode = null;
-        }
-    }
 
     createNode(
         instanceId: string,

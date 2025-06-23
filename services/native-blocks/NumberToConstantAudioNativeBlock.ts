@@ -17,7 +17,6 @@ export class NumberToConstantAudioNativeBlock implements CreatableNode {
           { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
           { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
         ]),
-        logicCode: "",
       };
     }
 
@@ -25,9 +24,6 @@ export class NumberToConstantAudioNativeBlock implements CreatableNode {
         this.context = context;
     }
 
-    setAudioContext(context: AudioContext | null): void {
-        this.context = context!;
-    }
 
     createNode(
         instanceId: string,

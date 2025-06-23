@@ -31,12 +31,10 @@ export class GainControlNativeBlock implements CreatableNode {
 
     constructor() { }
 
-    setAudioContext(_context: any): void { }
 
     createNode(
         instanceId: string,
         definition: BlockDefinition,
-        initialParams: BlockParameter[],
     ): ManagedGainNodeInfo {
         if (Tone.getContext().state !== 'running') {
             console.warn('Tone.js context is not running. Gain node may not function correctly until context is started.');

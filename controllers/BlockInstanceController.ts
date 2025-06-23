@@ -62,7 +62,7 @@ export class BlockInstanceController {
                     this.blockStateManager.updateBlockInstance(newInstance.instanceId, { error: "Failed to add native (Tone.js) audio node." });
                 }
             }
-        } else if (newInstance && definition.runsAtAudioRate) {
+        } else if (newInstance) {
             // Audio system not ready, mark for setup
             this.blockStateManager.updateBlockInstance(newInstance.instanceId, {
                 internalState: { ...newInstance.internalState, needsAudioNodeSetup: true, lyriaServiceReady: false }
@@ -76,29 +76,29 @@ export class BlockInstanceController {
     };
 
     public deleteInstance = (instanceId: string, currentSelectedInstanceId: string | null) => {
-        const blockInstances = this.getBlockInstances();
-        const instanceToRemove = blockInstances.find(b => b?.instanceId === instanceId);
+        // const blockInstances = this.getBlockInstances();
+        // const instanceToRemove = blockInstances.find(b => b?.instanceId === instanceId);
 
-        if (instanceToRemove) {
-            const definition = this.getDefinitionForBlock(instanceToRemove);
-            // Check if definition exists before accessing its properties
-            if (definition) {
-                if (definition.id === LyriaMasterBlock.getDefinition().id) {
-                    this.audioEngineService.lyriaServiceManager?.removeLyriaServiceForInstance?.(instanceId);
-                } else if (definition.audioWorkletProcessorName) {
-                    this.audioEngineService.removeManagedAudioWorkletNode(instanceId);
-                } else if (
-                    definition.id.startsWith('tone-') || // Check for new 'tone-' prefix
-                    definition.id.startsWith('native-') || // Keep old 'native-' prefix for unrefactored blocks
-                    definition.id === GainControlNativeBlock.getDefinition().id || // Explicitly check old IDs if they weren't changed
-                    definition.id === AudioOutputNativeBlock.getDefinition().id ||
-                    definition.id === OscilloscopeNativeBlock.getDefinition().id
-                    // Add other refactored block old IDs here if their definition IDs were not updated to 'tone-'
-                ) {
-                    this.audioEngineService.removeNativeNode(instanceId);
-                }
-            }
-        }
+        // if (instanceToRemove) {
+        //     const definition = this.getDefinitionForBlock(instanceToRemove);
+        //     // Check if definition exists before accessing its properties
+        //     if (definition) {
+        //         // if (definition.id === LyriaMasterBlock.getDefinition().id) {
+        //         //     this.audioEngineService.lyriaServiceManager?.removeLyriaServiceForInstance?.(instanceId);
+        //         // } else if (definition.audioWorkletProcessorName) {
+        //         //     this.audioEngineService.removeManagedAudioWorkletNode(instanceId);
+        //         // } else if (
+        //         //     definition.id.startsWith('tone-') || // Check for new 'tone-' prefix
+        //         //     definition.id.startsWith('native-') || // Keep old 'native-' prefix for unrefactored blocks
+        //         //     definition.id === GainControlNativeBlock.getDefinition().id || // Explicitly check old IDs if they weren't changed
+        //         //     definition.id === AudioOutputNativeBlock.getDefinition().id ||
+        //         //     definition.id === OscilloscopeNativeBlock.getDefinition().id
+        //         //     // Add other refactored block old IDs here if their definition IDs were not updated to 'tone-'
+        //         // ) {
+        //             // this.audioEngineService.removeNativeNode(instanceId);
+        //         }
+        //     }
+        // }
 
         this.blockStateManager.deleteBlockInstance(instanceId);
         this.connectionState.updateConnections(prev => prev.filter(c => c.fromInstanceId !== instanceId && c.toInstanceId !== instanceId));

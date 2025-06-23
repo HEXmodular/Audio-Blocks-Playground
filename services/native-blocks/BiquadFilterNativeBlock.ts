@@ -48,8 +48,6 @@ export class BiquadFilterNativeBlock implements CreatableNode {
 
     constructor() {}
 
-    setAudioContext(_context: any): void {}
-
     createNode(
         instanceId: string,
         definition: BlockDefinition,

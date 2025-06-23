@@ -89,7 +89,8 @@ class AudioGraphConnectorService {
 
       if (!outputPortDef || !inputPortDef) return;
 
-      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
+      // для пробрасывания эмитера получателю
+      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {  
         const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
         const emitter = sourceManagedNodeInfo?.providerInstance?.getEmitter(conn.fromOutputId)
         if (emitter) {
@@ -105,7 +106,6 @@ class AudioGraphConnectorService {
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
-        // console.log(`[AudioGraphConnectorService] Processing audio connection from ${fromDef.name} to ${toDef.name} (${conn.id})`); // REMOVED
         let sourceNode: ConnectableSource | undefined;
         const fromWorkletInfo = localManagedWorkletNodes.get(fromInstance.instanceId);
         const fromNativeInfo = localManagedNativeNodes.get(fromInstance.instanceId);

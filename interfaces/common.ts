@@ -74,31 +74,7 @@ export interface BlockInstance {
   parameters: BlockParameter[]; 
   internalState: {
     emitters?: { [inputId: string]: Tone.Emitter }; // Restored
-    needsAudioNodeSetup?: boolean;
-    // lyriaServiceReady?: boolean;
-    // autoPlayInitiated?: boolean;
-    // playRequest?: boolean;
-    // pauseRequest?: boolean;
-    // stopRequest?: boolean;
-    // reconnectRequest?: boolean;
-    // configUpdateNeeded?: boolean;
-    // promptsUpdateNeeded?: boolean;
-    // trackMuteUpdateNeeded?: boolean;
-    // lastScale?: any;
-    // lastBrightness?: any;
-    // lastDensity?: any;
-    // lastSeed?: any;
-    // lastTemperature?: any;
-    // lastGuidanceScale?: any;
-    // lastTopK?: any;
-    // lastBpm?: any;
-    // lastEffectivePrompts?: any[];
-    // wasPausedDueToGateLow?: boolean;
-    // prevStopTrigger?: boolean;
-    // prevReconnectTrigger?: boolean;
-    // lastMuteBass?: boolean;
-    // lastMuteDrums?: boolean;
-    // lastOnlyBassDrums?: boolean;
+    needsAudioNodeSetup?: boolean; // выяснить что это такое
     loggedWorkletSystemNotReady?: boolean;
     loggedAudioSystemNotActive?: boolean;
     [key: string]: any;
@@ -108,7 +84,6 @@ export interface BlockInstance {
   isRunning?: boolean; 
   error?: string | null; 
   audioWorkletNodeId?: string; 
-  lyriaServiceInstanceId?: string; //?
 }
 
 export interface EmitterProvider {

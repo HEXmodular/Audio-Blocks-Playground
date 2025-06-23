@@ -48,35 +48,35 @@ class LyriaServiceManager implements ILyriaServiceManager {
         return LyriaServiceManager.instance;
     }
 
-    public setAudioContext(context: any): void {
-        let newRawContext: AudioContext | null = null;
-        let newToneContext: Tone.Context | null = null;
+    // public setAudioContext(context: any): void {
+    //     let newRawContext: AudioContext | null = null;
+    //     let newToneContext: Tone.Context | null = null;
 
-        if (context) {
-            newToneContext = context;
-        }
+    //     if (context) {
+    //         newToneContext = context;
+    //     }
 
-        let contextChanged = false;
-        if (this.audioContext !== newRawContext) {
-            contextChanged = true;
-            if (this.managedLyriaServiceInstancesRef.size > 0 && this.audioContext) {
-                console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services tied to the old context.", true);
-                this.removeAllServices();
-            }
-            this.audioContext = newRawContext;
-        }
-        if (this.toneContext !== newToneContext) {
-            contextChanged = true;
-            this.toneContext = newToneContext;
-        }
+    //     let contextChanged = false;
+    //     if (this.audioContext !== newRawContext) {
+    //         contextChanged = true;
+    //         if (this.managedLyriaServiceInstancesRef.size > 0 && this.audioContext) {
+    //             console.log("[LyriaManager] AudioContext changed/nulled. Removing all existing managed Lyria services tied to the old context.", true);
+    //             this.removeAllServices();
+    //         }
+    //         this.audioContext = newRawContext;
+    //     }
+    //     if (this.toneContext !== newToneContext) {
+    //         contextChanged = true;
+    //         this.toneContext = newToneContext;
+    //     }
 
-        if (contextChanged) {
-            this.onStateChangeForReRender();
-        }
-    }
+    //     if (contextChanged) {
+    //         this.onStateChangeForReRender();
+    //     }
+    // }
 
     public _setAudioContextAndMasterGain(newContext: any, newMasterGainNode: GainNode | null): void {
-        this.setAudioContext(newContext);
+        // this.setAudioContext(newContext);
         this.masterGainNode = newMasterGainNode;
     }
 

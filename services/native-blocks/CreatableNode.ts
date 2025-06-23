@@ -12,8 +12,6 @@ export interface CreatableNode {
         instance: BlockInstance,
     ): void;
 
-    setAudioContext(context: any): void; // Made 'any' for flexibility with Tone.Context / AudioContext
-
     // Optional connect/disconnect if the block itself needs to manage complex internal routing
     // not handled by simple nodeForInput/OutputConnections.
     // Most simple blocks will not need these, AudioGraphConnectorService handles external connections.

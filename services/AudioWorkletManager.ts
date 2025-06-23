@@ -36,7 +36,7 @@ export interface IAudioWorkletManager {
   getNodeInfo: (nodeId: string) => ManagedWorkletNodeInfo | undefined;
   getAllNodeInfo: () => ManagedWorkletNodeInfo[];
   sendMessage: (nodeId: string, message: ManagedAudioWorkletNodeMessage) => void;
-  setAudioContext(context: AudioContext | null): void;
+  // setAudioContext(context: AudioContext | null): void;
   getManagedNodesMap(): Map<string, ManagedWorkletNodeInfo>;
 }
 
@@ -69,18 +69,18 @@ class AudioWorkletManager implements IAudioWorkletManager {
     AudioWorkletManager.instance = null;
   }
 
-  public setAudioContext(newContext: AudioContext | null): void {
-    if (this.audioContext !== newContext) {
-      if (this.managedWorkletNodesRef.size > 0) {
-          console.warn("[AudioWorkletManager] AudioContext changed/nulled. Removing all existing managed worklet nodes.");
-          this.removeAllManagedAudioWorkletNodes();
-      }
-      this.registeredWorkletNamesRef.clear();
-      this.isAudioWorkletSystemReady = false;
-      this.audioContext = newContext;
-      this.onStateChangeForReRender();
-    }
-  }
+  // public setAudioContext(newContext: AudioContext | null): void {
+  //   if (this.audioContext !== newContext) {
+  //     if (this.managedWorkletNodesRef.size > 0) {
+  //         console.warn("[AudioWorkletManager] AudioContext changed/nulled. Removing all existing managed worklet nodes.");
+  //         this.removeAllManagedAudioWorkletNodes();
+  //     }
+  //     this.registeredWorkletNamesRef.clear();
+  //     this.isAudioWorkletSystemReady = false;
+  //     this.audioContext = newContext;
+  //     this.onStateChangeForReRender();
+  //   }
+  // }
 
   public setIsAudioWorkletSystemReady(ready: boolean): void {
     if (this.isAudioWorkletSystemReady !== ready) {

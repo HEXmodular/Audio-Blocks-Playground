@@ -37,8 +37,6 @@ export class AudioOutputNativeBlock implements CreatableNode {
 
     constructor() { }
 
-    setAudioContext(_context: any): void { } // Matched CreatableNode
-
     createNode(
         instanceId: string,
         definition: BlockDefinition,

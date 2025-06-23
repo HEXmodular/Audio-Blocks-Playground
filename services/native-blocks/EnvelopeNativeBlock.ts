@@ -8,7 +8,7 @@ export interface ManagedEnvelopeNodeInfo extends OriginalManagedNativeNodeInfo {
   toneAmplitudeEnvelope?: Tone.AmplitudeEnvelope;
   prevGateState?: boolean; // Keep this for internal logic
   gateEmitter?: Tone.Emitter; // The emitter this block is currently subscribed to for its gate_in
-  gateSubscription?: { off: () => void }; // Stores the subscription object from emitter.on()
+//   gateSubscription?: { off: () => void }; // Stores the subscription object from emitter.on()
 }
 
 export class EnvelopeNativeBlock implements CreatableNode {
@@ -47,8 +47,6 @@ export class EnvelopeNativeBlock implements CreatableNode {
     constructor() {}
 
     gateSubscription: Tone.Emitter<string> | undefined; // Subscription to the gate emitter for this instance
-
-    setAudioContext(_context: any): void {}
 
     createNode(
         instanceId: string,
@@ -99,7 +97,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
             internalState: {},
             // Initialize new properties
             gateEmitter: undefined,
-            gateSubscription: undefined,
+            // gateSubscription: undefined, // это зачем?
         };
         return nodeInfo;
     }
@@ -108,13 +106,15 @@ export class EnvelopeNativeBlock implements CreatableNode {
         nodeInfo: ManagedEnvelopeNodeInfo,
         blockInstance: BlockInstance,
     ): void {
+        // слишком много вызовов, разобраться
+        // console.log("[EnvelopeNativeBlock] updateNodeParams called for instanceId:", nodeInfo.instanceId);
         if (!nodeInfo.toneAmplitudeEnvelope) {
             console.warn('Tone.AmplitudeEnvelope not found in nodeInfo for EnvelopeNativeBlock', nodeInfo);
             return;
         }
         const envelope = nodeInfo.toneAmplitudeEnvelope;
         const parameters = blockInstance.parameters;
-        
+
         parameters.forEach(param => {
             switch (param.id) {
                 case 'attack':
@@ -137,6 +137,7 @@ export class EnvelopeNativeBlock implements CreatableNode {
             // Subscribe to the new emitter
             if (newDesignatedEmitter?.on) {
                 this.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
+                    console.log(`[EnvelopeNativeBlock] Instance ${nodeInfo.instanceId} received gate_change event from emitter:`, payload);
                     if (!nodeInfo.toneAmplitudeEnvelope) return;
                     const now = Tone.getContext().currentTime;
                     const currentEnvelopeState = nodeInfo.prevGateState;
