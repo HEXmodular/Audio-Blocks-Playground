@@ -489,7 +489,10 @@ export class BlockStateManager {
 
     this._blockInstances = [...this._blockInstances, newInstance];
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChangeCallback) {
+      console.log('[BlockStateManager] addBlockInstance: Firing _onInstancesChangeCallback. New instance ID:', newInstance.instanceId, 'Total instances:', this._blockInstances.length);
+      this._onInstancesChangeCallback([...this._blockInstances]);
+    }
     return newInstance;
   }
 
