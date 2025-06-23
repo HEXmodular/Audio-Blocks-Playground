@@ -124,6 +124,13 @@ export class StepSequencerNativeBlock implements CreatableNode {
             this.updateSequenceFromParams(instance.parameters, nodeInfo.internalState);
             // console.log("[StepSequencerNativeBlock] Updated sequence from parameters:", instance);
             const newDesignatedEmitter = instance.internalState.emitters?.gate_in
+
+            // Unsubscribe from the old emitter if there was one
+            if (this.gateSubscription && typeof this.gateSubscription.off === 'function') {
+                this.gateSubscription.off('gate_change');
+                this.gateSubscription = undefined;
+            }
+
             // Subscribe to the new emitter
             if (newDesignatedEmitter?.on) {
                 this.gateSubscription = newDesignatedEmitter.on('gate_change', (payload: { newState: boolean }) => {
@@ -233,6 +240,11 @@ export class StepSequencerNativeBlock implements CreatableNode {
 
     public dispose(nodeInfo: ManagedNativeNodeInfo): void {
         // console.log(`[StepSequencerNativeBlock dispose] ${nodeInfo.instanceId}`);
+        if (this.gateSubscription && typeof this.gateSubscription.off === 'function') {
+            this.gateSubscription.off('gate_change');
+            this.gateSubscription = undefined;
+            console.log(`[StepSequencerNativeBlock] Unsubscribed from gate_in emitter during dispose for instance ${nodeInfo.instanceId}`);
+        }
         if (this._gateEmitter) {
             this._gateEmitter.dispose();
         }
