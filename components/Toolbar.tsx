@@ -7,6 +7,7 @@ import AudioEngineService from '@services/AudioEngineService';
 import AddBlockModal from '@components/AddBlockModal'; // Import AddBlockModal
 // import { BlockDefinition } from '@interfaces/common'; // Import BlockDefinition
 // import BlockStateManager from '@state/BlockStateManager'; // Import BlockStateManager
+import WorkspacePersistenceManager from '@services/WorkspacePersistenceManager'; // Added
 
 
 interface ToolbarProps {
@@ -29,18 +30,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
   }, []); // CHANGED (dependency on onToggleAddBlockModal removed)
 
   // Import function now internal to Toolbar
-  // const handleImportWorkspaceTrigger = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (event.target.files && event.target.files[0] && workspacePersistenceManager) {
-  //     workspacePersistenceManager.importWorkspace(event.target.files[0]);
-  //     event.target.value = ""; // Reset file input
-  //   }
-  // }, [workspacePersistenceManager]);
+  const handleImportWorkspaceTrigger = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0] ) {
+      WorkspacePersistenceManager.importWorkspace(event.target.files[0]);
+      event.target.value = ""; // Reset file input
+    }
+  }
 
-  // const handleImportClick = () => {
+  // const handleImportClick = () => { // This will be inlined
   //   importFileInputRef.current?.click();
   // };
-
-  // handleExportClick is removed, logic inlined in button onClick
 
   // const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => { // Removed unused function
   //   e.stopPropagation(); // Prevent block add
@@ -170,41 +169,39 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </button> */}
 
       {/* Workspace Management Buttons */}
-      {/* <button
+      <button
         onClick={() => {
-          if (workspacePersistenceManager) {
-            workspacePersistenceManager.exportWorkspace();
-          }
+            WorkspacePersistenceManager.exportWorkspace();
         }}
         title="Export Workspace"
         className="flex items-center bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        disabled={!workspacePersistenceManager}
+        // disabled={!workspacePersistenceManager}
       >
         Export
       </button>
       <button
-        onClick={handleImportClick} // This just clicks the hidden input
+        onClick={() => importFileInputRef.current?.click()} // Inlined handleImportClick
         title="Import Workspace"
         className="flex items-center bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        disabled={!workspacePersistenceManager}
+        // disabled={!workspacePersistenceManager}
       >
         Import
       </button>
       <input
         type="file"
         ref={importFileInputRef}
-        onChange={handleImportWorkspaceTrigger} // Use the new handler
+        onChange={handleImportWorkspaceTrigger} // Use the new handler defined above
         accept=".json"
         className="hidden"
         aria-hidden="true"
       />
 
-       <button
-        onClick={onToggleGeminiPanel}
-        className={`ml-auto flex items-center ${isGeminiPanelOpen ? 'bg-pink-600' : 'bg-pink-500'} hover:bg-pink-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors`}
+       {/* <button
+        onClick={handleToolbarToggleGeminiPanel} // Changed from onToggleGeminiPanel, assumes it's available in this scope
+        className={`ml-auto flex items-center bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors`} // Removed isGeminiPanelOpen dependency
       >
         <span className="mr-1 text-lg">✨</span> Gemini
-      </button> */}
+      </button>  */}
     </div>
   );
 };

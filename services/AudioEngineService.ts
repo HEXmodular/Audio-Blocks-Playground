@@ -155,7 +155,7 @@ class AudioEngineService {
       }
     } else {
       console.warn('setSinkId is not supported by this browser or context.');
-      throw new Error('setSinkId not supported.');
+      // throw new Error('setSinkId not supported.');
     }
     this.publishAudioEngineState();
   }
