@@ -6,87 +6,39 @@
  * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
  */
 import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
-import { BlockStateManager } from '@state/BlockStateManager';
-import AudioEngineServiceInstance from '@services/AudioEngineService';
-import { ConnectionState } from '@services/ConnectionState';
+import BlockStateManager from '@state/BlockStateManager'; // Import default instance
+import AudioEngineService from '@services/AudioEngineService'; // Import default instance
+import ConnectionState from '@services/ConnectionState'; // Import default instance
 import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
+import * as Tone from 'tone'; // For getting BPM
 
 class WorkspacePersistenceManager {
     private static instance: WorkspacePersistenceManager;
 
-    private getBlockDefinitions: () => BlockDefinition[];
-    private getBlockInstances: () => BlockInstance[];
-    private getConnections: () => Connection[];
-    private getGlobalBpm: () => number;
-    private getSelectedSinkId: () => string | null;
+    private audioEngineService: typeof AudioEngineService;
+    private blockStateManager: typeof BlockStateManager;
+    private connectionState: typeof ConnectionState;
 
-    private audioEngineService: typeof AudioEngineServiceInstance;
-    private blockStateManager: BlockStateManager;
-    private connectionState: ConnectionState;
-
-    private setGlobalBpm: (bpm: number) => void;
-    private setSelectedInstanceId: (id: string | null) => void;
-
-    private constructor(
-        getBlockDefinitions: () => BlockDefinition[],
-        getBlockInstances: () => BlockInstance[],
-        getConnections: () => Connection[],
-        getGlobalBpm: () => number,
-        getSelectedSinkId: () => string | null,
-        passedAudioEngineService: typeof AudioEngineServiceInstance,
-        blockStateManager: BlockStateManager,
-        connectionState: ConnectionState,
-        setGlobalBpm: (bpm: number) => void,
-        setSelectedInstanceId: (id: string | null) => void
-    ) {
-        this.getBlockDefinitions = getBlockDefinitions;
-        this.getBlockInstances = getBlockInstances;
-        this.getConnections = getConnections;
-        this.getGlobalBpm = getGlobalBpm;
-        this.getSelectedSinkId = getSelectedSinkId;
-        this.audioEngineService = passedAudioEngineService;
-        this.blockStateManager = blockStateManager;
-        this.connectionState = connectionState;
-        this.setGlobalBpm = setGlobalBpm;
-        this.setSelectedInstanceId = setSelectedInstanceId;
+    private constructor() {
+        this.audioEngineService = AudioEngineService;
+        this.blockStateManager = BlockStateManager;
+        this.connectionState = ConnectionState;
     }
 
-    public static getInstance(
-        getBlockDefinitions: () => BlockDefinition[],
-        getBlockInstances: () => BlockInstance[],
-        getConnections: () => Connection[],
-        getGlobalBpm: () => number,
-        getSelectedSinkId: () => string | null,
-        passedAudioEngineService: typeof AudioEngineServiceInstance,
-        blockStateManager: BlockStateManager,
-        connectionState: ConnectionState,
-        setGlobalBpm: (bpm: number) => void,
-        setSelectedInstanceId: (id: string | null) => void
-    ): WorkspacePersistenceManager {
+    public static getInstance(): WorkspacePersistenceManager {
         if (!WorkspacePersistenceManager.instance) {
-            WorkspacePersistenceManager.instance = new WorkspacePersistenceManager(
-                getBlockDefinitions,
-                getBlockInstances,
-                getConnections,
-                getGlobalBpm,
-                getSelectedSinkId,
-                passedAudioEngineService,
-                blockStateManager,
-                connectionState,
-                setGlobalBpm,
-                setSelectedInstanceId
-            );
+            WorkspacePersistenceManager.instance = new WorkspacePersistenceManager();
         }
         return WorkspacePersistenceManager.instance;
     }
 
     public exportWorkspace = () => {
         const workspace = {
-            blockDefinitions: this.getBlockDefinitions().filter(def => def.isAiGenerated),
-            blockInstances: this.getBlockInstances(),
-            connections: this.getConnections(),
-            globalBpm: this.getGlobalBpm(),
-            selectedSinkId: this.getSelectedSinkId(),
+            blockDefinitions: this.blockStateManager.getBlockDefinitions().filter(def => def.isAiGenerated),
+            blockInstances: this.blockStateManager.getBlockInstances(),
+            connections: this.connectionState.getConnections(),
+            globalBpm: Tone.getTransport().bpm.value, // Get BPM directly from Tone.Transport
+            selectedSinkId: this.audioEngineService.selectedSinkId,
         };
         const jsonString = JSON.stringify(workspace, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -109,16 +61,17 @@ class WorkspacePersistenceManager {
             try {
                 const jsonString = e.target?.result as string;
                 const workspace = JSON.parse(jsonString);
-                // console.log("[WorkspacePersistenceManager] Imported workspace data:", workspace); // REMOVED
 
-                if (!workspace || typeof workspace !== 'object' || !this.blockStateManager) {
-                    throw new Error("Invalid workspace file format or context not ready.");
+                if (!workspace || typeof workspace !== 'object') { // Removed this.blockStateManager check as it's now guaranteed
+                    throw new Error("Invalid workspace file format.");
                 }
 
                 if (this.audioEngineService.isAudioGloballyEnabled) {
-                    await this.audioEngineService.toggleGlobalAudio();
+                    await this.audioEngineService.toggleGlobalAudio(); // Ensure audio is off during import
                 }
-                this.audioEngineService.removeAllManagedNodes();
+                // Note: Original WPM had removeAllManagedNodes(). AudioEngineService.setupNodes() is called later
+                // after instances are set, which should handle teardown of old nodes and setup of new ones.
+                // Explicitly clearing nodes from AudioNodeManager might be needed if setupNodes doesn't cover all cases.
 
                 const {
                     blockDefinitions: importedDefinitions = [],
@@ -128,10 +81,6 @@ class WorkspacePersistenceManager {
                     selectedSinkId: importedSinkId,
                 } = workspace;
 
-                // console.log("[WorkspacePersistenceManager] Imported connections:", importedConnections); // REMOVED
-                // console.log("[WorkspacePersistenceManager] Imported BPM:", importedBpm); // REMOVED
-                // console.log("[WorkspacePersistenceManager] Imported Sink ID:", importedSinkId); // REMOVED
-
                 const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
                 importedDefinitions.forEach((def: BlockDefinition) => {
                     if (!coreDefsMap.has(def.id)) {
@@ -140,30 +89,25 @@ class WorkspacePersistenceManager {
                 });
                 this.blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
 
-                // console.log("[WorkspacePersistenceManager] Importing block instances:", importedInstances); // REMOVED
                 this.blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
                     ...inst,
                     internalState: {
                         ...(inst.internalState || {}),
-                        needsAudioNodeSetup: true,
-                        lyriaServiceReady: false,
-                        autoPlayInitiated: false,
+                        needsAudioNodeSetup: true, // This will be re-evaluated by AudioNodeManager
+                        lyriaServiceReady: false,   // Default state for imported Lyria instances
+                        autoPlayInitiated: false, // Default state
                     },
                     logs: inst.logs || [`Instance '${inst.name}' loaded from file.`],
                     modificationPrompts: inst.modificationPrompts || [],
                 })));
-                // console.log("[WorkspacePersistenceManager] Block instances set."); // REMOVED
 
-                // REMOVED general log for all instances in state
-                // console.log('[WorkspacePersistenceManager] Verifying instances in state after import:');
-                // this.blockStateManager.getBlockInstances().forEach(instanceInState => {
-                //   console.log(`  Instance ID: ${instanceInState.instanceId}, DefID: ${instanceInState.definitionId}, internalState.needsAudioNodeSetup: ${instanceInState.internalState?.needsAudioNodeSetup} ${instanceInState.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
-                // });
+                // After instances are set, audio nodes need to be processed (includes teardown of old, setup of new)
+                await this.audioEngineService.setupNodes();
 
                 this.connectionState.setAllConnections(importedConnections);
 
                 if (typeof importedBpm === 'number' && importedBpm > 0) {
-                    this.setGlobalBpm(importedBpm);
+                    this.audioEngineService.setTransportBpm(importedBpm);
                 }
 
                 if (typeof importedSinkId === 'string' && this.audioEngineService.availableOutputDevices.find(d => d.deviceId === importedSinkId)) {
@@ -173,8 +117,12 @@ class WorkspacePersistenceManager {
                     await this.audioEngineService.setOutputDevice('default');
                 }
 
+                // Connections should be updated after nodes are set up and instances are placed
+                this.audioEngineService.updateAudioGraphConnections();
+
+
                 console.log("[System] Workspace imported successfully by WorkspacePersistenceManager.");
-                this.setSelectedInstanceId(null);
+                this.blockStateManager.setSelectedBlockInstanceId(null);
 
             } catch (err) {
                 console.error("Error importing workspace:", err);
