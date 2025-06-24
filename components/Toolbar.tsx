@@ -21,7 +21,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
-  const workspacePersistenceManager = WorkspacePersistenceManager.getInstance(); // Added
 
   const handleToolbarToggleGeminiPanel = useCallback(() => {
     // Placeholder for actual Gemini Panel logic
@@ -31,12 +30,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
   }, []); // CHANGED (dependency on onToggleAddBlockModal removed)
 
   // Import function now internal to Toolbar
-  const handleImportWorkspaceTrigger = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0] && workspacePersistenceManager) {
-      workspacePersistenceManager.importWorkspace(event.target.files[0]);
+  const handleImportWorkspaceTrigger = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0] ) {
+      WorkspacePersistenceManager.importWorkspace(event.target.files[0]);
       event.target.value = ""; // Reset file input
     }
-  }, [workspacePersistenceManager]); // Dependency array includes workspacePersistenceManager
+  }
 
   // const handleImportClick = () => { // This will be inlined
   //   importFileInputRef.current?.click();
@@ -172,13 +171,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Workspace Management Buttons */}
       <button
         onClick={() => {
-          if (workspacePersistenceManager) {
-            workspacePersistenceManager.exportWorkspace();
-          }
+            WorkspacePersistenceManager.exportWorkspace();
         }}
         title="Export Workspace"
         className="flex items-center bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        disabled={!workspacePersistenceManager}
+        // disabled={!workspacePersistenceManager}
       >
         Export
       </button>
@@ -186,7 +183,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => importFileInputRef.current?.click()} // Inlined handleImportClick
         title="Import Workspace"
         className="flex items-center bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        disabled={!workspacePersistenceManager}
+        // disabled={!workspacePersistenceManager}
       >
         Import
       </button>
@@ -199,12 +196,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
         aria-hidden="true"
       />
 
-       <button
+       {/* <button
         onClick={handleToolbarToggleGeminiPanel} // Changed from onToggleGeminiPanel, assumes it's available in this scope
         className={`ml-auto flex items-center bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors`} // Removed isGeminiPanelOpen dependency
       >
         <span className="mr-1 text-lg">✨</span> Gemini
-      </button> */}
+      </button>  */}
     </div>
   );
 };

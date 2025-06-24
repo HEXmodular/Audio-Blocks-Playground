@@ -133,4 +133,4 @@ class WorkspacePersistenceManager {
     };
 }
 
-export default WorkspacePersistenceManager;
+export default WorkspacePersistenceManager.getInstance();
