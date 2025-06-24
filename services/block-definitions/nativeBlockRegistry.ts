@@ -1,6 +1,7 @@
 import { BlockDefinition } from '@interfaces/common';
 
 // Import native block classes
+import { ByteBeatNativeBlock } from "../native-blocks/ByteBeatNativeBlock";
 import { OscillatorNativeBlock } from '../native-blocks/OscillatorNativeBlock';
 import { BiquadFilterNativeBlock } from '../native-blocks/BiquadFilterNativeBlock';
 import { DelayNativeBlock } from '../native-blocks/DelayNativeBlock';
@@ -32,6 +33,7 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     AudioOutputNativeBlock.getDefinition(), // Added new definition
     LyriaMasterBlock.getDefinition(),
     ManualGateNativeBlock.getDefinition(),
+    ByteBeatNativeBlock.getDefinition(),
     // AudioEngineService.getAudioOutputDefinition(), // Removed old definition
 ];
 

@@ -10,7 +10,7 @@ module.exports = {
   testMatch: ['**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'mjs'],
   transformIgnorePatterns: [
-    "/node_modules/" // Ignore all node_modules, relying on jest.doMock via setup file
+    "/node_modules/(?!tone/).*" // Allow transpiling 'tone'
   ],
   moduleNameMapper: {
     // '^@google/genai$': '<rootDir>/__mocks__/@google/genai.js', // Ensure this is commented out
