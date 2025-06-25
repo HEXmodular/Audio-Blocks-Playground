@@ -1,10 +1,10 @@
 import React from 'react';
-import type { CompactRendererProps } from '@interfaces/common';
+import type { CompactRendererProps } from '@interfaces/block';
 
 // Import the actual renderer components
-import OscillatorCompactRenderer from '../native-blocks/renderers/OscillatorCompactRenderer';
-import GainCompactRenderer from '../native-blocks/renderers/GainCompactRenderer';
-import ManualGateRenderer from '../native-blocks/renderers/ManualGateRenderer';
+import OscillatorCompactRenderer from '@blocks/native-blocks/renderers/OscillatorCompactRenderer';
+import GainCompactRenderer from '@blocks/native-blocks/renderers/GainCompactRenderer';
+import ManualGateRenderer from '@blocks/native-blocks/renderers/ManualGateRenderer';
 // Import DefaultCompactRenderer if you decide to register it, though current plan uses it as a direct fallback.
 // import DefaultCompactRenderer from '@components/block-renderers/DefaultCompactRenderer';
 

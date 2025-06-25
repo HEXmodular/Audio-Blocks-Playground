@@ -28,7 +28,7 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 // import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
 // import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
 // import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
-import { ByteBeatPlayer } from '@services/native-blocks/8bit/ByteBeatPlayer';
+import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 
 
 class AudioNodeManager {

@@ -35,7 +35,8 @@
       "@icons/*" :  ["./icons/*"],
       "@constants/*" :  ["./constants/*"],
       "@state/*" :  ["./state/*"],
-      "@hooks/*": ["./hooks/*"]
+      "@hooks/*": ["./hooks/*"],
+      "@blocks/*": ["./blocks/*"],
     }
   }
 }

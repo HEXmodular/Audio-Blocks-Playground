@@ -1,7 +1,7 @@
 import { BlockDefinition } from '@interfaces/block';
 
 // Import native block classes
-import { ByteBeatPlayer } from "@services/native-blocks/8bit/ByteBeatPlayer";
+import { ByteBeatPlayer } from "@blocks/8bit/ByteBeatPlayer";
 // import { OscillatorNativeBlock } from '../native-blocks/OscillatorNativeBlock';
 // import { BiquadFilterNativeBlock } from '../native-blocks/BiquadFilterNativeBlock';
 // import { DelayNativeBlock } from '../native-blocks/DelayNativeBlock';

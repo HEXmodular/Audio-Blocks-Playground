@@ -1,13 +1,13 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/common';
+import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/block';
 import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
 // import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // OLD
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
 import { RULE_110_BLOCK_DEFINITION } from '@constants/automata';
 // import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
-import { LyriaMasterBlock } from '@services/lyria-blocks/LyriaMaster'; // Added
+import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster'; // Added
 import { debounce } from '@utils/utils';
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
