@@ -23,12 +23,20 @@ class ByteBeatProcessor extends AudioWorkletProcessor {
   }
 
   static get parameterDescriptors() {
-    return []; // No AudioParams, formula is passed via processorOptions or port message
+    return [{ name: 'formula', defaultValue: "", automationRate: 'k-rate' }]; 
+    // No AudioParams, formula is passed via processorOptions or port message
   }
+
+  // static get parameterDescriptors() {
+  //   return [{ name: 'pan', defaultValue: 0, minValue: -1, maxValue: 1, automationRate: 'k-rate' }];
+  // }
 
   process(inputs, outputs, parameters) {
     const output = outputs[0];
     const outputChannel = output[0];
+    // this.formula = parameters.formula || this.formula;
+    // const formula = parameters.formula[0];
+    // console.log("[ByteBeatProcessor] Processing with formula:", parameters);
 
     // Determine the actual sample rate of the AudioContext
     // This is important if the AudioContext is not running at 8000Hz,

@@ -1,9 +1,9 @@
-import { CreatableNode } from "./CreatableNode";
+import { CreatableNode } from "../CreatableNode";
 import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo } from "@interfaces/common";
 import * as Tone from 'tone';
 
 interface ByteBeatOptions extends Tone.ToneAudioNodeOptions {
-  // formula: string;
+  sampleRate: number;
 }
 
 const WORKLET_NAME = 'byte-beat-processor';
@@ -15,6 +15,14 @@ class ByteBeatToneAudio extends Tone.ToneAudioNode<ByteBeatOptions> {
   readonly name: string = 'ByteBeatStringPlayer';
   readonly input: AudioWorkletNode;
   readonly output: AudioWorkletNode;
+
+  readonly sampleRate: Tone.Param<"number">
+
+  // для отправки иных типов данных отличных от чисел в AudioWorklet
+  setFormula(formula: string): this {
+    this.output.port.postMessage({ formula });
+    return this;
+  }
 
   constructor(options?: Partial<ByteBeatOptions>) {
     super(options);
@@ -28,8 +36,16 @@ class ByteBeatToneAudio extends Tone.ToneAudioNode<ByteBeatOptions> {
     this.input = this.output = worklet;
 
     // 3. Создаем Tone.Param из параметра нашего worklet'а
-    const formula = worklet.parameters.get('formula');
-    console.log("[ByteBeatToneAudioWorklet] Created AudioWorkletNode with formula parameter:", formula);
+    const sampleRate = worklet.parameters.get('sampleRate');
+
+    this.sampleRate = new Tone.Param({
+      context: this.context,
+      param: sampleRate,
+      value: options?.sampleRate ?? 8000,
+      units: "number"
+    });
+
+    console.log("[ByteBeatToneAudioWorklet] Created AudioWorkletNode with formula parameter:", this.sampleRate);
   }
 
   dispose(): this {
@@ -45,7 +61,7 @@ class ByteBeatToneAudio extends Tone.ToneAudioNode<ByteBeatOptions> {
 
 export class ByteBeatNativeBlock implements CreatableNode {
   public readonly name: string = "ByteBeat";
-  private workletNode?: Tone.ToneAudioNode;
+  private workletNode?: ByteBeatToneAudio;
   private static workletLoaded = false;
 
   constructor() {
@@ -67,11 +83,10 @@ export class ByteBeatNativeBlock implements CreatableNode {
           id: 'formula',
           name: 'Formula',
           type: 'text_input',
-          defaultValue: "(t >> 10) * 42",
-          description: 'The bytebeat formula (e.g., (t >> 10) * 42)'
+          defaultValue: "t&t>>8",
+          description: 'The bytebeat formula (e.g.,t&t>>8)'
         }
       ],
-      isCreatable: true, // Mark that this block uses the CreatableNode pattern
     };
   }
 
@@ -120,25 +135,17 @@ export class ByteBeatNativeBlock implements CreatableNode {
     nodeInfo: ManagedNativeNodeInfo, // Contains the AudioWorkletNode instance
     instance: BlockInstance // Contains the current parameters of the block instance
   ): void {
-    console.log("[ByteBeatNativeBlock] updateNodeParams called for instance:", instance);
     if (!this.workletNode || !instance.parameters) {
       console.warn("[ByteBeatNativeBlock] WorkletNode or parameters not available for update.", this.workletNode, instance.parameters);
       return;
     }
 
-    // const formulaParam = instance.parameters.find(p => p.id === 'formula');
-    // if (formulaParam && formulaParam.currentValue !== this.parameters.formula.currentValue) {
-    //   const newFormula = formulaParam.currentValue as string;
-    //   this.parameters.formula.currentValue = newFormula; // Update internal representation
-    //   this.workletNode.port.postMessage({ formula: newFormula });
-    //   console.log(`[ByteBeatNativeBlock] Updated formula to: ${newFormula} for instance ${instance.id}`);
-    // }
+    this.workletNode.setFormula(instance.parameters.find(p => p.id === 'formula')?.currentValue || "")
   }
 
   public dispose(): void {
     this.workletNode?.dispose();
     this.workletNode?.disconnect();
     this.workletNode = undefined;
-    // console.log(`[ByteBeatNativeBlock] Disposed instance ${this.id}`);
   }
 }

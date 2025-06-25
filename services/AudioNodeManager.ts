@@ -28,7 +28,7 @@ import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNat
 import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
 import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
 import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
-import { ByteBeatNativeBlock } from './native-blocks/ByteBeatNativeBlock';
+import { ByteBeatNativeBlock } from './native-blocks/8bit/ByteBeatNativeBlock';
 
 
 class AudioNodeManager {
