@@ -10,14 +10,14 @@
 // Fix: Import GenAIScale as a value
 import * as Tone from 'tone'; // Added Tone import
 import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig } from '@google/genai';
-import { PlaybackState } from '@interfaces/common'; // Import PlaybackState ENUM
+import { PlaybackState } from '@interfaces/lyria'; // Import PlaybackState ENUM
 import { decode, decodeAudioData } from '@utils/utils';
 import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utility
 
 const MODEL_NAME = 'lyria-realtime-exp';
 
 // Local Scale enum removed, will import from interfaces/common (which re-exports @google/genai's Scale)
-import { Scale } from '@interfaces/common'; // Import the centralized Scale
+import { Scale } from '@interfaces/lyria'; // Import the centralized Scale
 
 export enum MusicGenerationMode {
   QUALITY = "QUALITY",

@@ -4,7 +4,7 @@ import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import BlockDetailPanel from '@components/BlockDetailPanel'; // Import BlockDetailPanel
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
-import { BlockInstance } from '@interfaces/common';
+import { BlockInstance } from '@interfaces/block';
 
 const App: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { BlockInstance, BlockPort } from '@interfaces/common';
+import { BlockInstance, BlockPort } from '@interfaces/block';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';

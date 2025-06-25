@@ -1,11 +1,12 @@
 import * as Tone from 'tone'; // Added Tone import
 import {
-  BlockDefinition,
-  BlockParameter,
-  ManagedNativeNodeInfo,
+  
+  // ManagedNativeNodeInfo,
   Scale as AppScale,
-  BlockInstance, // Renamed from 'Scale' to 'AppScale' as in constants/lyria.ts
-} from '@interfaces/common';
+   // Renamed from 'Scale' to 'AppScale' as in constants/lyria.ts
+} from '@interfaces/lyria';
+
+import { BlockDefinition, BlockParameter,BlockInstance } from '@interfaces/block'; // Import BlockParameterBase for type safety
 import { CreatableNode } from '../native-blocks/CreatableNode';
 import { createParameterDefinitions } from '../../constants/constants'; // Adjusted path
 import { LiveMusicService, DEFAULT_MUSIC_GENERATION_CONFIG, type LiveMusicServiceCallbacks, PlaybackState, type WeightedPrompt, type LiveMusicGenerationConfig } from '@services/LiveMusicService';

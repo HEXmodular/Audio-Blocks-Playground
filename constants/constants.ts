@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameterDefinition, BlockParameter } from '@interfaces/common';
+import { BlockDefinition, BlockParameterDefinition, BlockParameter } from '@interfaces/block';
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 export const createParameterDefinitions = (

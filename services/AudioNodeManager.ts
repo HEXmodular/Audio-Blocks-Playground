@@ -8,27 +8,27 @@
 // services/AudioNodeManager.ts
 import * as Tone from 'tone'; // Added Tone import
 import AudioEngineService from './AudioEngineService'; // Corrected import
-import { BlockInstance, BlockDefinition } from '@interfaces/common';
+import { BlockInstance, BlockDefinition, BlockParameter } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
 import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 
 // Imports from NativeNodeManager
-import {
-    BlockParameter,
-    ManagedNativeNodeInfo,
-} from '@interfaces/common';
-import { CreatableNode } from '@services/native-blocks/CreatableNode';
-import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock';
-import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
-import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
-import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
-import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
-import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
-import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
-import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
-import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
-import { ByteBeatNativeBlock } from './native-blocks/8bit/ByteBeatNativeBlock';
+// import {
+    
+//     ManagedNativeNodeInfo,
+// } from '@interfaces/common';
+// import { CreatableNode } from '@services/native-blocks/CreatableNode';
+// import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock';
+// import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
+// import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
+// import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
+// import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
+// import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
+// import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
+// import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
+// import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
+import { ByteBeatPlayer } from '@services/native-blocks/8bit/ByteBeatPlayer';
 
 
 class AudioNodeManager {
@@ -72,18 +72,18 @@ class AudioNodeManager {
     // Methods from NativeNodeManager (to be integrated below)
 
     private initializeBlockHandlers(): void {
-        this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
-        this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
-        this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
-        this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
-        this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
-        this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
-        this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
-        this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
-        this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
-        this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
-        this.blockHandlers.set(ByteBeatNativeBlock.getDefinition().id, new ByteBeatNativeBlock());
+        // this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
+        // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
+        // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
+        // this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
+        // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
+        // this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
+        // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
+        this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, new ByteBeatPlayer());
 
 
     }

@@ -5,7 +5,7 @@ import ConnectionState from '@services/ConnectionState';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 import { debounce } from '@utils/utils';
-import { BlockInstance } from '@interfaces/common';
+import { BlockInstance } from '@interfaces/block';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { BlockInstance, BlockDefinition } from '@interfaces/common';
+import { BlockInstance, BlockDefinition } from '@interfaces/block';
 import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '@services/geminiService';
 import { LightBulbIcon } from '@icons/icons';
 // import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState

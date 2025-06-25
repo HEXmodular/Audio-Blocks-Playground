@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BlockInstance, BlockPort, Connection, BlockDefinition } from '@interfaces/common';
-import { BlockView } from '@interfaces/common';
+import type { BlockInstance, BlockPort,  BlockDefinition } from '@interfaces/block';
+import { BlockView } from '@interfaces/block';
+import type { Connection } from '@interfaces/connection';
 import CodeLogToggle from '@components/CodeLogToggle';
 import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';

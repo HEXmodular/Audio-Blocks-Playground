@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-import { BlockView } from '@interfaces/common';
+import { BlockView } from '@interfaces/block';
 import { CpuChipIcon, CodeIcon, CommandLineIcon, LightBulbIcon, LinkIcon, BeakerIcon } from '@icons/icons'; // Added BeakerIcon
 
 interface CodeLogToggleProps {

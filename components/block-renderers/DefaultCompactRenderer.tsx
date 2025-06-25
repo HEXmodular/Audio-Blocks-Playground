@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CompactRendererProps } from '@interfaces/common';
+import type { CompactRendererProps } from '@interfaces/block';
 
 // PARAM_DISPLAY_HEIGHT is not exported from BlockInstanceComponent.tsx.
 // Using its known value (20) directly as per subtask instructions.

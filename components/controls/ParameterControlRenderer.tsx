@@ -1,5 +1,5 @@
 import React from 'react';
-import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/common';
+import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/block';
 import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
 export interface RenderParameterControlProps {
