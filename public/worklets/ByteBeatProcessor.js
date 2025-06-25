@@ -3,7 +3,7 @@ class ByteBeatProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super(options);
     this.t = 0;
-    this.formula = options?.processorOptions?.formula || "0";
+    this.formula = "t&t>>8";
     this.sampleRate = 8000; // Fixed sample rate
 
     this.port.onmessage = (event) => {
@@ -18,7 +18,7 @@ class ByteBeatProcessor extends AudioWorkletProcessor {
         // console.warn("[ByteBeatProcessor] Sample rate changes are not fully supported yet through port messages for this version.");
       }
     };
-    console.log("[ByteBeatProcessor] Initialized with formula:", this.formula, "and sample rate:", currentSampleRate);
+    console.log("[ByteBeatProcessor] Initialized with formula:", this.formula, "and sample rate:", this.sampleRate);
     // currentSampleRate is defined by the AudioContext, but we operate at a fixed 8000Hz for bytebeat logic
   }
 

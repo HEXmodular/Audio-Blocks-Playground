@@ -6,11 +6,9 @@
  * Key functions include updating the graph with a new set of connections and disconnecting all existing connections, crucial for dynamic audio routing and responding to global audio state changes.
  */
 import * as Tone from 'tone'; // Import Tone
-import  BlockStateManager, {InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
+import BlockStateManager, { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 import ConnectionState from './ConnectionState';
 import AudioNodeManager from './AudioNodeManager'; // Changed from NativeNodeManager
-import AudioWorkletManager from './AudioWorkletManager';
-import LyriaServiceManager from './LyriaServiceManager';
 
 // Define a more generic type for connectable nodes/params
 type ConnectableSource = Tone.ToneAudioNode | AudioWorkletNode | AudioNode; // AudioNode for Lyria or unrefactored
@@ -47,9 +45,7 @@ class AudioGraphConnectorService {
     const blockInstances = BlockStateManager.getBlockInstances();
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
 
-    const localManagedWorkletNodes = AudioWorkletManager.getManagedNodesMap();
     const localManagedNativeNodes = AudioNodeManager.getManagedNodesMap(); // Changed from NativeNodeManager
-    const localManagedLyriaServices = LyriaServiceManager.getManagedServicesMap();
 
 
     const instanceUpdates: InstanceUpdatePayload[] = [];
@@ -90,87 +86,52 @@ class AudioGraphConnectorService {
       if (!outputPortDef || !inputPortDef) return;
 
       // для пробрасывания эмитера получателю
-      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {  
+      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
         const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
         const emitter = sourceManagedNodeInfo?.providerInstance?.getEmitter(conn.fromOutputId)
         if (emitter) {
-            BlockStateManager.updateBlockInstance(
-              toInstance.instanceId,   
-              {internalState: { emitters: { [conn.toInputId]: emitter } }}
-            );
-            
-            instanceUpdates.push({
-              instanceId: toInstance.instanceId,
-              updates: { internalState: { ...toInstance.internalState } }
-            });
+          BlockStateManager.updateBlockInstance(
+            toInstance.instanceId,
+            { internalState: { emitters: { [conn.toInputId]: emitter } } }
+          );
+
+          instanceUpdates.push({
+            instanceId: toInstance.instanceId,
+            updates: { internalState: { ...toInstance.internalState } }
+          });
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
         let sourceNode: ConnectableSource | undefined;
-        const fromWorkletInfo = localManagedWorkletNodes.get(fromInstance.instanceId);
         const fromNativeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
-        const fromLyriaInfo = localManagedLyriaServices.get(fromInstance.instanceId);
 
-        if (fromWorkletInfo) sourceNode = fromWorkletInfo.node;
-        else if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
-        else if (fromLyriaInfo) sourceNode = fromLyriaInfo.outputNode as ConnectableSource | undefined;
+        if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
 
-        // if (sourceNode) {
-          // console.log(`[AudioGraphConnectorService] Source node identified for ${fromInstance.instanceId}:`, sourceNode); // REMOVED
-        // } else {
-          // console.log(`[AudioGraphConnectorService] Source node NOT identified for ${fromInstance.instanceId}.`); // REMOVED
-          // return; // Keep return if sourceNode not found.
-        // }
         if (!sourceNode) return;
 
 
         let targetNode: ConnectableTargetNode | undefined | null;
         let targetParam: ConnectableParam | undefined;
 
-        const toWorkletInfo = localManagedWorkletNodes.get(toInstance.instanceId);
         const toNativeInfo = localManagedNativeNodes.get(toInstance.instanceId);
 
         if (inputPortDef.audioParamTarget) {
-          if (toWorkletInfo?.node?.parameters?.has(inputPortDef.audioParamTarget)) {
-            targetParam = toWorkletInfo.node.parameters.get(inputPortDef.audioParamTarget);
-            targetNode = toWorkletInfo.node;
-            // console.log(`[AudioGraphConnectorService] Target param identified for ${toInstance.instanceId}: ${inputPortDef.audioParamTarget} on WorkletNode`, targetParam); // REMOVED
-          } else if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
+          if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
             targetParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
             targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
             // console.log(`[AudioGraphConnectorService] Target param identified for ${toInstance.instanceId}: ${inputPortDef.audioParamTarget} on NativeNode`, targetParam); // REMOVED
           }
-        } else {
-          // REMOVED specific logging for AudioOutput toNativeInfo
-          // if (toInstance.definitionId === 'system-audio-output-tone-v1') {
-            // console.log(`[AudioGraphConnectorService] Attempting to find target for AudioOutput: ID ${toInstance.instanceId}`);
-            // console.log(`[AudioGraphConnectorService] Retrieved toNativeInfo for ${toInstance.instanceId}:`, JSON.stringify(toNativeInfo, (key, value) => typeof value === 'object' && value !== null && value.constructor && value.constructor.name !== 'Object' ? value.constructor.name : value, 2));
-            // if (toNativeInfo) {
-                // console.log(`[AudioGraphConnectorService] toNativeInfo.nodeForInputConnections for ${toInstance.instanceId}: ${toNativeInfo.nodeForInputConnections?.constructor?.name}`);
-            // }
-          // }
-          if (toWorkletInfo) {
-            targetNode = toWorkletInfo.node;
-            // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (WorkletNode):`, targetNode); // REMOVED
-          } else if (toNativeInfo) {
-            targetNode = toNativeInfo.nodeForInputConnections as ConnectableTargetNode | undefined;
-            // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
-          }
+        } else if (toNativeInfo) {
+          targetNode = toNativeInfo.nodeForInputConnections as ConnectableTargetNode | undefined;
+          // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
         }
 
-        // if (!targetNode && !targetParam) {
-          // console.log(`[AudioGraphConnectorService] Target node or param NOT identified for ${toInstance.instanceId}.`); // REMOVED
-          // return; // Keep return if no target
-        // }
         if (!targetNode && !targetParam) return;
 
         if (targetParam && !targetNode) {
           if (toNativeInfo) {
             targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
-          } else if (toWorkletInfo) {
-            targetNode = toWorkletInfo.node;
           }
-          // console.log(`[AudioGraphConnectorService] Target node resolved for param connection for ${toInstance.instanceId}:`, targetNode); // REMOVED
         }
 
 
@@ -203,7 +164,7 @@ class AudioGraphConnectorService {
             (oldConnInfo.sourceNode as any).disconnect(oldConnInfo.targetNode as any);
           }
         } catch (e) {
-            console.warn(`[AudioGraphConnectorService] Error disconnecting old connection ${oldConnId}:`, e);
+          console.warn(`[AudioGraphConnectorService] Error disconnecting old connection ${oldConnId}:`, e);
         }
       }
     });

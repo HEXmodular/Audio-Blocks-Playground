@@ -1,8 +1,4 @@
 import * as Tone from 'tone';
-// import AudioContextService from './AudioContextService';
-// import NativeNodeManager from './NativeNodeManager'; // Removed, functionality merged into AudioNodeManager
-import AudioWorkletManager from '@services/AudioWorkletManager';
-import LyriaServiceManager from '@services/LyriaServiceManager';
 import AudioGraphConnectorService from '@services/AudioGraphConnectorService';
 import AudioNodeManager from '@services/AudioNodeManager';
 
@@ -83,7 +79,6 @@ class AudioEngineService {
       selectedSinkId: this.selectedSinkId,
       audioContextState: this.context?.state ?? null,
       sampleRate: this.context?.sampleRate ?? null,
-      // isWorkletSystemReady: AudioWorkletManager.isAudioWorkletSystemReady,
     };
   }
 
@@ -213,7 +208,7 @@ class AudioEngineService {
   }
 
   public stopTransport(): void {
-    const currentTransportState = Tone.getTransport().state;
+    // const currentTransportState = Tone.getTransport().state;
     // console.log(`[AudioEngineService stopTransport] Attempting to stop transport. Current transport state: ${currentTransportState}`); // REMOVED
     try {
       Tone.getTransport().stop();

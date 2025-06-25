@@ -32,7 +32,7 @@ export class GlobalAudioStateSyncer {
       availableOutputDevices: [...this.audioEngineService.availableOutputDevices],
       selectedSinkId: this.audioEngineService.selectedSinkId,
       audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
-      isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+      // isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
 
     this.audioEngineService.subscribe(this.handleAudioEngineChange); // Assuming subscribe method exists on the instance
@@ -45,7 +45,7 @@ export class GlobalAudioStateSyncer {
       availableOutputDevices: [...newEngineState.availableOutputDevices],
       selectedSinkId: newEngineState.selectedSinkId,
       audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
-      isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
+      // isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
       this.currentState = newGlobalState;
       this.notifyListeners();

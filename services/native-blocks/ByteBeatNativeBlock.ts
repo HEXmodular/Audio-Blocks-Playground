@@ -1,41 +1,53 @@
 import { CreatableNode } from "./CreatableNode";
-import { BlockState } from "../../state/BlockStateManager";
-import { BlockDefinition, BlockInstance, BlockParameter, InputTerminal, ManagedNativeNodeInfo, OutputTerminal, Parameter, ParameterType } from "../../interfaces/common";
+import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo } from "@interfaces/common";
 import * as Tone from 'tone';
 
+interface ByteBeatOptions extends Tone.ToneAudioNodeOptions {
+  // formula: string;
+}
+
+const WORKLET_NAME = 'byte-beat-processor';
+const WORKLET_PATH = 'worklets/ByteBeatProcessor.js';
+
+class ByteBeatToneAudio extends Tone.ToneAudioNode<ByteBeatOptions> {
+  readonly name: string = 'ByteBeatStringPlayer';
+  readonly input: AudioWorkletNode;
+  readonly output: AudioWorkletNode;
+
+  constructor(options?: Partial<ByteBeatOptions>) {
+    super(options);
+
+    // 1. Создаем наш AudioWorkletNode, как и раньше
+    const worklet = this.context.createAudioWorkletNode(WORKLET_NAME, {
+      outputChannelCount: [2]
+    });
+
+    // 2. Назначаем его одновременно и входом, и выходом нашего компонента
+    this.input = this.output = worklet;
+
+    // 3. Создаем Tone.Param из параметра нашего worklet'а
+    const formula = worklet.parameters.get('formula');
+    console.log("[ByteBeatToneAudioWorklet] Created AudioWorkletNode with formula parameter:", formula);
+  }
+
+  dispose(): this {
+    super.dispose();
+    // Нативный узел будет отключен вызовом super.dispose(),
+    // так как он является и входом, и выходом.
+    // Но для надежности можно вызвать disconnect() явно.
+    this.input.disconnect();
+    return this;
+  }
+
+}
+
 export class ByteBeatNativeBlock implements CreatableNode {
-  public readonly id: string;
   public readonly name: string = "ByteBeat";
-  public readonly initialState: BlockState<{ formula: string }>;
-
-  public parameters: Record<string, Parameter<any>> = {};
-  public inputs: Record<string, InputTerminal> = {};
-  public outputs: Record<string, OutputTerminal> = {};
-
-  private workletNode?: AudioWorkletNode;
+  private workletNode?: Tone.ToneAudioNode;
   private static workletLoaded = false;
-  private static readonly WORKLET_NAME = 'byte-beat-processor';
-  private static readonly WORKLET_PATH = 'worklets/ByteBeatProcessor.js';
 
-  constructor(id: string, initialState?: BlockState<{ formula: string }>) {
-    this.id = id;
-    this.initialState = initialState || { formula: "(t >> 10) * 42" };
-    this._initializeParameters();
-    this._initializeOutputs();
-  }
-
-  private _initializeParameters() {
-    this.addParameter(
-      "formula",
-      "Formula",
-      this.initialState.formula,
-      ParameterType.STRING,
-      "The bytebeat formula (e.g., (t >> 10) * 42)"
-    );
-  }
-
-  private _initializeOutputs() {
-    this.addOutput("output", "Audio Output", "audio");
+  constructor() {
+    ByteBeatNativeBlock.loadWorklet()
   }
 
   public static getDefinition(): BlockDefinition {
@@ -52,7 +64,7 @@ export class ByteBeatNativeBlock implements CreatableNode {
         {
           id: 'formula',
           name: 'Formula',
-          type: ParameterType.STRING,
+          type: 'text_input',
           defaultValue: "(t >> 10) * 42",
           description: 'The bytebeat formula (e.g., (t >> 10) * 42)'
         }
@@ -61,72 +73,30 @@ export class ByteBeatNativeBlock implements CreatableNode {
     };
   }
 
-  // Helper to add an output terminal
-  protected addOutput(id: string, name: string, type: OutputTerminal['type']) {
-    this.outputs[id] = { id, name, type, connectedTo: [] };
-  }
-
-  // Helper to add a parameter
-  protected addParameter(id: string, name: string, defaultValue: any, type: ParameterType, description?: string) {
-    this.parameters[id] = {
-      id,
-      name,
-      type,
-      currentValue: defaultValue,
-      defaultValue,
-      description: description || name,
-    };
-  }
 
   public static async loadWorklet() {
-    // Ensure Tone.start() has been called, or context is available.
-    // This might be handled globally, or we might need a check here.
-    // For now, assume Tone.context is ready or will be by the time this is called.
-    if (Tone.context.state !== "running") {
-      // console.warn("[ByteBeatNativeBlock] Tone.context not running. Attempting to start.");
-      // Potentially, await Tone.start(); but this should ideally be managed globally.
-      // If Tone.start() is not called, addModule might fail or the context might not be active.
-      // For now, we'll proceed, but this is a common integration point to check.
-    }
     if (!ByteBeatNativeBlock.workletLoaded) {
       try {
         // Use Tone.context to add the module
-        await Tone.context.audioWorklet.addModule(ByteBeatNativeBlock.WORKLET_PATH);
+        await Tone.getContext().addAudioWorkletModule(WORKLET_PATH);
         ByteBeatNativeBlock.workletLoaded = true;
-        console.log(`[ByteBeatNativeBlock] ${ByteBeatNativeBlock.WORKLET_NAME} worklet loaded successfully via Tone.context.`);
+        console.log(`[ByteBeatNativeBlock] worklet loaded successfully via Tone.context.`);
       } catch (e) {
-        console.error(`[ByteBeatNativeBlock] Error loading ${ByteBeatNativeBlock.WORKLET_NAME} worklet via Tone.context:`, e);
+        console.error(`[ByteBeatNativeBlock] Error loading ${WORKLET_NAME} worklet via Tone.context:`, e);
         throw e; // Re-throw to allow callers to handle
       }
     }
   }
 
   // Implementation for CreatableNode interface
-  async createNode(
+  createNode(
     instanceId: string, // This 'id' is the instanceId of the block
     definition: BlockDefinition, // The static definition of this block
     initialParams: BlockParameter[] // The initial parameters for this specific instance
-  ): Promise<ManagedNativeNodeInfo> {
-    // Get the audio context from Tone.js
-    const audioContext = Tone.context;
-    await ByteBeatNativeBlock.loadWorklet(); // No need to pass audioContext if it's always Tone.context
-
-    const formulaParam = initialParams.find(p => p.id === 'formula');
-    const initialFormula = formulaParam ? formulaParam.currentValue as string : this.parameters.formula.defaultValue as string;
-
-    // Create the AudioWorkletNode using the Tone.js audio context
-    this.workletNode = new AudioWorkletNode(audioContext as unknown as AudioContext, ByteBeatNativeBlock.WORKLET_NAME, {
-      processorOptions: {
-        formula: initialFormula,
-      },
-      outputChannelCount: [1],
-    });
-
-    // Update the instance's parameter based on initialParams
-    if (formulaParam) {
-        this.parameters.formula.currentValue = initialFormula;
+  ): ManagedNativeNodeInfo {
+    if (!this.workletNode) {
+      this.workletNode = new ByteBeatToneAudio();
     }
-
 
     // The ByteBeatNode itself is the main output node
     return {
@@ -148,44 +118,25 @@ export class ByteBeatNativeBlock implements CreatableNode {
     nodeInfo: ManagedNativeNodeInfo, // Contains the AudioWorkletNode instance
     instance: BlockInstance // Contains the current parameters of the block instance
   ): void {
+    console.log("[ByteBeatNativeBlock] updateNodeParams called for instance:", instance);
     if (!this.workletNode || !instance.parameters) {
-      console.warn("[ByteBeatNativeBlock] WorkletNode or parameters not available for update.");
+      console.warn("[ByteBeatNativeBlock] WorkletNode or parameters not available for update.", this.workletNode, instance.parameters);
       return;
     }
 
-    const formulaParam = instance.parameters.find(p => p.id === 'formula');
-    if (formulaParam && formulaParam.currentValue !== this.parameters.formula.currentValue) {
-      const newFormula = formulaParam.currentValue as string;
-      this.parameters.formula.currentValue = newFormula; // Update internal representation
-      this.workletNode.port.postMessage({ formula: newFormula });
-      console.log(`[ByteBeatNativeBlock] Updated formula to: ${newFormula} for instance ${instance.id}`);
-    }
-  }
-
-  // This is called by BlockStateManager when a parameter is changed via UI or programmatically
-  public onParameterChange(
-    parameter: Parameter<any>, // The specific parameter object that changed
-    newValue: any, // The new value of the parameter
-    blockState: BlockState<{ formula: string }> // The overall state of this block instance
-  ): void {
-    // Update the internal state of this block instance
-    if (this.parameters[parameter.id]) {
-        this.parameters[parameter.id].currentValue = newValue;
-    }
-
-    // If the workletNode exists, send the update to it
-    // This check is important because onParameterChange might be called during initialization
-    // or before the AudioWorkletNode is ready.
-    if (this.workletNode && parameter.id === "formula") {
-      this.workletNode.port.postMessage({ formula: newValue as string });
-    }
+    // const formulaParam = instance.parameters.find(p => p.id === 'formula');
+    // if (formulaParam && formulaParam.currentValue !== this.parameters.formula.currentValue) {
+    //   const newFormula = formulaParam.currentValue as string;
+    //   this.parameters.formula.currentValue = newFormula; // Update internal representation
+    //   this.workletNode.port.postMessage({ formula: newFormula });
+    //   console.log(`[ByteBeatNativeBlock] Updated formula to: ${newFormula} for instance ${instance.id}`);
+    // }
   }
 
   public dispose(): void {
-    this.workletNode?.port.close();
+    this.workletNode?.dispose();
     this.workletNode?.disconnect();
     this.workletNode = undefined;
-    // No super.dispose() as we are not extending a class with a dispose method.
-    console.log(`[ByteBeatNativeBlock] Disposed instance ${this.id}`);
+    // console.log(`[ByteBeatNativeBlock] Disposed instance ${this.id}`);
   }
 }
