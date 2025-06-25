@@ -9,6 +9,8 @@ interface ByteBeatOptions extends Tone.ToneAudioNodeOptions {
 const WORKLET_NAME = 'byte-beat-processor';
 const WORKLET_PATH = 'worklets/ByteBeatProcessor.js';
 
+// This class extends Tone.ToneAudioNode to create a custom audio node
+// that uses an AudioWorklet to process bytebeat audio.
 class ByteBeatToneAudio extends Tone.ToneAudioNode<ByteBeatOptions> {
   readonly name: string = 'ByteBeatStringPlayer';
   readonly input: AudioWorkletNode;
