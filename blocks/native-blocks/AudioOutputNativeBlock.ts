@@ -50,8 +50,6 @@ export class AudioOutputNativeBlock extends Tone.ToneAudioNode<AudioOutputNodeOp
 
         }
 
-        window.Tone = Tone;
-
         // const initialParams = options.initialParams || [];
         // const volumeParam = initialParams.find(p => p.id === 'volume');
         // const initialVolume = volumeParam ? Number(volumeParam.currentValue) : 0.7;
@@ -60,7 +58,7 @@ export class AudioOutputNativeBlock extends Tone.ToneAudioNode<AudioOutputNodeOp
         internalGain.connect(Tone.getDestination());
         this.input = internalGain;//Tone.getDestination(); // Assign internal gain to the input proxy
         internalGain.context.debug = true; // Enable debug mode for the internal gain
-        // console.log(`[AudioOutputNativeBlock constructor] Created and connected internal Tone.Gain. Initial volume: ${initialVolume}`);
+
     }
 
     // This method will be adapted from the old updateNodeParams

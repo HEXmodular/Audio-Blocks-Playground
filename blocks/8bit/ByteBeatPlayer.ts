@@ -113,15 +113,18 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
 
   // Public method for AudioNodeManager to update this node instance from block data
   public updateFromBlockInstance(instance: BlockInstance): void {
-    const formulaParam = instance.parameters.find(p => p.id === 'formula');
-    let formulaToSet = this.internalDefinition.parameters.find(p => p.id === 'formula')?.defaultValue as string; // Fallback to definition's default
-
-    if (formulaParam && typeof formulaParam.currentValue === 'string' && formulaParam.currentValue.trim() !== "") {
-      formulaToSet = formulaParam.currentValue;
-    } else {
-      console.warn(`[ByteBeatPlayer updateFromBlockInstance] Invalid or empty formula for instance ${instance.instanceId}. Using default: "${formulaToSet}".`);
+    if (!instance?.parameters) {
+      return;
     }
-    this.setFormula(formulaToSet);
+    // const formulaParam = instance.parameters.find(p => p.id === 'formula');
+    // let formulaToSet = this.internalDefinition.parameters.find(p => p.id === 'formula')?.defaultValue as string; // Fallback to definition's default
+
+    // if (formulaParam && typeof formulaParam.currentValue === 'string' && formulaParam.currentValue.trim() !== "") {
+    //   formulaToSet = formulaParam.currentValue;
+    // } else {
+    //   console.warn(`[ByteBeatPlayer updateFromBlockInstance] Invalid or empty formula for instance ${instance.instanceId}. Using default: "${formulaToSet}".`);
+    // }
+    // this.setFormula(formulaToSet);
   }
 
   // dispose method is inherited from Tone.ToneAudioNode and overridden if needed (already done above)

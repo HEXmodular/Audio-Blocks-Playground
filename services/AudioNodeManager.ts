@@ -15,7 +15,7 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 
 // Imports from NativeNodeManager
 // import {
-    
+
 //     ManagedNativeNodeInfo,
 // } from '@interfaces/common';
 // import { CreatableNode } from '@services/native-blocks/CreatableNode';
@@ -103,7 +103,26 @@ class AudioNodeManager {
         }
 
         try {
-            const nodeInfo = new handler(initialParams);
+            const classRef = handler
+            const instance = new classRef(initialParams);
+
+            // все данные по ноде есть тут
+            const nodeInfo: ManagedAudioOutputNodeInfo = {
+                definition: classRef.getDefinition(),
+                instanceId,
+                // toneGain,
+                node: instance.input,
+                nodeForInputConnections: instance.input,
+                nodeForOutputConnections: instance.output,
+                mainProcessingNode: instance.input,
+                // paramTargetsForCv: specificParamTargetsForCv,
+                // internalGainNode: toneGain as unknown as Tone.Gain,
+                instance,
+
+                internalState: {},
+            };
+
+
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
             this.onStateChangeForReRender();
             return true;
@@ -254,9 +273,9 @@ class AudioNodeManager {
                 // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
                 if (!info) return;
 
-                const handler = this.managedNativeNodesRef.get(info.definition?.id);
-                if (handler) {
-                    handler.updateFromBlockInstance(instance);
+                const handler = this.managedNativeNodesRef.get(info.instanceId)
+                if (handler?.instance) {
+                    handler.instance.updateFromBlockInstance(instance);
                 } else {
                     console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition?.id}'.`);
                 }
