@@ -28,7 +28,7 @@ class AudioGraphConnectorService {
 
   private constructor() {
     this.activeWebAudioConnections = new Map<string, ActiveWebAudioConnection>();
-    console.log('[🔌 AudioGraphConnectorService] Initialized');
+    console.log('[🕸 AudioGraphConnectorService] Initialized');
   }
 
   public static getInstance(): AudioGraphConnectorService {
@@ -138,7 +138,7 @@ class AudioGraphConnectorService {
         if (sourceNode && targetParam && targetNode) {
           try {
             (sourceNode as any).connect(targetParam as any);
-            // console.log(`[AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target param ${inputPortDef.audioParamTarget} of ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
+            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target param ${inputPortDef.audioParamTarget} of ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
             newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode, targetParam: targetParam });
           } catch (e) {
             console.error(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
@@ -146,7 +146,7 @@ class AudioGraphConnectorService {
         } else if (sourceNode && targetNode) {
           try {
             (sourceNode as any).connect(targetNode as any);
-            // console.log(`[AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
+            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
             newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
           } catch (e) {
             console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
@@ -164,7 +164,7 @@ class AudioGraphConnectorService {
             (oldConnInfo.sourceNode as any).disconnect(oldConnInfo.targetNode as any);
           }
         } catch (e) {
-          console.warn(`[AudioGraphConnectorService] Error disconnecting old connection ${oldConnId}:`, e);
+          console.warn(`[🕸 AudioGraphConnectorService] Error disconnecting old connection ${oldConnId}:`, e);
         }
       }
     });
@@ -186,7 +186,7 @@ class AudioGraphConnectorService {
           // console.log(`[AudioGraphConnectorService] Disconnected source from target node for ${connId}`); // REMOVED
         }
       } catch (e) {
-        console.warn(`[AudioGraphConnectorService] Error during disconnection of ${connId}:`, e);
+        console.warn(`[🕸 AudioGraphConnectorService] Error during disconnection of ${connId}:`, e);
       }
     });
     this.activeWebAudioConnections.clear();
