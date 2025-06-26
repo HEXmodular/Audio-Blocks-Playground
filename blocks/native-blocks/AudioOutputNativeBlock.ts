@@ -49,7 +49,6 @@ export class AudioOutputNativeBlock extends Tone.ToneAudioNode<AudioOutputNodeOp
             console.warn(`[AudioOutputNativeBlock constructor] Tone.js context is not running. Audio Output may not function correctly.`);
 
         }
-
         // const initialParams = options.initialParams || [];
         // const volumeParam = initialParams.find(p => p.id === 'volume');
         // const initialVolume = volumeParam ? Number(volumeParam.currentValue) : 0.7;
@@ -57,7 +56,6 @@ export class AudioOutputNativeBlock extends Tone.ToneAudioNode<AudioOutputNodeOp
         const internalGain = new Tone.Gain(1)
         internalGain.connect(Tone.getDestination());
         this.input = internalGain;//Tone.getDestination(); // Assign internal gain to the input proxy
-        internalGain.context.debug = true; // Enable debug mode for the internal gain
 
     }
 

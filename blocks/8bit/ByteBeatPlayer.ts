@@ -28,7 +28,12 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
     //   throw new Error("[ByteBeatPlayer] Definition is required in options.");
     // }
     // this.internalDefinition = options.definition;
-    this.init();
+    const internalGain = new Tone.Gain(1)
+    // const internalGain = new Tone.Oscillator(440, "sine"); // Using an oscillator as a placeholder for the internal gain
+    // internalGain.start()
+    this.input = this.output = internalGain;
+
+    this.init(internalGain);
   }
 
   private async init() {
@@ -41,13 +46,11 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
     const workletNode = Tone.getContext().createAudioWorkletNode(WORKLET_NAME, {
       outputChannelCount: [2],
     });
-    this.input = this.output = workletNode;
-
-    console.log("[ByteBeatPlayer] AudioWorkletNode instance created.");
+    workletNode.connect(this.output.input); // Connect internal gain to the worklet node    
 
     // Set initial formula from parameters passed in options
-    const initialFormulaParam = ByteBeatPlayer.getDefinition().parameters.find(p => p.id === 'formula')?.defaultValue;
-    this.setFormula(initialFormulaParam);
+    // const initialFormulaParam = ByteBeatPlayer.getDefinition().parameters.find(p => p.id === 'formula')?.defaultValue;
+    // this.setFormula(initialFormulaParam);
     // console.log(`[ByteBeatPlayer] Initial formula set to: "${initialFormulaParam}"`);
   }
 

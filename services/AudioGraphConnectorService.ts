@@ -46,6 +46,7 @@ class AudioGraphConnectorService {
     const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
 
     const localManagedNativeNodes = AudioNodeManager.getManagedNodesMap(); // Changed from NativeNodeManager
+    // console.log("[🕸 AudioGraphConnectorService] Updating connections with local managed nodes:", localManagedNativeNodes);
 
 
     const instanceUpdates: InstanceUpdatePayload[] = [];
