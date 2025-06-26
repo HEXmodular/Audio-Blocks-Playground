@@ -1,0 +1,110 @@
+// создает ноды из списка классов блоков
+import * as Tone from 'tone'; // Added Tone import
+import { BlockInstance, NativeBlock } from '@interfaces/block';
+
+import BlockStateManager from '@state/BlockStateManager';
+import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
+// import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
+// import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
+// import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
+// import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
+// import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
+// import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
+// import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
+// import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
+import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
+
+
+class AudioNodeCreator {
+    private static instance: AudioNodeCreator;
+
+    private blockHandlers: Map<string, typeof Tone.ToneAudioNode & NativeBlock>; // Map of block handlers keyed by definition ID
+
+    private constructor() {
+        this.blockHandlers = new Map();
+        this.initializeBlockHandlers(); // Call initialization for native block handlers
+    }
+
+    // Static method to get the singleton instance
+    public static getInstance(): AudioNodeCreator {
+        if (!AudioNodeCreator.instance) {
+            AudioNodeCreator.instance = new AudioNodeCreator();
+        }
+        return AudioNodeCreator.instance;
+    }
+
+    private initializeBlockHandlers(): void {
+        // this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
+        // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
+        // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
+        // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
+        this.blockHandlers.set(AudioOutputBlock.getDefinition().id, AudioOutputBlock);
+        // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
+        // this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
+        // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
+        this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, ByteBeatPlayer);
+    }
+
+    // зачем нужен этот прокси?
+    public updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
+        BlockStateManager.updateBlockInstance(instanceId, updates);
+    }
+
+    // создает экземпляр класса
+    public setupManagedNativeNode(
+        instance: BlockInstance, // Use BlockInstance directly
+    ): Tone.ToneAudioNode & NativeBlock | null {
+        // console.log(`[AudioNodeCreator/Native Setup] Setting up Tone.js based node for '${definition.name}' (ID: ${instanceId})`);
+        try {
+            const classRef = this.blockHandlers.get(instance.definition.id) as any //as ({constructor: new (params: BlockParameter[]) => Tone.ToneAudioNode});
+            // initialParams
+            const instanceRef = new classRef() as Tone.ToneAudioNode & NativeBlock; // Create an instance of the Tone.js based node class
+            return instanceRef;
+        } catch (e) {
+            console.error(`Failed to construct Tone.js based node: ${(e as Error).message}`);
+            debugger
+            return null;
+        }
+    }
+
+    // генерирует тонну говна
+    private addLog(instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info') {
+        BlockStateManager.addLogToBlockInstance(instanceId, message);
+    }
+
+    public async processAudioNodeSetupAndTeardown(
+    ) {
+        const blockInstances = BlockStateManager.getBlockInstances() // получение сохраненных блоков с их уникальным идентификатором instanceId
+
+        if (blockInstances.length > 0) {
+            console.log('[AudioNodeCreator processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
+        }
+
+        // для передачи созданного экземпляра в менеджер блока для хранения
+        for (const instance of blockInstances) {
+            if (!instance.instance) {
+                // Node needs setup.
+                const instanceRef = this.setupManagedNativeNode(instance);
+                if (instanceRef) {
+                    this.updateInstance(instance.instanceId, currentInst => ({
+                        ...currentInst,
+                        instance: instanceRef,
+                        // internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }
+                    }));
+                    this.addLog(instance.instanceId, "Native node setup successful.");
+                    console.log(instance.instanceId, "Native node setup successful.");
+                } else {
+                    debugger
+                    this.addLog(instance.instanceId, "Native node setup failed.", "error");
+                    console.error(instance.instanceId, "Native node setup failed.", "error");
+                    // this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
+                }
+            }
+        }
+    }
+}
+
+export default AudioNodeCreator.getInstance();

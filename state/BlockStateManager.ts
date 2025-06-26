@@ -1,3 +1,5 @@
+// занимается тем, что загружает и сохраняет блоки в localStorage, а также хранит ссылки на них
+
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@interfaces/block';
@@ -85,7 +87,17 @@ export class BlockStateManager {
 
   public init(onDefinitionsChange: (definitions: BlockDefinition[]) => void, onInstancesChange: (instances: BlockInstance[]) => void): void {
     this._onDefinitionsChangeCallback = onDefinitionsChange;
-    this._onInstancesChangeCallback = onInstancesChange;
+    this._onInstancesChangeCallback = (instances: BlockInstance[]) => {
+
+      instances.forEach(instance => {
+        const definition = instance.definition;
+        if (!definition || !instance.instance) {
+          console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${definition?.id}'.`);
+          return;
+        }
+        instance.instance.updateFromBlockInstance(instance);
+      });
+    };
     if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
   }
@@ -138,11 +150,11 @@ export class BlockStateManager {
                 }
               }
               const paramDef: BlockParameter = {
-                id: p.id, 
-                name: p.name, 
-                type: p.type, 
+                id: p.id,
+                name: p.name,
+                type: p.type,
                 defaultValue: typedDefaultValue,
-                options: p.options, 
+                options: p.options,
                 // min: p.min, max: p.max, step: p.step, 
                 toneParam: p.toneParam,
                 description: p.description,
@@ -158,7 +170,7 @@ export class BlockStateManager {
         mergedDefinitions = Array.from(definitionsById.values());
       }
     } catch (error) {
-      console.error(`BlockStateManager: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
+      console.error(`[👨🏿‍💼 BlockStateManager]: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
       mergedDefinitions = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
       mergedDefinitions = mergedDefinitions.map(def => ({
         ...def,
@@ -190,7 +202,7 @@ export class BlockStateManager {
         rendererComponent = compactRendererRegistry[def.compactRendererId];
         // console.log(`[BlockStateManager]`, {rendererComponent});
         if (!rendererComponent) {
-          console.warn(`BlockStateManager: Compact renderer for ID '${def.compactRendererId}' not found in registry for definition '${def.id}'.`);
+          console.warn(`[👨🏿‍💼 BlockStateManager]: Compact renderer for ID '${def.compactRendererId}' not found in registry for definition '${def.id}'.`);
         }
       }
 
@@ -215,7 +227,7 @@ export class BlockStateManager {
       const saved = localStorage.getItem('audioBlocks_instances');
       rawInstances = saved ? JSON.parse(saved) : [];
     } catch (error) {
-      console.error(`BlockStateManager: Failed to load raw block instances from localStorage, starting with empty set: ${(error as Error).message}`);
+      console.error(`[👨🏿‍💼 BlockStateManager]: Failed to load raw block instances from localStorage, starting with empty set: ${(error as Error).message}`);
     }
 
     return rawInstances.map((loadedInst: any) => {
@@ -262,7 +274,7 @@ export class BlockStateManager {
         });
       } else {
         instanceParams = loadedInst?.parameters || [];
-        console.warn(`BlockStateManager: Definition for instance ${loadedInst?.name} (ID: ${loadedInst?.definitionId}) not found during instance processing. Parameters might be incorrect.`);
+        console.warn(`[👨🏿‍💼 BlockStateManager]: Definition for instance ${loadedInst?.name} (ID: ${loadedInst?.definitionId}) not found during instance processing. Parameters might be incorrect.`);
       }
 
       if (!loadedInst) {
@@ -295,7 +307,7 @@ export class BlockStateManager {
       }));
       localStorage.setItem('audioBlocks_definitions', JSON.stringify(definitionsToSave));
     } catch (error) {
-      console.error(`BlockStateManager: Failed to save block definitions to localStorage: ${(error as Error).message}`);
+      console.error(`[👨🏿‍💼 BlockStateManager]: Failed to save block definitions to localStorage: ${(error as Error).message}`);
     }
   }
 
@@ -304,7 +316,7 @@ export class BlockStateManager {
     try {
       localStorage.setItem('audioBlocks_instances', JSON.stringify(this._blockInstances));
     } catch (error) {
-      console.error(`BlockStateManager: Failed to save block instances to localStorage: ${(error as Error).message}`);
+      console.error(`[👨🏿‍💼 BlockStateManager]: Failed to save block instances to localStorage: ${(error as Error).message}`);
     }
   }
 
@@ -342,7 +354,7 @@ export class BlockStateManager {
   public addBlockDefinition(definition: BlockDefinition): void {
     const existingIndex = this._blockDefinitions.findIndex(d => d.id === definition.id);
     if (existingIndex > -1) {
-      console.info(`BlockStateManager: Definition with ID ${definition.id} already exists. Updating it.`);
+      console.info(`[👨🏿‍💼 BlockStateManager]: Definition with ID ${definition.id} already exists. Updating it.`);
       this._blockDefinitions = [
         ...this._blockDefinitions.slice(0, existingIndex),
         definition,

@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import AudioGraphConnectorService from '@services/AudioGraphConnectorService';
-import AudioNodeManager from '@services/AudioNodeManager';
+import AudioNodeCreator from '@services/AudioNodeCreator';
 
 import { AudioEngineState, OutputDevice } from '@interfaces/common';
 
@@ -73,12 +73,12 @@ class AudioEngineService {
   // --- State Management and Subscription ---
   public get audioEngineState(): AudioEngineState {
     return {
-      isAudioGloballyEnabled: this.isAudioGloballyEnabled,
+      // isAudioGloballyEnabled: this.isAudioGloballyEnabled,
       audioInitializationError: null, // TODO: Populate this if/when an error occurs
       availableOutputDevices: this.availableOutputDevices,
       selectedSinkId: this.selectedSinkId,
-      audioContextState: this.context?.state ?? null,
-      sampleRate: this.context?.sampleRate ?? null,
+      // audioContextState: this.context?.state ?? null,
+      // sampleRate: this.context?.sampleRate ?? null,
     };
   }
 
@@ -303,7 +303,7 @@ class AudioEngineService {
 
   public setupNodes = async () => {
     try {
-      await AudioNodeManager.processAudioNodeSetupAndTeardown();
+      await AudioNodeCreator.processAudioNodeSetupAndTeardown();
       this.updateAudioGraphConnections(); // Call after nodes are processed
     } catch (error) {
       console.error("Error during processAudioNodeSetupAndTeardown or subsequent connection update:", error);

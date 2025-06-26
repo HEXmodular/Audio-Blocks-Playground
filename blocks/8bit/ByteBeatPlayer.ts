@@ -77,7 +77,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
     return this;
   }
 
-  // Static methods and public instance methods for lifecycle management by AudioNodeManager
+  // Static methods and public instance methods for lifecycle management by BlockStateManager
   public static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
   }
@@ -97,7 +97,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
     }
   }
 
-  // Public method for AudioNodeManager to update this node instance from block data
+  // Public method for BlockStateManager to update this node instance from block data
   public updateFromBlockInstance(instance: BlockInstance): void {
     console.log(`[ByteBeatPlayer updateFromBlockInstance] Updating instance ${instance.instanceId} with parameters:`, instance);
     if (!instance?.parameters) {

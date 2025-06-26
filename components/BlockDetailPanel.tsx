@@ -13,7 +13,7 @@ import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import  ConnectionState  from '@services/ConnectionState';
-import AudioNodeManager from '@services/AudioNodeManager'; // Changed from NativeNodeManager
+import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
@@ -216,21 +216,21 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
     let oscilloscopeUI = null;
     if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
       // Assuming nativeNodeManager is a property on AudioEngineServiceInstance, or accessed differently
-      const analyserNode = AudioNodeManager.getAnalyserNodeForInstance(blockInstance.instanceId); // Changed from NativeNodeManager
+      // const analyserNode = AudioNodeCreator.getAnalyserNodeForInstance(blockInstance.instanceId); // Changed from NativeNodeManager
       console.log("BlockDetailPanel: AnalyserNode for OscilloscopeNativeBlock", analyserNode);
       const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
       const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 
-      if (analyserNode) {
-        oscilloscopeUI = (
-          <div className="my-3 p-2 bg-gray-700/30 rounded-md">
-            <h4 className="text-xs font-medium text-gray-400 mb-1.5">Waveform</h4>
-            <OscilloscopeDisplay analyserNode={analyserNode} fftSize={fftSizeValue} width={350} height={120}/>
-          </div>
-        );
-      } else {
-        oscilloscopeUI = <p className="text-xs text-amber-400 my-2">Oscilloscope AnalyserNode not available. Is audio running?</p>;
-      }
+      // if (analyserNode) {
+      //   oscilloscopeUI = (
+      //     <div className="my-3 p-2 bg-gray-700/30 rounded-md">
+      //       <h4 className="text-xs font-medium text-gray-400 mb-1.5">Waveform</h4>
+      //       <OscilloscopeDisplay analyserNode={analyserNode} fftSize={fftSizeValue} width={350} height={120}/>
+      //     </div>
+      //   );
+      // } else {
+      //   oscilloscopeUI = <p className="text-xs text-amber-400 my-2">Oscilloscope AnalyserNode not available. Is audio running?</p>;
+      // }
     }
     
     let lyriaControlsUI = null;

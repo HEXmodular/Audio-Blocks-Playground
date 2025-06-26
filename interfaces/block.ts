@@ -92,4 +92,5 @@ export interface NativeBlock {
     output: Tone.ToneAudioNode | undefined;
     // constructor: (options?: any) => void;
     updateFromBlockInstance: (instance: BlockInstance) => void;
+    getEmitter?: (outputId: string) =>Tone.Emitter | undefined
 }

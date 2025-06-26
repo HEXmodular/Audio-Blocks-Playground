@@ -8,7 +8,6 @@
 import * as Tone from 'tone'; // Import Tone
 import BlockStateManager, { InstanceUpdatePayload } from '@state/BlockStateManager'; // Added import
 import ConnectionState from './ConnectionState';
-import AudioNodeManager from './AudioNodeManager'; // Changed from NativeNodeManager
 
 // Define a more generic type for connectable nodes/params
 type ConnectableSource = Tone.ToneAudioNode | AudioWorkletNode | AudioNode; // AudioNode for Lyria or unrefactored
@@ -44,7 +43,7 @@ class AudioGraphConnectorService {
     const connections = ConnectionState.getConnections();
     const blockInstances = BlockStateManager.getBlockInstances();
 
-    const localManagedNativeNodes = AudioNodeManager.getManagedNodesMap(); // Changed from NativeNodeManager
+    // const localManagedNativeNodes =  AudioNodeCreator.getManagedNodesMap(); // Changed from NativeNodeManager
     // console.log("[🕸 AudioGraphConnectorService] Updating connections with local managed nodes:", localManagedNativeNodes);
 
 
@@ -87,12 +86,11 @@ class AudioGraphConnectorService {
 
       // для пробрасывания эмитера получателю
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
-        const sourceManagedNodeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
-        const emitter = sourceManagedNodeInfo?.providerInstance?.getEmitter(conn.fromOutputId)
+        const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
         if (emitter) {
           BlockStateManager.updateBlockInstance(
             toInstance.instanceId,
-            {emitters: { [conn.toInputId]: emitter }}
+            { emitters: { [conn.toInputId]: emitter } }
           );
 
           // instanceUpdates.push({
@@ -102,37 +100,18 @@ class AudioGraphConnectorService {
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
-        let sourceNode: ConnectableSource | undefined;
-        const fromNativeInfo = localManagedNativeNodes.get(fromInstance.instanceId);
-
-        if (fromNativeInfo) sourceNode = fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
+        const sourceNode = fromInstance.instance?.output as ConnectableSource | undefined;//fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
 
         if (!sourceNode) return;
 
 
-        let targetNode: ConnectableTargetNode | undefined | null;
         let targetParam: ConnectableParam | undefined;
 
-        const toNativeInfo = localManagedNativeNodes.get(toInstance.instanceId);
+        const targetNode = toInstance.instance?.input as ConnectableTargetNode | undefined;
+        // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
 
-        if (inputPortDef.audioParamTarget) {
-          if (toNativeInfo?.paramTargetsForCv?.has(inputPortDef.audioParamTarget)) {
-            targetParam = toNativeInfo.paramTargetsForCv.get(inputPortDef.audioParamTarget);
-            targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
-            // console.log(`[AudioGraphConnectorService] Target param identified for ${toInstance.instanceId}: ${inputPortDef.audioParamTarget} on NativeNode`, targetParam); // REMOVED
-          }
-        } else if (toNativeInfo) {
-          targetNode = toNativeInfo.nodeForInputConnections as ConnectableTargetNode | undefined;
-          // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
-        }
 
         if (!targetNode && !targetParam) return;
-
-        if (targetParam && !targetNode) {
-          if (toNativeInfo) {
-            targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
-          }
-        }
 
         if (sourceNode && targetParam && targetNode) {
           try {

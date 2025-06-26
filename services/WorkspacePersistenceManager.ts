@@ -71,7 +71,7 @@ class WorkspacePersistenceManager {
                 }
                 // Note: Original WPM had removeAllManagedNodes(). AudioEngineService.setupNodes() is called later
                 // after instances are set, which should handle teardown of old nodes and setup of new ones.
-                // Explicitly clearing nodes from AudioNodeManager might be needed if setupNodes doesn't cover all cases.
+                // Explicitly clearing nodes from AudioNodeCreator might be needed if setupNodes doesn't cover all cases.
 
                 const {
                     blockDefinitions: importedDefinitions = [],
@@ -93,9 +93,6 @@ class WorkspacePersistenceManager {
                     ...inst,
                     internalState: {
                         ...(inst.internalState || {}),
-                        needsAudioNodeSetup: true, // This will be re-evaluated by AudioNodeManager
-                        lyriaServiceReady: false,   // Default state for imported Lyria instances
-                        autoPlayInitiated: false, // Default state
                     },
                     logs: inst.logs || [`Instance '${inst.name}' loaded from file.`],
                     modificationPrompts: inst.modificationPrompts || [],
