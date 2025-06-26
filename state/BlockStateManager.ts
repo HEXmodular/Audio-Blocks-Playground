@@ -16,15 +16,15 @@ const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
 // --- Helper Functions (co-located with the class) ---
 export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameter[]): BlockInstance['parameters'] => {
   return definitionParams?.map(paramDef => {
-    const typedDefaultValue = paramDef.defaultValue;
-    let finalCurrentValue = typedDefaultValue;
+    // const typedDefaultValue = paramDef.defaultValue;
+    // let finalCurrentValue = typedDefaultValue;
 
-    if (paramDef.type === 'step_sequencer_ui' && Array.isArray(typedDefaultValue)) {
-      finalCurrentValue = [...typedDefaultValue];
-    } else if (paramDef.type === 'step_sequencer_ui') {
-      const numSteps = typeof paramDef.steps === 'number' && paramDef.steps > 0 ? paramDef.steps : 4;
-      finalCurrentValue = Array(numSteps).fill(false);
-    }
+    // if (paramDef.type === 'step_sequencer_ui' && Array.isArray(typedDefaultValue)) {
+    //   finalCurrentValue = [...typedDefaultValue];
+    // } else if (paramDef.type === 'step_sequencer_ui') {
+    //   const numSteps = typeof paramDef.steps === 'number' && paramDef.steps > 0 ? paramDef.steps : 4;
+    //   finalCurrentValue = Array(numSteps).fill(false);
+    // }
 
     // TODO: min max находится в toneParam
     const instanceParam: BlockParameter = {
@@ -32,14 +32,15 @@ export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParamete
       name: paramDef.name,
       type: paramDef.type,
       options: paramDef.options ? JSON.parse(JSON.stringify(paramDef.options)) : undefined,
-      min: paramDef.min,
-      max: paramDef.max,
-      step: paramDef.step,
+      // min: paramDef.min,
+      // max: paramDef.max,
+      // step: paramDef.step,
       description: paramDef.description,
-      defaultValue: typedDefaultValue,
-      currentValue: finalCurrentValue,
-      steps: paramDef.steps,
-      isFrequency: paramDef.isFrequency,
+      defaultValue: paramDef.defaultValue,
+      // currentValue: finalCurrentValue,
+      // steps: paramDef.steps,
+      // isFrequency: paramDef.isFrequency,
+      toneParam: paramDef.toneParam //? JSON.parse(JSON.stringify(paramDef.toneParam)) : undefined,
     };
     return instanceParam;
   });

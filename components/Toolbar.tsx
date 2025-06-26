@@ -1,10 +1,8 @@
-
-
-import React, { useMemo, useCallback, useState } from 'react'; // Added useState
+import * as Tone from 'tone';
+import React, { useMemo, useCallback, useState, useEffect } from 'react'; 
 import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons';
-import * as Tone from 'tone'; // Added Tone import
-import AudioEngineService from '@services/AudioEngineService';
-import AddBlockModal from '@components/AddBlockModal'; // Import AddBlockModal
+ import AudioEngineService from '@services/AudioEngineService';
+import AddBlockModal from '@components/AddBlockModal'; 
 // import { BlockDefinition } from '@interfaces/common'; // Import BlockDefinition
 // import BlockStateManager from '@state/BlockStateManager'; // Import BlockStateManager
 import WorkspacePersistenceManager from '@services/WorkspacePersistenceManager'; // Added
@@ -21,6 +19,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
+  const [toneTransportStatus, setToneTransportStatus] = useState<string>(Tone.getTransport().state); // Initialize with Tone.js context state
 
   const handleToolbarToggleGeminiPanel = useCallback(() => {
     // Placeholder for actual Gemini Panel logic
@@ -31,32 +30,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   // Import function now internal to Toolbar
   const handleImportWorkspaceTrigger = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0] ) {
+    if (event.target.files && event.target.files[0]) {
       WorkspacePersistenceManager.importWorkspace(event.target.files[0]);
       event.target.value = ""; // Reset file input
     }
   }
 
-  // const handleImportClick = () => { // This will be inlined
-  //   importFileInputRef.current?.click();
-  // };
-
-  // const handleDeleteDefinition = (e: React.MouseEvent, definitionId: string) => { // Removed unused function
-  //   e.stopPropagation(); // Prevent block add
-  //   // Use appBlockDefinitionsFromCtx (from props) for the confirmation message
-  //   if (window.confirm(`Are you sure you want to delete the block definition for "${appBlockDefinitionsFromCtx.find((d: BlockDefinition)=>d.id===definitionId)?.name || definitionId}"? This cannot be undone.`)) {
-  //     // deleteBlockDefinition(definitionId); // Assumes deleteBlockDefinition is already correctly sourced from BSM
-  //     // setIsAddBlockMenuOpen(false); // This state is removed
-  //   }
-  // };
-
-
   // State for UI, distinct from engine's actual master volume for mute/unmute
   // const [uiMasterVolume, setUiMasterVolume] = useState(0.7);
   // const [isMutedByToolbar, setIsMutedByToolbar] = useState(false);
 
-  const toneTransport =  Tone.getTransport();
-
+  const isRunning = toneTransportStatus === "started"; // Check if Tone.js transport is running
 
   return (
     <div className="bg-gray-800 p-2 shadow-md flex items-center space-x-2 fixed top-0 left-0 right-0 z-20 h-14">
@@ -80,29 +64,35 @@ const Toolbar: React.FC<ToolbarProps> = ({
         />
       )}
 
+
       <button
         // Use the new prop and fetch state from Tone.js
-          title={toneTransport.state === "started" ? "Stop Audio Transport" : "Start Audio Transport"}
-          className={`flex items-center ${
-            toneTransport.state === "started" ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
+        title={isRunning ? "Stop Audio Transport" : "Start Audio Transport"}
+        className={`flex items-center ${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
           } text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2`}
-          onClick={async () => {
-            // AudioEngineService.toggleGlobalAudio()
-            if (toneTransport.state === "started") {
-              AudioEngineService.stopTransport();   
-              // toneTransport.stop();
-            } else {
-              await Tone.start()
-              AudioEngineService.initialize();  // <--- Existing line
-              AudioEngineService.updateAudioGraphConnections();
-              // await toneTransport.start();
-              // console.log("Transport started");
-            }
-          }}
-              >    {toneTransport.state !== "started" ? <StopIcon className="w-4 h-4 mr-1" /> : <PlayIcon className="w-4 h-4 mr-1" />}
-        {toneTransport.state === "started" ? 'Stop Transport' : 'Start Transport'}
+        onClick={async () => {
+          // AudioEngineService.toggleGlobalAudio()
+          if (isRunning) {
+            console.log("Stopping transport");
+            // AudioEngineService.stopTransport();
+            Tone.getTransport().stop();
+            setToneTransportStatus(Tone.getTransport().state);
+            // Tone.
+            // toneTransport.stop();
+          } else {
+            await Tone.start()
+            Tone.getTransport().start();
+            AudioEngineService.initialize();  // <--- Existing line
+            AudioEngineService.updateAudioGraphConnections();
+            setToneTransportStatus(Tone.getTransport().state); // Update context state
+            // await toneTransport.start();
+            // console.log("Transport started");
+          }
+        }}
+      >    {isRunning ? <StopIcon className="w-4 h-4 mr-1" /> : <PlayIcon className="w-4 h-4 mr-1" />}
+        {isRunning ? 'Stop Transport' : 'Start Transport'}
       </button>
-      
+
       {/* Master Volume Control (Example) */}
       {/* <div className="flex items-center ml-2">
         <label htmlFor="master-volume" className="text-xs text-gray-400 mr-1.5">Vol:</label>
@@ -171,11 +161,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Workspace Management Buttons */}
       <button
         onClick={() => {
-            WorkspacePersistenceManager.exportWorkspace();
+          WorkspacePersistenceManager.exportWorkspace();
         }}
         title="Export Workspace"
         className="flex items-center bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        // disabled={!workspacePersistenceManager}
+      // disabled={!workspacePersistenceManager}
       >
         Export
       </button>
@@ -183,7 +173,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => importFileInputRef.current?.click()} // Inlined handleImportClick
         title="Import Workspace"
         className="flex items-center bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors ml-2"
-        // disabled={!workspacePersistenceManager}
+      // disabled={!workspacePersistenceManager}
       >
         Import
       </button>
@@ -196,7 +186,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         aria-hidden="true"
       />
 
-       {/* <button
+      {/* <button
         onClick={handleToolbarToggleGeminiPanel} // Changed from onToggleGeminiPanel, assumes it's available in this scope
         className={`ml-auto flex items-center bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors`} // Removed isGeminiPanelOpen dependency
       >
