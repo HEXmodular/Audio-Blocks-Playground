@@ -43,7 +43,6 @@ class AudioGraphConnectorService {
 
     const connections = ConnectionState.getConnections();
     const blockInstances = BlockStateManager.getBlockInstances();
-    const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
 
     const localManagedNativeNodes = AudioNodeManager.getManagedNodesMap(); // Changed from NativeNodeManager
     // console.log("[🕸 AudioGraphConnectorService] Updating connections with local managed nodes:", localManagedNativeNodes);
@@ -76,8 +75,8 @@ class AudioGraphConnectorService {
 
       if (!fromInstance || !toInstance) return;
 
-      const fromDef = getDefinitionForBlock(fromInstance);
-      const toDef = getDefinitionForBlock(toInstance);
+      const fromDef = fromInstance.definition;
+      const toDef = toInstance.definition;
 
       if (!fromDef || !toDef) return;
 
@@ -93,13 +92,13 @@ class AudioGraphConnectorService {
         if (emitter) {
           BlockStateManager.updateBlockInstance(
             toInstance.instanceId,
-            { internalState: { emitters: { [conn.toInputId]: emitter } } }
+            {emitters: { [conn.toInputId]: emitter }}
           );
 
-          instanceUpdates.push({
-            instanceId: toInstance.instanceId,
-            updates: { internalState: { ...toInstance.internalState } }
-          });
+          // instanceUpdates.push({
+          //   instanceId: toInstance.instanceId,
+          //   updates: { internalState: { ...toInstance.internalState } }
+          // });
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
@@ -134,7 +133,6 @@ class AudioGraphConnectorService {
             targetNode = (toNativeInfo.nodeForInputConnections || (toNativeInfo as any).toneOscillator || (toNativeInfo as any).toneGain || (toNativeInfo as any).toneFilter || (toNativeInfo as any).toneFeedbackDelay || (toNativeInfo as any).toneAmplitudeEnvelope) as ConnectableTargetNode | undefined;
           }
         }
-
 
         if (sourceNode && targetParam && targetNode) {
           try {

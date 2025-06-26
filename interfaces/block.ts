@@ -44,13 +44,14 @@ export interface BlockPort {
 //   currentValue: any;
 // }
 
+// используется в BlockStateManager для загрузки состояния
 export interface BlockDefinition {
     id: string;
     name: string;
     description?: string;
     inputs: BlockPort[];
     outputs: BlockPort[];
-    parameters: BlockParameter[]; // для хранения описаний параметров
+    parameters: BlockParameter[]; // для загрузки и сохранения описаний и значений параметров
     // для возвращения к жизни Gemini
     // logicCode?: string; // Made optional
     // initialPrompt?: string; // Already optional, but good to confirm
@@ -63,13 +64,14 @@ export interface BlockDefinition {
 
 export interface BlockInstance {
     instanceId: string;
-    // instance?
+    instance: Tone.ToneAudioNode & NativeBlock | null | undefined ; // The actual audio node instance
     // definitionId: string; 
     definition: BlockDefinition;
     name: string;
     position: { x: number; y: number };
     logs: string[];
-    // parameters: BlockParameter[];
+    parameters: BlockParameter[];
+    emitters?: Tone.Emitter[];
 
     // lastRunOutputs: Record<string, any>; 
     // modificationPrompts: string[]; 
@@ -83,4 +85,11 @@ export interface BlockInstance {
 export interface CompactRendererProps {
     blockInstance: BlockInstance;
     blockDefinition: BlockDefinition;
+}
+
+export interface NativeBlock {
+    input: Tone.ToneAudioNode | undefined;
+    output: Tone.ToneAudioNode | undefined;
+    // constructor: (options?: any) => void;
+    updateFromBlockInstance: (instance: BlockInstance) => void;
 }

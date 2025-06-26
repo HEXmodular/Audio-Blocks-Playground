@@ -54,7 +54,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
   // const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
-  const blockDefinition = BlockStateManager.getDefinitionForBlock(blockInstance);
+  const blockDefinition = blockInstance.definition; 
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
 

@@ -8,10 +8,9 @@
 // services/AudioNodeManager.ts
 import * as Tone from 'tone'; // Added Tone import
 import AudioEngineService from './AudioEngineService'; // Corrected import
-import { BlockInstance, BlockDefinition, BlockParameter } from '@interfaces/block';
+import { BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
-import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 
 // Imports from NativeNodeManager
 // import {
@@ -19,7 +18,7 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 //     ManagedNativeNodeInfo,
 // } from '@interfaces/common';
 // import { CreatableNode } from '@services/native-blocks/CreatableNode';
-import { AudioOutputNativeBlock } from '@blocks/native-blocks/AudioOutputNativeBlock';
+import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
 // import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
 // import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
@@ -36,7 +35,7 @@ class AudioNodeManager {
 
     // Properties from NativeNodeManager
     private managedNativeNodesRef: Map<string, ManagedNativeNodeInfo>;
-    private blockHandlers: Map<string, CreatableNode>;
+    private blockHandlers: Map<string, typeof Tone.ToneAudioNode & NativeBlock>; // Map of block handlers keyed by definition ID
     private readonly onStateChangeForReRender: () => void; // Will be a no-op or tied to BlockStateManager if necessary
 
     private constructor() {
@@ -51,13 +50,12 @@ class AudioNodeManager {
 
         // Initialization from NativeNodeManager's constructor
         this.onStateChangeForReRender = () => {
-            // console.log('[AudioNodeManager internal] onStateChangeForReRender called. Currently a no-op after merge.');
             // This was used in NativeNodeManager to trigger re-renders.
             // BlockStateManager.getInstances() might trigger updates through its own mechanism if instance states are changed here.
             // For now, keeping it simple. If UI updates are missing, this is a place to investigate.
         };
-        this.managedNativeNodesRef = new Map<string, ManagedNativeNodeInfo>();
-        this.blockHandlers = new Map<string, CreatableNode>();
+        this.managedNativeNodesRef = new Map();
+        this.blockHandlers = new Map();
         this.initializeBlockHandlers(); // Call initialization for native block handlers
     }
 
@@ -79,7 +77,7 @@ class AudioNodeManager {
         // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
         // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
         // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, AudioOutputNativeBlock);
+        this.blockHandlers.set(AudioOutputBlock.getDefinition().id, AudioOutputBlock);
         // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
         // this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
         // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
@@ -88,46 +86,34 @@ class AudioNodeManager {
 
     }
 
-    public async setupManagedNativeNode(
-        instanceId: string,
-        definition: BlockDefinition,
-        initialParams: BlockParameter[],
-    ): Promise<boolean> {
-        console.log(`[AudioNodeManager/Native Setup] Setting up Tone.js based node for '${definition.name}' (ID: ${instanceId})`);
-
-        const handler = this.blockHandlers.get(definition.id);
-        if (!handler) {
-            console.warn(`[AudioNodeManager/Native Setup] No handler for definition ID '${definition.id}'.`);
-            debugger
-            return false;
-        }
-
+    public setupManagedNativeNode(
+        // instanceId: string,
+        // definition: BlockDefinition,
+        // initialParams: BlockParameter[],
+        // blockHandler: [string, any]
+        instance: BlockInstance, // Use BlockInstance directly
+    ): boolean {
+        // console.log(`[AudioNodeManager/Native Setup] Setting up Tone.js based node for '${definition.name}' (ID: ${instanceId})`);
         try {
-            const classRef = handler
-            const instance = new classRef(initialParams);
+            const classRef = this.blockHandlers.get(instance.definition.id)  as any //as ({constructor: new (params: BlockParameter[]) => Tone.ToneAudioNode});
+            // initialParams
+            const instanceRef = new classRef() as Tone.ToneAudioNode & NativeBlock; // Create an instance of the Tone.js based node class
 
             // все данные по ноде есть тут
-            const nodeInfo: ManagedAudioOutputNodeInfo = {
-                definition: classRef.getDefinition(),
-                instanceId,
-                // toneGain,
-                node: instance.input,
-                nodeForInputConnections: instance.input,
-                nodeForOutputConnections: instance.output,
-                mainProcessingNode: instance.input,
-                // paramTargetsForCv: specificParamTargetsForCv,
-                // internalGainNode: toneGain as unknown as Tone.Gain,
-                instance,
-
-                internalState: {},
+            const nodeInfo: ManagedNativeNodeInfo = {
+                definition: instance.definition, // Use the BlockInstance's definition directly
+                instanceId: instance.instanceId, // Use the BlockInstance's instanceId directly
+                nodeForInputConnections: instanceRef.input,
+                nodeForOutputConnections: instanceRef.output,
+                instance: instanceRef,
+                // internalState: {},
             };
 
-
-            this.managedNativeNodesRef.set(instanceId, nodeInfo);
+            this.managedNativeNodesRef.set(instance.instanceId, nodeInfo);
             this.onStateChangeForReRender();
             return true;
         } catch (e) {
-            console.error(`Failed to construct Tone.js based node for '${definition.name}' (ID: ${instanceId}): ${(e as Error).message}`);
+            console.error(`Failed to construct Tone.js based node: ${(e as Error).message}`);
             debugger
             return false;
         }
@@ -136,20 +122,11 @@ class AudioNodeManager {
     public removeManagedNativeNode(instanceId: string): void {
         const nodeInfo = this.managedNativeNodesRef.get(instanceId);
         if (nodeInfo) {
-            const handler = this.blockHandlers.get(nodeInfo.definition.id);
-            handler?.dispose(nodeInfo);
+            const handler = nodeInfo.instance;
+            handler?.dispose();
             this.managedNativeNodesRef.delete(instanceId);
             this.onStateChangeForReRender();
         }
-    }
-
-
-    public getAnalyserNodeForInstance(instanceId: string): AnalyserNode | null {
-        const nodeInfo = this.managedNativeNodesRef.get(instanceId);
-        if (nodeInfo?.definition.id === OscilloscopeNativeBlock.getDefinition().id) {
-            return nodeInfo.mainProcessingNode as AnalyserNode;
-        }
-        return null;
     }
 
     public getManagedNodesMap(): Map<string, ManagedNativeNodeInfo> {
@@ -181,78 +158,43 @@ class AudioNodeManager {
 
     public async processAudioNodeSetupAndTeardown(
     ) {
-        const blockInstances = BlockStateManager.getBlockInstances();
+        // const blockInstances = Array.from(this.blockHandlers.values()) //BlockStateManager.getBlockInstances();
         // console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Entry. GlobalAudioEnabled:', isAudioGloballyEnabled, 'WorkletSystemReady:', isWorkletSystemReady, 'AudioContext State:', audioContextCurrent?.state);
-        console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Number of blockInstances received:', blockInstances.length);
+        // console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Number of blockInstances received:', blockInstances.length);
+
+        const blockInstances = BlockStateManager.getBlockInstances() // получение сохраненных блоков с их уникальным идентификатором instanceId
+
         if (blockInstances.length > 0) {
             console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Instance IDs:', blockInstances.map(inst => inst.instanceId));
         }
 
         for (const instance of blockInstances) {
-            const definition = BlockStateManager.getDefinitionForBlock(instance);
-            console.log('[AudioNodeManager processAudioNodeSetupAndTeardown] Processing instance:', { instanceId: instance.instanceId, name: instance.name, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, definitionId: instance.definitionId, runsAtAudioRate: definition?.runsAtAudioRate });
-            // console.log(`[AudioNodeManager DEBUG] Processing instance: ${instance.instanceId}, Def ID: ${instance.definitionId}`);
-            if (!definition) {
-                // console.log(`[AudioNodeManager DEBUG]   No definition found for ${instance.instanceId}. Skipping.`);
-                continue;
-            }
+            if (!instance.instance) {
+                // Node needs setup.
+                let setupSuccess = false; // Initialize setupSuccess for this scope
 
-            // Pre-condition: usableContext.state is 'running'
-            const isAudioGloballyEnabled = true; // Assume this is set globally or passed in
-            if (isAudioGloballyEnabled) {
-                // Context is RUNNING (guaranteed by outer guard) and Global Audio is ON.
-                if (instance.internalState.needsAudioNodeSetup) {
-                    // Node needs setup.
-                    let setupSuccess = false; // Initialize setupSuccess for this scope
-                    if (!definition.audioWorkletProcessorName) { // Native Node
-                        this.addLog(instance.instanceId, "Native node setup initiated (audio on).");
-                        console.log(instance.instanceId, "Native node setup initiated (audio on).");
-                        console.log('[AudioNodeManager] Attempting to call this.setupManagedNativeNode for instance:', { instanceId: instance.instanceId, definitionId: definition.id, needsAudioNodeSetup: instance.internalState.needsAudioNodeSetup, contextState: Tone.getContext()?.state, isAudioGloballyEnabled });
-                        // Directly call the merged method. AudioEngineService.addNativeNode was a wrapper around NativeNodeManager.setupManagedNativeNode.
-                        // We need to ensure the parameters match. setupManagedNativeNode expects:
-                        // instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number
-                        // AudioEngineService.addNativeNode was called with: instanceId, definition, instance.parameters
-                        // So, this should be a direct replacement. The globalBpm is optional and defaults to 120.
-                        setupSuccess = await this.setupManagedNativeNode(instance.instanceId, definition, instance.parameters);
-                        if (setupSuccess) {
-                            this.updateInstance(instance.instanceId, currentInst => ({
-                                ...currentInst,
-                                internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }
-                            }));
-                            this.addLog(instance.instanceId, "Native node setup successful.");
-                            console.log(instance.instanceId, "Native node setup successful.");
-                        } else {
-                            debugger
-                            this.addLog(instance.instanceId, "Native node setup failed.", "error");
-                            console.error(instance.instanceId, "Native node setup failed.", "error");
-                            // this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
-                        }
-                    }
-                }
-            } else {
-                // Context is RUNNING (guaranteed by outer guard) BUT Global Audio is OFF.
-                if (!instance.internalState.needsAudioNodeSetup) { // Check definition.runsAtAudioRate here
-                    // if (definition.runsAtAudioRate && !instance.internalState.needsAudioNodeSetup) { // Check definition.runsAtAudioRate here
-                    // Node was previously set up, but global audio is now off. Mark it for re-setup.
-                    const needsToLog = !instance.internalState.loggedAudioSystemNotActive;
+                // Directly call the merged method. AudioEngineService.addNativeNode was a wrapper around NativeNodeManager.setupManagedNativeNode.
+                // We need to ensure the parameters match. setupManagedNativeNode expects:
+                // instanceId: string, definition: BlockDefinition, initialParams: BlockParameter[], currentBpm?: number
+                // AudioEngineService.addNativeNode was called with: instanceId, definition, instance.parameters
+                // So, this should be a direct replacement. The globalBpm is optional and defaults to 120.
+                setupSuccess = this.setupManagedNativeNode(instance);
+                if (setupSuccess) {
                     this.updateInstance(instance.instanceId, currentInst => ({
                         ...currentInst,
-                        internalState: {
-                            ...currentInst.internalState,
-                            needsAudioNodeSetup: true,
-                            lyriaServiceReady: false,
-                            autoPlayInitiated: false,
-                            loggedAudioSystemNotActive: true
-                        }
+                        // internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }
                     }));
-                    if (needsToLog) {
-                        this.addLog(instance.instanceId, "Audio globally disabled, context is running. Node marked for re-setup.", "warn");
-                        console.warn(instance.instanceId, "Audio globally disabled, context is running. Node marked for re-setup.", "warn");
-                    }
+                    this.addLog(instance.instanceId, "Native node setup successful.");
+                    console.log(instance.instanceId, "Native node setup successful.");
                 } else {
-                    // Node already needs setup (needsAudioNodeSetup is true), or doesn't run at audio rate. And global audio is off. DO NOTHING.
+                    debugger
+                    this.addLog(instance.instanceId, "Native node setup failed.", "error");
+                    console.error(instance.instanceId, "Native node setup failed.", "error");
+                    // this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
                 }
+
             }
+
         }
     }
 
@@ -260,40 +202,31 @@ class AudioNodeManager {
         if (!Tone.getContext() || Tone.getContext().state !== 'running') return;
 
         blockInstances.forEach(instance => {
-            const definition = BlockStateManager.getDefinitionForBlock(instance);
-            if (!definition || instance.internalState.needsAudioNodeSetup) {
+            const definition = instance.definition; 
+            if (!definition || !instance.instance) {
+                console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${definition?.id}'.`);
                 return;
             }
 
-            if (definition.audioWorkletProcessorName) {
-                // AudioWorkletManager.updateManagedAudioWorkletNodeParams(instance.instanceId, instance.parameters);
-            } else {
+            // const info = this.managedNativeNodesRef.get(instance.instanceId);
+            // // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
+            // if (!info) return;
 
-                const info = this.managedNativeNodesRef.get(instance.instanceId);
-                // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
-                if (!info) return;
+            // const handler = this.managedNativeNodesRef.get(info.instanceId)
+            // if (handler?.instance) {
+                instance.instance.updateFromBlockInstance(instance);
+            // } else {
+            // }
 
-                const handler = this.managedNativeNodesRef.get(info.instanceId)
-                if (handler?.instance) {
-                    handler.instance.updateFromBlockInstance(instance);
-                } else {
-                    console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition?.id}'.`);
-                }
-            }
         });
     }
 
     public updateAudioGraphConnections(
-        isAudioGloballyEnabled: boolean
     ) {
         // Check Tone.js context state for updating graph connections
         if (!Tone.getContext()) return;
-        if (isAudioGloballyEnabled) {
-            AudioEngineService.updateAudioGraphConnections();
-        } else {
-            // Clear connections if audio is disabled
-            AudioEngineService.updateAudioGraphConnections();
-        }
+        AudioEngineService.updateAudioGraphConnections();
+
     }
 }
 

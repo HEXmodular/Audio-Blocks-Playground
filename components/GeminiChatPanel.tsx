@@ -3,8 +3,7 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { BlockInstance, BlockDefinition } from '@interfaces/block';
 import { generateBlockDefinitionWithTesting, modifyLogicCodeWithPrompt, GenerateBlockDefinitionResult } from '@services/geminiService';
 import { LightBulbIcon } from '@icons/icons';
-// import { useBlockState } from '@context/BlockStateContext'; // Import useBlockState
-import { BlockStateManager } from '../state/BlockStateManager';
+
 
 interface GeminiChatPanelProps {
   isOpen: boolean;
@@ -36,9 +35,6 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
   onUpdateBlockLogicCode,
   apiKeyMissing
 }, ref) => {
-  const blockStateManager = BlockStateManager.getInstance();
-  const getDefinitionById = blockStateManager.getDefinitionForBlock.bind(blockStateManager); // Consume context
-
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,7 +67,7 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
     try {
       if (selectedBlockInstance) {
         // Modifying existing block's logic code
-        const definition = getDefinitionById(selectedBlockInstance.definitionId); // Use context function
+        const definition = selectedBlockInstance.definition
         if (!definition) {
             throw new Error(`Definition for block ${selectedBlockInstance.name} not found.`);
         }

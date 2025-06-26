@@ -2,7 +2,7 @@ import { BlockDefinition } from '@interfaces/block';
 
 // Import native block classes
 import { ByteBeatPlayer } from "@blocks/8bit/ByteBeatPlayer";
-import { AudioOutputNativeBlock } from '@blocks/native-blocks/AudioOutputNativeBlock';
+import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { OscillatorNativeBlock } from '../native-blocks/OscillatorNativeBlock';
 // import { BiquadFilterNativeBlock } from '../native-blocks/BiquadFilterNativeBlock';
 // import { DelayNativeBlock } from '../native-blocks/DelayNativeBlock';
@@ -11,7 +11,7 @@ import { AudioOutputNativeBlock } from '@blocks/native-blocks/AudioOutputNativeB
 // import { OscilloscopeNativeBlock } from '../native-blocks/OscilloscopeNativeBlock';
 // import { NumberToConstantAudioNativeBlock } from '../native-blocks/NumberToConstantAudioNativeBlock';
 // import { GainControlNativeBlock } from '../native-blocks/GainControlNativeBlock';
-// import { AudioOutputNativeBlock } from '../native-blocks/AudioOutputNativeBlock';
+// import { AudioOutputBlock } from '../native-blocks/AudioOutputBlock';
 // import { LyriaMasterBlock } from '../lyria-blocks/LyriaMaster';
 // import { ManualGateNativeBlock } from '../native-blocks/ManualGateNativeBlock';
 // import { StepSequencerNativeBlock } from '../native-blocks/sequencers/StepSequencerNativeBlock';
@@ -31,7 +31,7 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
     // OscilloscopeNativeBlock.getDefinition(),
     // NumberToConstantAudioNativeBlock.getDefinition(),
     // GainControlNativeBlock.getDefinition(),
-    AudioOutputNativeBlock.getDefinition(), // Added new definition
+    AudioOutputBlock.getDefinition(), // Added new definition
     // LyriaMasterBlock.getDefinition(),
     // ManualGateNativeBlock.getDefinition(),
     ByteBeatPlayer.getDefinition(),
@@ -52,7 +52,7 @@ export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = [
 //     [OscilloscopeNativeBlock.getDefinition().id]: OscilloscopeNativeBlock,
 //     [NumberToConstantAudioNativeBlock.getDefinition().id]: NumberToConstantAudioNativeBlock,
 //     [GainControlNativeBlock.getDefinition().id]: GainControlNativeBlock,
-//     [AudioOutputNativeBlock.getDefinition().id]: AudioOutputNativeBlock,
+//     [AudioOutputBlock.getDefinition().id]: AudioOutputBlock,
 //     [LyriaMasterBlock.getDefinition().id]: LyriaMasterBlock, // Though LyriaMasterBlock is special, including it for completeness
 //     [ManualGateNativeBlock.getDefinition().id]: ManualGateNativeBlock,
 // };

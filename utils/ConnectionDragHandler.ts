@@ -34,7 +34,6 @@ class ConnectionDragHandler implements IConnectionDragHandler {
 
   private svgRef!: RefObject<SVGSVGElement>;
   // private blockInstances!: BlockInstance[];
-  // private getDefinitionForBlock!: (instance: BlockInstance) => BlockDefinition | undefined;
   // private updateConnections!: (updater: (prev: Connection[]) => Connection[]) => void;
   public onStateChange = () => {};
 
@@ -136,7 +135,7 @@ class ConnectionDragHandler implements IConnectionDragHandler {
           else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;
 
           const toInstance = BlockStateManager.getBlockInstances().find((i) => i.instanceId === targetInstanceId);
-          const toDef = toInstance ? BlockStateManager.getDefinitionForBlock(toInstance) : undefined;
+          const toDef = toInstance ? toInstance.definition : undefined;
           const toPortDef = toDef?.inputs.find((p) => p.id === targetPortId);
           if (
             this.pendingConnection.fromIsOutput &&

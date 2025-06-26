@@ -1,13 +1,9 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { BlockInstance, BlockDefinition, BlockParameter, BlockParameterDefinition, BlockPort } from '@interfaces/block';
+import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@interfaces/block';
 import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
-// import { ALL_BLOCK_DEFINITIONS } from '@constants/constants'; // OLD
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
-import { RULE_110_BLOCK_DEFINITION } from '@constants/automata';
-// import { LYRIA_MASTER_BLOCK_DEFINITION } from '@constants/lyria'; // Removed
-import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster'; // Added
 import { debounce } from '@utils/utils';
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
@@ -16,8 +12,8 @@ const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
 ];
 
 // --- Helper Functions (co-located with the class) ---
-export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameterDefinition[]): BlockInstance['parameters'] => {
-  return definitionParams.map(paramDef => {
+export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameter[]): BlockInstance['parameters'] => {
+  return definitionParams?.map(paramDef => {
     const typedDefaultValue = paramDef.defaultValue;
     let finalCurrentValue = typedDefaultValue;
 
@@ -28,6 +24,7 @@ export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParamete
       finalCurrentValue = Array(numSteps).fill(false);
     }
 
+    // TODO: min max находится в toneParam
     const instanceParam: BlockParameter = {
       id: paramDef.id,
       name: paramDef.name,
@@ -64,14 +61,9 @@ export const getDefaultOutputValue = (portType: BlockPort['type']): any => {
   }
 };
 
-const CORE_DEFINITION_IDS_SET = new Set(INITIAL_DEFINITIONS_FROM_CODE.map(def => def.id)); // UPDATED
-
-// --- BlockStateManager Class ---
-
-
-
 const DEBOUNCE_WAIT_MS = 300; // Or another suitable value
 
+// --- BlockStateManager Class ---
 export class BlockStateManager {
   private static _instance: BlockStateManager | null = null;
   private _blockDefinitions: BlockDefinition[];
@@ -113,7 +105,6 @@ export class BlockStateManager {
     // Initial saves should still happen directly
     this._saveDefinitionsToLocalStorageInternal(); // Save once on init
     this._saveInstancesToLocalStorageInternal();   // Save once on init
-    this.getDefinitionForBlock = this.getDefinitionForBlock.bind(this); // Bind the method to the instance context
     this.updateBlockInstance = this.updateBlockInstance.bind(this); // Ensure 'this' context for updateBlockInstance
   }
 
@@ -129,7 +120,7 @@ export class BlockStateManager {
         for (const savedDef of savedDefinitions) {
           const processedSavedDef: BlockDefinition = {
             ...savedDef,
-            parameters: savedDef.parameters.map((p: any) => {
+            parameters: savedDef.parameters?.map((p: any) => {
               let typedDefaultValue = p.defaultValue;
               if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
                 const parsedDefault = parseFloat(p.defaultValue as string);
@@ -146,14 +137,21 @@ export class BlockStateManager {
                   typedDefaultValue = Array(numSteps).fill(false);
                 }
               }
-              const paramDef: BlockParameterDefinition = {
-                id: p.id, name: p.name, type: p.type, defaultValue: typedDefaultValue,
-                options: p.options, min: p.min, max: p.max, step: p.step, description: p.description,
-                steps: p.steps, isFrequency: p.isFrequency,
+              const paramDef: BlockParameter = {
+                id: p.id, 
+                name: p.name, 
+                type: p.type, 
+                defaultValue: typedDefaultValue,
+                options: p.options, 
+                // min: p.min, max: p.max, step: p.step, 
+                toneParam: p.toneParam,
+                description: p.description,
+                // steps: p.steps, 
+                // isFrequency: p.isFrequency,
               };
               return paramDef;
             }),
-            isAiGenerated: savedDef.isAiGenerated === undefined ? !CORE_DEFINITION_IDS_SET.has(savedDef.id) : savedDef.isAiGenerated,
+            // isAiGenerated: savedDef.isAiGenerated === undefined ? !CORE_DEFINITION_IDS_SET.has(savedDef.id) : savedDef.isAiGenerated,
           };
           definitionsById.set(processedSavedDef.id, processedSavedDef);
         }
@@ -164,7 +162,7 @@ export class BlockStateManager {
       mergedDefinitions = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
       mergedDefinitions = mergedDefinitions.map(def => ({
         ...def,
-        parameters: def.parameters.map((p: any) => {
+        parameters: def.parameters?.map((p: any) => {
           let typedDefaultValue = p.defaultValue;
           if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
             const parsedDefault = parseFloat(p.defaultValue as string);
@@ -181,7 +179,7 @@ export class BlockStateManager {
               typedDefaultValue = Array(numSteps).fill(false);
             }
           }
-          return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameterDefinition;
+          return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameter;
         }),
         isAiGenerated: false,
       }));
@@ -197,9 +195,9 @@ export class BlockStateManager {
       }
 
       // Clean up parameters (remove currentValue from definition)
-      const parametersWithoutCurrentValue = def.parameters.map(p => {
+      const parametersWithoutCurrentValue = def.parameters?.map(p => {
         const { currentValue, ...paramDef } = p as any; // Cast to any to access currentValue if it sneakily exists
-        return paramDef as BlockParameterDefinition;
+        return paramDef as BlockParameter;
       });
 
       // console.log({rendererComponent});
@@ -221,7 +219,7 @@ export class BlockStateManager {
     }
 
     return rawInstances.map((loadedInst: any) => {
-      const definition = definitions.find(def => def.id === loadedInst?.definitionId);
+      const definition = definitions.find(def => def.id === loadedInst?.definition.id);
       const initialOutputs: Record<string, any> = {};
       if (definition) {
         definition.outputs.forEach(outPort => {
@@ -232,7 +230,7 @@ export class BlockStateManager {
       let instanceParams: BlockParameter[];
       if (definition) {
         const paramsFromDef = deepCopyParametersAndEnsureTypes(definition.parameters);
-        instanceParams = paramsFromDef.map(defParamCopy => {
+        instanceParams = paramsFromDef?.map(defParamCopy => {
           const savedInstParam = loadedInst?.parameters?.find((p: any) => p.id === defParamCopy.id);
           if (savedInstParam && savedInstParam.currentValue !== undefined) {
             let rehydratedCurrentValue = savedInstParam.currentValue;
@@ -267,39 +265,11 @@ export class BlockStateManager {
         console.warn(`BlockStateManager: Definition for instance ${loadedInst?.name} (ID: ${loadedInst?.definitionId}) not found during instance processing. Parameters might be incorrect.`);
       }
 
-      let initialInternalState: BlockInstance['internalState'] = {
-        ...(loadedInst?.internalState || {}), // Spread existing internal state first
-        // Initialize new flags, defaulting to false if not present in loadedInst?.internalState
-        loggedWorkletSystemNotReady: loadedInst?.internalState?.loggedWorkletSystemNotReady || false,
-        loggedAudioSystemNotActive: loadedInst?.internalState?.loggedAudioSystemNotActive || false,
-        // needsAudioNodeSetup will be determined below
-      };
-      if (definition) {
-        // Spread existing internalState first as before (already done above)
-        // Determine needsAudioNodeSetup based on new logic
-        if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
-          initialInternalState.needsAudioNodeSetup = false;
-        } else {
-          initialInternalState.needsAudioNodeSetup = true;
-          // !!(
-          //     // definition.runsAtAudioRate ||
-          //     definition.audioWorkletProcessorName
-          // );
-        }
-      }
-      // New general log for all instances being processed // REMOVED
-      // console.log(`[BlockStateManager._loadAndProcessInstances] Processing instance: ID ${loadedInst?.instanceId}, DefID: ${loadedInst?.definitionId}, needsAudioNodeSetup: ${initialInternalState.needsAudioNodeSetup} ${loadedInst?.definitionId === 'tone-oscillator-v1' ? '<<< OSCILLATOR >>>' : ''}`);
-
       if (!loadedInst) {
         return {
           parameters: instanceParams,
-          internalState: initialInternalState, // This now includes the initialized logging flags
-          lastRunOutputs: loadedInst?.lastRunOutputs || initialOutputs,
           logs: loadedInst?.logs || [],
-          modificationPrompts: loadedInst?.modificationPrompts || [],
-          audioWorkletNodeId: undefined,
-          // lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
-        } as BlockInstance;
+        };
       }
 
       const { currentView, ...restOfLoadedInst } = loadedInst;
@@ -307,13 +277,8 @@ export class BlockStateManager {
       return {
         ...restOfLoadedInst,
         parameters: instanceParams,
-        internalState: initialInternalState, // This now includes the initialized logging flags
-        lastRunOutputs: loadedInst?.lastRunOutputs || initialOutputs,
         logs: loadedInst?.logs || [],
-        modificationPrompts: loadedInst?.modificationPrompts || [],
-        audioWorkletNodeId: undefined,
-        // lyriaServiceInstanceId: definition?.id === LyriaMasterBlock.getDefinition().id ? loadedInst?.lyriaServiceInstanceId : undefined, // Changed
-      } as BlockInstance;
+      };
     });
   }
 
@@ -323,7 +288,7 @@ export class BlockStateManager {
     try {
       const definitionsToSave = this._blockDefinitions.map(def => ({
         ...def,
-        parameters: def.parameters.map(p => {
+        parameters: def.parameters?.map(p => {
           const { currentValue, ...paramDef } = p as any;
           return paramDef;
         })
@@ -364,11 +329,6 @@ export class BlockStateManager {
     return this._blockInstances;
   }
 
-  public getDefinitionForBlock(instanceOrDefinitionId: BlockInstance | string): BlockDefinition | undefined {
-    const id = typeof instanceOrDefinitionId === 'string' ? instanceOrDefinitionId : instanceOrDefinitionId?.definitionId;
-    return this._blockDefinitions.find(def => def.id === id);
-  }
-
   public addLogToBlockInstance(instanceId: string, message: string): void {
     // this._blockInstances = this._blockInstances.map(b =>
     //   b?.instanceId === instanceId
@@ -403,88 +363,24 @@ export class BlockStateManager {
     if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
   }
 
-  public deleteBlockDefinition(definitionId: string): boolean {
-    if (CORE_DEFINITION_IDS_SET.has(definitionId)) {
-      console.warn(`BlockStateManager: Cannot delete core block definition: ${definitionId}`);
-      alert(`Error: Core block definition "${definitionId}" cannot be deleted.`);
-      return false;
-    }
-
-    const instancesUsingDefinition = this._blockInstances.filter(inst => inst.definitionId === definitionId);
-    if (instancesUsingDefinition.length > 0) {
-      console.warn(`BlockStateManager: Cannot delete block definition "${definitionId}": It is currently used by ${instancesUsingDefinition.length} instance(s).`);
-      alert(`Error: Cannot delete block definition "${definitionId}". It is used by ${instancesUsingDefinition.length} block instance(s). Please delete these instances first.`);
-      return false;
-    }
-
-    this._blockDefinitions = this._blockDefinitions.filter(def => def.id !== definitionId);
-    this._saveDefinitionsToLocalStorage();
-    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
-    console.info(`BlockStateManager: Block definition "${definitionId}" deleted.`);
-    return true;
-  }
 
   public addBlockInstance(definition: BlockDefinition, name?: string, position?: { x: number; y: number }): BlockInstance {
-    const instanceCountForType = this._blockInstances.filter(b => b.definitionId === definition.id).length;
-    const instanceName = name || `${definition.name} ${instanceCountForType + 1}`;
+    const instanceName = definition.name;
 
     const initialOutputs: Record<string, any> = {};
     definition.outputs.forEach(outPort => {
       initialOutputs[outPort.id] = getDefaultOutputValue(outPort.type);
     });
 
-    let needsAudioSetup;
-    if (definition.id === RULE_110_BLOCK_DEFINITION.id) {
-      needsAudioSetup = false;
-    } else {
-      needsAudioSetup = !!(
-        definition.runsAtAudioRate ||
-        definition.audioWorkletProcessorName
-      );
-    }
-
-    let initialInternalState: BlockInstance['internalState'] = {
-      needsAudioNodeSetup: needsAudioSetup, // Set based on the new logic above
-      loggedWorkletSystemNotReady: false,
-      loggedAudioSystemNotActive: false,
-    };
-    // Ensure other specific internal state setups (e.g., for LyriaMasterBlock) are preserved
-    if (definition.id === LyriaMasterBlock.getDefinition().id) {
-      // Spread initialInternalState to keep the new logging flags
-      initialInternalState = {
-        ...initialInternalState,
-        // lyriaServiceReady: false, isPlaying: false, playRequest: false, pauseRequest: false, stopRequest: false,
-        // reconnectRequest: false, configUpdateNeeded: true, // Start with true to send initial params
-        // promptsUpdateNeeded: true, // Start with true to send initial prompt
-        // trackMuteUpdateNeeded: true, autoPlayInitiated: false,
-        //     lastScale: definition.parameters.find(p=>p.id === 'scale')?.defaultValue, // These are fine as they are for a new instance
-        // lastBrightness: definition.parameters.find(p=>p.id === 'brightness')?.defaultValue,
-        // lastDensity: definition.parameters.find(p=>p.id === 'density')?.defaultValue,
-        // lastSeed: definition.parameters.find(p=>p.id === 'seed')?.defaultValue,
-        // lastTemperature: definition.parameters.find(p=>p.id === 'temperature')?.defaultValue,
-        // lastGuidanceScale: definition.parameters.find(p=>p.id === 'guidance_scale')?.defaultValue,
-        // lastTopK: definition.parameters.find(p=>p.id === 'top_k')?.defaultValue,
-        // lastBpm: definition.parameters.find(p=>p.id === 'bpm')?.defaultValue,
-        //     lastEffectivePrompts: [],
-        //     wasPausedDueToGateLow: false,
-        //     prevStopTrigger: false,
-        //     prevReconnectTrigger: false,
-        //     lastMuteBass: false,
-        //     lastMuteDrums: false,
-        //     lastOnlyBassDrums: false,
-      };
-    }
 
     const newInstance: BlockInstance = {
       instanceId: `inst_${uuidv4()}`,
-      definitionId: definition.id,
+      instance: null, // This will be set later when the instance is created
+      definition,
       name: instanceName,
       position: position || { x: 50 + Math.random() * 200, y: 50 + Math.random() * 100 },
       logs: [`Instance '${instanceName}' created.`],
       parameters: deepCopyParametersAndEnsureTypes(definition.parameters),
-      internalState: initialInternalState, // This now includes the initialized logging flags
-      lastRunOutputs: initialOutputs,
-      modificationPrompts: [],
     };
 
     this._blockInstances = [...this._blockInstances, newInstance];
@@ -526,13 +422,6 @@ export class BlockStateManager {
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
-    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-    // const targetInstanceFromFile = newInstances.find(inst => inst.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
-    // if (targetInstanceFromFile) {
-    //     console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. For inst_0d8a9770-06d7-4d8b-8503-1121765a2324, initial internalState.needsAudioNodeSetup from input array: ${targetInstanceFromFile.internalState?.needsAudioNodeSetup}`);
-    // } else {
-    //     console.log(`[BlockStateManager.setAllBlockInstances] Received newInstances. Instance inst_0d8a9770-06d7-4d8b-8503-1121765a2324 not found in input array.`);
-    // }
     this._blockInstances = newInstances;
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
@@ -545,12 +434,6 @@ export class BlockStateManager {
   }
 
   public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
-    // REMOVED specific logging for inst_0d8a9770-06d7-4d8b-8503-1121765a2324
-    // const targetInstanceUpdate = instanceUpdates.find(update => update.instanceId === 'inst_0d8a9770-06d7-4d8b-8503-1121765a2324');
-    // if (targetInstanceUpdate) {
-    //     const updatesToLog = typeof targetInstanceUpdate.updates === 'function' ? 'Function update' : JSON.stringify(targetInstanceUpdate.updates);
-    //     console.log(`[BlockStateManager.updateMultipleBlockInstances] Received updates for inst_0d8a9770-06d7-4d8b-8503-1121765a2324: ${updatesToLog}`);
-    // }
 
     let wasAnyInstanceUpdated = false;
 

@@ -47,11 +47,6 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
     }
   }, [BlockStateManager.getSelectedBlockInstanceId()])
 
-  // const blockInstance = selectedInstanceId
-  //   ? blockInstances.find(b => b.instanceId === selectedInstanceId) || null
-  //   : null;
-
-  const getDefinitionById = (definitionId: string): BlockDefinition | undefined => BlockStateManager.getDefinitionForBlock(definitionId);
   const updateBlockInstance = BlockStateManager.updateBlockInstance.bind(BlockStateManager);
   const ctxDeleteBlockInstance = BlockStateManager.deleteBlockInstance.bind(BlockStateManager);
 
@@ -70,13 +65,9 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   const [numberInputTextValues, setNumberInputTextValues] = useState<Record<string, string>>({});
   const prevInstanceIdRef = useRef<string | null>(null);
 
-  const blockDefinition = blockInstance ? getDefinitionById(blockInstance.definitionId) : null;
+  const blockDefinition = blockInstance ? blockInstance.definition : null;
 
-  const isSimplifiedNativeBlock = blockInstance && blockDefinition &&
-                                    !blockDefinition.audioWorkletCode &&
-                                    !blockDefinition.logicCode &&
-                                    (!blockInstance.modificationPrompts || blockInstance.modificationPrompts.length === 0) &&
-                                    blockDefinition.id !== NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION.id;
+  const isSimplifiedNativeBlock = blockInstance && blockDefinition;
 
   const availableViewsForToggle = isSimplifiedNativeBlock
       ? [BlockView.UI, BlockView.CONNECTIONS]
@@ -93,7 +84,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
       }
 
       const newInitialTextValues: Record<string, string> = {};
-      blockInstance.parameters.forEach(param => {
+      blockInstance.parameters?.forEach(param => {
         if (param.type === 'number_input') {
           newInitialTextValues[param.id] = String(param.currentValue);
         }
@@ -373,7 +364,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
         const instance = blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
         if (!instance) return undefined;
-        const def = getDefinitionById(instance.definitionId); // Use context function
+        const def = instance.definition; // Use context function
         if (!def) return undefined;
         return isOutput ? def.outputs.find(p => p.id === portId) : def.inputs.find(p => p.id === portId);
     };

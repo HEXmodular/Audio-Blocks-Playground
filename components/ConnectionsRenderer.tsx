@@ -44,8 +44,6 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
         }, 200)();
     });
 }
-
-    const getDefinitionForBlock = BlockStateManager.getDefinitionForBlock;
     const onUpdateConnections = ConnectionState.updateConnections;
 
     ConnectionDragHandler.onStateChange = () => {
@@ -67,8 +65,8 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                 const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
                 if (!fromInstance || !toInstance) return null;
 
-                const fromDef = getDefinitionForBlock(fromInstance);
-                const toDef = getDefinitionForBlock(toInstance);
+                const fromDef = fromInstance.definition;
+                const toDef =toInstance.definition;
                 if (!fromDef || !toDef) return null;
 
                 const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
