@@ -19,7 +19,7 @@ import { LyriaMasterBlock } from './lyria-blocks/LyriaMaster'; // Added
 //     ManagedNativeNodeInfo,
 // } from '@interfaces/common';
 // import { CreatableNode } from '@services/native-blocks/CreatableNode';
-// import { AudioOutputNativeBlock } from '@services/native-blocks/AudioOutputNativeBlock';
+import { AudioOutputNativeBlock } from '@blocks/native-blocks/AudioOutputNativeBlock';
 // import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
 // import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
 // import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
@@ -79,11 +79,11 @@ class AudioNodeManager {
         // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
         // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
         // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-        // this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, new AudioOutputNativeBlock());
+        this.blockHandlers.set(AudioOutputNativeBlock.getDefinition().id, AudioOutputNativeBlock);
         // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
         // this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
         // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
-        this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, new ByteBeatPlayer());
+        this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, ByteBeatPlayer);
 
 
     }
@@ -103,7 +103,7 @@ class AudioNodeManager {
         }
 
         try {
-            const nodeInfo = handler.createNode(instanceId, definition, initialParams);
+            const nodeInfo = new handler(initialParams);
             this.managedNativeNodesRef.set(instanceId, nodeInfo);
             this.onStateChangeForReRender();
             return true;
@@ -254,11 +254,11 @@ class AudioNodeManager {
                 // console.log(`[↔ AudioNodeManager/Native Update] Updating node params for '${info?.definition.name}' (ID: ${instanceId}) with parameters:`, parameters);
                 if (!info) return;
 
-                const handler = this.blockHandlers.get(info.definition.id);
+                const handler = this.managedNativeNodesRef.get(info.definition?.id);
                 if (handler) {
-                    handler.updateNodeParams(info, instance);
+                    handler.updateFromBlockInstance(instance);
                 } else {
-                    console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition.id}'.`);
+                    console.warn(`[AudioNodeManager/Native Update] No handler found for definition ID '${info.definition?.id}'.`);
                 }
             }
         });

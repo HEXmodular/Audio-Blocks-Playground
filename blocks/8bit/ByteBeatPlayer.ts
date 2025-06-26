@@ -38,7 +38,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
       });
     }
 
-    const workletNode = this.context.createAudioWorkletNode(WORKLET_NAME, {
+    const workletNode = Tone.getContext().createAudioWorkletNode(WORKLET_NAME, {
       outputChannelCount: [2],
     });
     this.input = this.output = workletNode;
@@ -46,11 +46,9 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
     console.log("[ByteBeatPlayer] AudioWorkletNode instance created.");
 
     // Set initial formula from parameters passed in options
-    const initialFormulaParam = this.internalDefinition.initialParams?.find(p => p.id === 'formula')?.value;
-
-
+    const initialFormulaParam = ByteBeatPlayer.getDefinition().parameters.find(p => p.id === 'formula')?.defaultValue;
     this.setFormula(initialFormulaParam);
-    console.log(`[ByteBeatPlayer] Initial formula set to: "${initialFormulaParam}"`);
+    // console.log(`[ByteBeatPlayer] Initial formula set to: "${initialFormulaParam}"`);
   }
 
   // Method to send the formula string to the AudioWorklet

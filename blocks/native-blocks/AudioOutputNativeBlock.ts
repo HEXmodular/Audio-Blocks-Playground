@@ -3,122 +3,117 @@ import {
     BlockDefinition,
     BlockInstance,
     BlockParameter,
-    ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo
-} from '@interfaces/common';
+    // ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo // This was related to the old structure
+} from '@interfaces/block';
 // AudioParam is a global type, no need to import from common
-import { CreatableNode } from './CreatableNode';
+// import { CreatableNode } from './CreatableNode'; // Removed
 import { createParameterDefinitions } from '@constants/constants';
-// Native types like AudioParam, GainNode, ConstantSourceNode are globally available
 // Tone types like Tone.ToneAudioNode should be used with the Tone prefix.
 
-export interface ManagedAudioOutputNodeInfo extends OriginalManagedNativeNodeInfo {
-    toneGain?: Tone.Gain;
+// Options for the constructor, similar to ByteBeatPlayer
+interface AudioOutputNodeOptions extends Tone.ToneAudioNodeOptions {
+    // initialParams?: BlockParameter[];
+    // definition is not strictly needed if we fetch it statically or pass it if required by ToneAudioNode's pattern
 }
 
-export class AudioOutputNativeBlock implements CreatableNode {
+// export interface ManagedAudioOutputNodeInfo extends OriginalManagedNativeNodeInfo {
+// toneGain?: Tone.Gain;
+// } // This interface is no longer needed as the class itself is the managed node.
+
+export class AudioOutputNativeBlock extends Tone.ToneAudioNode<AudioOutputNodeOptions> {
+    readonly name: string = 'Audio Output (Tone)'; // Keep name consistent
+    // private _internalGain: Tone.Gain;
+
+    // Input is the internalGain node
+    readonly input: Tone.ToneAudioNode;
+    readonly output: undefined; // Or Tone.ToneDestinationNode if we want to represent it
+
     public static getDefinition(): BlockDefinition {
         return {
             id: 'system-audio-output-tone-v1',
             name: 'Audio Output (Tone)',
             description: 'Plays the incoming audio signal through Tone.Destination. Contains an internal Tone.Gain for volume control.',
-            runsAtAudioRate: true,
             inputs: [
                 { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume Tone.Gain.' },
-                { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
+                // { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
             ],
             outputs: [],
-            parameters: createParameterDefinitions([
-                { id: 'volume', name: 'Volume', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 0.7, description: 'Output volume level (controls an internal Tone.Gain).' }
-            ]),
-            isAiGenerated: false,
-            initialPrompt: '',
+            parameters: [],
         };
     }
 
-    constructor() { }
+    constructor(options?: AudioOutputNodeOptions) {
+        super(options);
 
-    createNode(
-        instanceId: string,
-        definition: BlockDefinition,
-        initialParams: BlockParameter[]
-    ): ManagedAudioOutputNodeInfo {
-        // console.log(`[AudioOutputNativeBlock createNode] Instance ID: ${instanceId}, Definition ID: ${definition.id}, Initial Params:`, initialParams); // REMOVED
         if (Tone.getContext().state !== 'running') {
-            console.warn(`[AudioOutputNativeBlock createNode] Tone.js context is not running for instance ${instanceId}. Audio Output may not function correctly.`); // Kept warn
+            console.warn(`[AudioOutputNativeBlock constructor] Tone.js context is not running. Audio Output may not function correctly.`);
+
         }
 
-        const toneGain = new Tone.Gain();
-        const volumeParam = initialParams.find(p => p.id === 'volume');
-        toneGain.gain.value = volumeParam ? Number(volumeParam.currentValue) : 0.7;
-        // console.log(`[AudioOutputNativeBlock createNode] Created Tone.Gain for ${instanceId}. Initial gain value: ${toneGain.gain.value}`); // REMOVED
+        window.Tone = Tone;
 
-        toneGain.connect(Tone.getDestination());
-        // console.log(`[AudioOutputNativeBlock createNode] Connected Tone.Gain for ${instanceId} to Tone.getDestination().`); // REMOVED
+        // const initialParams = options.initialParams || [];
+        // const volumeParam = initialParams.find(p => p.id === 'volume');
+        // const initialVolume = volumeParam ? Number(volumeParam.currentValue) : 0.7;
 
-        const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
-            ['volume', toneGain.gain as unknown as Tone.Param<any>],
-        ]);
-
-        const nodeInfo: ManagedAudioOutputNodeInfo = {
-            definition,
-            instanceId,
-            toneGain,
-            node: toneGain as unknown as Tone.ToneAudioNode,
-            nodeForInputConnections: toneGain as unknown as Tone.ToneAudioNode,
-            nodeForOutputConnections: null,
-            mainProcessingNode: toneGain as unknown as Tone.ToneAudioNode,
-            paramTargetsForCv: specificParamTargetsForCv,
-            internalGainNode: toneGain as unknown as Tone.Gain,
-
-
-            internalState: {},
-        };
-
-        // console.log(`[AudioOutputNativeBlock createNode] nodeForInputConnections for ${instanceId}: ${nodeInfo.nodeForInputConnections?.constructor.name}`); // REMOVED
-        // console.log(`[AudioOutputNativeBlock createNode] Final nodeInfo object for ${instanceId}:`, nodeInfo); // REMOVED
-
-        // this.updateNodeParams(nodeInfo, initialParams);
-
-        return nodeInfo;
+        const internalGain = new Tone.Gain(1)
+        internalGain.connect(Tone.getDestination());
+        this.input = internalGain;//Tone.getDestination(); // Assign internal gain to the input proxy
+        internalGain.context.debug = true; // Enable debug mode for the internal gain
+        // console.log(`[AudioOutputNativeBlock constructor] Created and connected internal Tone.Gain. Initial volume: ${initialVolume}`);
     }
 
-    updateNodeParams(
-        nodeInfo: ManagedAudioOutputNodeInfo,
-        insctance: BlockInstance,
-    ): void {
-        // console.log(`[AudioOutputNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Parameters:`, parameters); // REMOVED
-        if (!nodeInfo.toneGain) {
-            console.warn(`[AudioOutputNativeBlock updateNodeParams] Tone.Gain not available for instance ${nodeInfo.instanceId}.`); // Kept warn
-            return;
-        }
-        const currentToneGain = nodeInfo.toneGain;
-        const context = Tone.getContext();
-        const parameters = insctance.parameters || [];
-
-        const volumeParam = parameters.find(p => p.id === 'volume');
-        if (volumeParam && currentToneGain.gain) {
-            const targetVolume = Number(volumeParam.currentValue);
-            // console.log(`[AudioOutputNativeBlock updateNodeParams] Instance ID: ${nodeInfo.instanceId}, Setting gain to: ${targetVolume}`); // REMOVED
-            currentToneGain.gain.setTargetAtTime(targetVolume, context.currentTime, 0.01);
-        }
+    // This method will be adapted from the old updateNodeParams
+    public updateFromBlockInstance(instance: BlockInstance): void {
+        // const parameters = instance.parameters || [];
+        // const volumeParam = parameters.find(p => p.id === 'volume');
+        // if (volumeParam && this._internalGain && this._internalGain.gain) {
+        //     const targetVolume = Number(volumeParam.currentValue);
+        //     this._internalGain.gain.setTargetAtTime(targetVolume, this.context.currentTime, 0.01);
+        //     // console.log(`[AudioOutputNativeBlock updateFromBlockInstance] Setting gain to: ${targetVolume}`);
+        // } else {
+        //     console.warn(`[AudioOutputNativeBlock updateFromBlockInstance] Volume parameter or internal gain not available for instance ${instance.instanceId}.`);
+        // }
     }
 
-    dispose(nodeInfo: ManagedAudioOutputNodeInfo): void {
-        // console.log(`[AudioOutputNativeBlock dispose] Disposing resources for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
-        if (nodeInfo.toneGain) {
-            // console.log(`[AudioOutputNativeBlock dispose] Disconnecting Tone.Gain from Tone.getDestination() for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
-            nodeInfo.toneGain.disconnect(Tone.getDestination());
-            // console.log(`[AudioOutputNativeBlock dispose] Disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
-            nodeInfo.toneGain.dispose();
-            // console.log(`[AudioOutputNativeBlock dispose] Finished disposing Tone.Gain for Instance ID: ${nodeInfo.instanceId}`); // REMOVED
-        }
+
+    // Old updateNodeParams - to be removed after adapting its logic to updateFromBlockInstance
+    // */
+    // The old updateNodeParams is now removed as its logic is in updateFromBlockInstance
+
+
+    // Overridden dispose from Tone.ToneAudioNode
+    dispose(): this {
+        // console.log(`[AudioOutputNativeBlock dispose] Disposing resources.`);
+        // if (this._internalGain) {
+        //     // console.log(`[AudioOutputNativeBlock dispose] Disconnecting internal Tone.Gain from Tone.getDestination().`);
+        //     this._internalGain.disconnect(Tone.getDestination());
+        //     // console.log(`[AudioOutputNativeBlock dispose] Disposing internal Tone.Gain.`);
+        //     this._internalGain.dispose();
+        // }
+        // Call super.dispose() to handle Tone.js specific cleanup
+        super.dispose();
+        // console.log("[AudioOutputNativeBlock] Disposed.");
+        return this;
     }
 
-    connect(_destination: any, _outputIndex?: number, _inputIndex?: number): any {
-        console.warn(`AudioOutputNativeBlock.connect called, but it has no audio outputs.`);
-    }
+    // The old dispose(nodeInfo: ManagedAudioOutputNodeInfo) is removed.
 
-    disconnect(_destination?: any, _output?: number, _input?: number): void {
-        console.warn(`AudioOutputNativeBlock.disconnect called. Input connections are managed externally. Internal connection to Destination handled on dispose.`);
-    }
+    /**
+     * Returns the Tone.Param or Tone.Signal instance for a given parameter ID that can be targeted by CV.
+     * This is used by the AudioGraphConnectorService to establish CV connections.
+     * @param paramId The ID of the parameter (e.g., 'volume' from the block definition).
+     * @returns The Tone.Param or Tone.Signal instance, or undefined if not found.
+     */
+    // public getParamTargetForCv(paramId: string): Tone.Param<"decibels"> | Tone.Signal<any> | undefined {
+    //     if (paramId === 'volume' && this._internalGain) {
+    //         return this._internalGain.gain;
+    //     }
+    //     console.warn(`[AudioOutputNativeBlock getParamTargetForCv] CV target for param ID "${paramId}" not found.`);
+    //     return undefined;
+    // }
+
+    // The connect and disconnect methods from the old CreatableNode interface are removed,
+    // as ToneAudioNode handles its own connections.
+    // Users will connect to `this.input` (which is `this._internalGain`).
 }
