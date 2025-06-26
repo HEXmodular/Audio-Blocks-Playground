@@ -28,9 +28,8 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> {
     //   throw new Error("[ByteBeatPlayer] Definition is required in options.");
     // }
     // this.internalDefinition = options.definition;
-    const internalGain = new Tone.Gain(1)
-    // const internalGain = new Tone.Oscillator(440, "sine"); // Using an oscillator as a placeholder for the internal gain
-    // internalGain.start()
+    // для того, чтобы сервис соединений получил к чему конектиться сразу
+    const internalGain = new Tone.Gain(1); // иначе соединения между блоками не будут работать
     this.input = this.output = internalGain;
 
     this.init(internalGain);
