@@ -17,7 +17,7 @@ export interface BlockParameter {
     // min?: number; 
     // max?: number; 
     // step?: number; 
-    value?: any; // а это если какое-то значение уже было сохранено
+    currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
     toneParam?: Tone.Param;

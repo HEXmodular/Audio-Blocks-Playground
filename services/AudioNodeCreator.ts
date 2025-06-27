@@ -1,6 +1,6 @@
 // создает ноды из списка классов блоков
 import * as Tone from 'tone'; // Added Tone import
-import { BlockInstance, NativeBlock } from '@interfaces/block';
+import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
@@ -13,16 +13,40 @@ import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
 // import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
+import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
+
+const BLOCK_HANDLERS: Map<string, any> = new Map([
+    [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
+    [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
+    [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
+])
+
+export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
+    .from(BLOCK_HANDLERS.values())
+    .map(classRef => classRef.getDefinition());
+
+// private initializeBlockHandlers(): void {
+//     // this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
+//     // this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
+//     // this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
+//     // this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
+//     // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
+//     // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
+//     // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
+//     this.blockHandlers.set(AudioOutputBlock.getDefinition().id, AudioOutputBlock);
+//     // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
+//     this.blockHandlers.set(ManualGateBlock.getDefinition().id, ManualGateBlock);
+//     // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
+//     this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, ByteBeatPlayer);
+// }
 
 
 class AudioNodeCreator {
     private static instance: AudioNodeCreator;
 
-    private blockHandlers: Map<string, typeof Tone.ToneAudioNode & NativeBlock>; // Map of block handlers keyed by definition ID
+    private blockHandlers = BLOCK_HANDLERS;
 
     private constructor() {
-        this.blockHandlers = new Map();
-        this.initializeBlockHandlers(); // Call initialization for native block handlers
     }
 
     // Static method to get the singleton instance
@@ -31,26 +55,6 @@ class AudioNodeCreator {
             AudioNodeCreator.instance = new AudioNodeCreator();
         }
         return AudioNodeCreator.instance;
-    }
-
-    private initializeBlockHandlers(): void {
-        // this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
-        // this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
-        // this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
-        // this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
-        // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
-        // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
-        // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-        this.blockHandlers.set(AudioOutputBlock.getDefinition().id, AudioOutputBlock);
-        // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
-        // this.blockHandlers.set(ManualGateNativeBlock.getDefinition().id, new ManualGateNativeBlock());
-        // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
-        this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, ByteBeatPlayer);
-    }
-
-    // зачем нужен этот прокси?
-    public updateInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)) {
-        BlockStateManager.updateBlockInstance(instanceId, updates);
     }
 
     // создает экземпляр класса
@@ -89,7 +93,7 @@ class AudioNodeCreator {
                 // Node needs setup.
                 const instanceRef = this.setupManagedNativeNode(instance);
                 if (instanceRef) {
-                    this.updateInstance(instance.instanceId, currentInst => ({
+                    BlockStateManager.updateBlockInstance(instance.instanceId, currentInst => ({
                         ...currentInst,
                         instance: instanceRef,
                         // internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }

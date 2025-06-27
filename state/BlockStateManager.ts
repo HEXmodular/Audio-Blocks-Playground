@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@interfaces/block';
 import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
-import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/block-definitions/nativeBlockRegistry'; // Added
 import { debounce } from '@utils/utils';
+import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/AudioNodeCreator';
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
   ...CONSTANT_DEFINITIONS,
@@ -37,7 +37,7 @@ export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParamete
       // step: paramDef.step,
       description: paramDef.description,
       defaultValue: paramDef.defaultValue,
-      // currentValue: finalCurrentValue,
+      currentValue: paramDef.defaultValue,
       // steps: paramDef.steps,
       // isFrequency: paramDef.isFrequency,
       toneParam: paramDef.toneParam //? JSON.parse(JSON.stringify(paramDef.toneParam)) : undefined,
@@ -73,11 +73,20 @@ export class BlockStateManager {
   private _blockInstances: BlockInstance[];
 
   private _onDefinitionsChangeCallback: ((definitions: BlockDefinition[]) => void) | null = null;
-  private _onInstancesChangeCallback: ((instances: BlockInstance[]) => void) | null = null;
   private _initializationDone: boolean = false;
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
   private _selectedBlockInstanceId: string | null = null; // Added selected instance ID state
+
+  private _onInstancesChange(instances: BlockInstance[]): void {
+    instances.forEach(instance => {
+      if (!instance.instance) {
+        console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+        return;
+      }
+      instance.instance.updateFromBlockInstance(instance);
+    });
+  }
 
   public static getInstance(): BlockStateManager {
     if (BlockStateManager._instance === null) {
@@ -88,19 +97,8 @@ export class BlockStateManager {
 
   public init(onDefinitionsChange: (definitions: BlockDefinition[]) => void, onInstancesChange: (instances: BlockInstance[]) => void): void {
     this._onDefinitionsChangeCallback = onDefinitionsChange;
-    this._onInstancesChangeCallback = (instances: BlockInstance[]) => {
-
-      instances.forEach(instance => {
-        const definition = instance.definition;
-        if (!definition || !instance.instance) {
-          console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${definition?.id}'.`);
-          return;
-        }
-        instance.instance.updateFromBlockInstance(instance);
-      });
-    };
     if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
   private constructor() {
@@ -110,9 +108,6 @@ export class BlockStateManager {
 
     this._blockDefinitions = this._loadDefinitions(); // Loads from LS
     this._blockInstances = this._loadAndProcessInstances(this._blockDefinitions); // Loads from LS
-
-    // this._onDefinitionsChangeCallback([...this._blockDefinitions]); // Removed
-    // this._onInstancesChangeCallback([...this._blockInstances]); // Removed
 
     this._initializationDone = true;
     // Initial saves should still happen directly
@@ -315,8 +310,11 @@ export class BlockStateManager {
   private _saveInstancesToLocalStorageInternal() {
     if (!this._initializationDone) return;
     try {
-      localStorage.setItem('audioBlocks_instances', JSON.stringify(this._blockInstances));
+      // instance это ссылка на объект, который не нужно сохранять в localStorage, поэтому мы удаляем его из каждого экземпляра
+      const blockInstances = [...this._blockInstances].map(instance => ({...instance, instance: null}))
+      localStorage.setItem('audioBlocks_instances', JSON.stringify(blockInstances));
     } catch (error) {
+      debugger
       console.error(`[👨🏿‍💼 BlockStateManager]: Failed to save block instances to localStorage: ${(error as Error).message}`);
     }
   }
@@ -349,7 +347,7 @@ export class BlockStateManager {
     //     : b
     // );
     // this._saveInstancesToLocalStorage();
-    // if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    // if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
   public addBlockDefinition(definition: BlockDefinition): void {
@@ -398,7 +396,7 @@ export class BlockStateManager {
 
     this._blockInstances = [...this._blockInstances, newInstance];
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
     return newInstance;
   }
 
@@ -415,29 +413,29 @@ export class BlockStateManager {
           newBlockState = { ...currentBlockInst, ...updates };
         }
 
-        if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+        if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
         return newBlockState;
       }
-      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+      if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
       return currentBlockInst;
     });
 
     if (wasUpdated) {
       this._saveInstancesToLocalStorage();
-      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+      if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
     }
   }
 
   public deleteBlockInstance(instanceId: string): void {
     this._blockInstances = this._blockInstances.filter(b => b?.instanceId !== instanceId);
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
     this._blockInstances = newInstances;
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
   public setAllBlockDefinitions(newDefinitions: BlockDefinition[]): void {
@@ -474,7 +472,7 @@ export class BlockStateManager {
 
     if (wasAnyInstanceUpdated) {
       this._saveInstancesToLocalStorage(); // Call the debounced save
-      if (this._onInstancesChangeCallback) this._onInstancesChangeCallback([...this._blockInstances]);
+      if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
     }
   }
 
@@ -487,7 +485,7 @@ export class BlockStateManager {
   }
 
   public onBlockInstanceChaged(callback: (instances: BlockInstance[]) => void): void {
-    // this._onInstancesChangeCallback = callback;
+    // this._onInstancesChange = callback;
     // if (this._initializationDone) {
     //   callback([...this._blockInstances]); // Call immediately with current instances
     // }

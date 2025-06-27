@@ -7,6 +7,10 @@ class ByteBeatProcessor extends AudioWorkletProcessor {
     this.sampleRate = 8000; // Fixed sample rate
 
     this.port.onmessage = (event) => {
+      if (event.data === 'start') {
+        this.t = 0; // Reset time when requested
+        console.log("[ByteBeatProcessor] Time reset to 0.");
+      }
       if (event.data.formula) {
         this.formula = event.data.formula;
         // Reset time on formula change to avoid unexpected sounds, or make this configurable
