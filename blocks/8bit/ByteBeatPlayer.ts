@@ -39,7 +39,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
   input = undefined; // This is a native AudioWorkletNode, managed by this ToneAudioNode
   output = new Tone.Gain(1); // This is a native AudioWorkletNode, managed by this ToneAudioNode
   workletNode: AudioWorkletNode | null = null; // Store the worklet node instance
-  gateSubscription: Tone.Emitter<string> | undefined; // Subscription to the gate emitter for this instance
+  gateSubscriptions: Tone.Emitter<string>[] = [];
 
   // private internalDefinition: BlockDefinition; // Store definition for fallback access
 
@@ -51,7 +51,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
     // для того, чтобы сервис соединений получил к чему конектиться сразу
     // this.input = this.output = new Tone.Gain(1);
     this.init();
-    
+
     Tone.getTransport().on('stop', () => {
       this.workletNode?.disconnect(); // Disconnect worklet node on transport stop
     })
@@ -68,7 +68,7 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
       });
     }
 
-    
+
     this.workletNode = Tone.getContext().createAudioWorkletNode(WORKLET_NAME, {
       outputChannelCount: [2],
     });
@@ -117,11 +117,6 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
     if (!instance?.parameters) {
       return;
     }
-    if (instance.emitters?.trigger_in) {
-      this.gateSubscription = instance.emitters.trigger_in?.on?.('gate_change', (payload) => {
-        console.log("[ByteBeatPlayer] Trigger input received, resetting counter in worklet.", payload);
-      })
-    }
     //
     // TODO разобраться с начальными параметрами которых нет в панели
     //
@@ -136,6 +131,30 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
     // }
     // this.setFormula(formulaToSet);
   }
+
+  // для очевидной передачи эммитера от входящего блока
+  public setSubscription(emitters: { [key: string]: Tone.Emitter }): void {
+    // сейчас обрабатывается только одно подключение
+    // а их может быть множество
+    // нужно будет передавать от кого пришло сообщение
+    // и удалять если этот блок удалили
+    if (this.gateSubscriptions.length) {
+      return
+    }
+    this.gateSubscriptions.push(
+      emitters.trigger_in?.on?.('gate_change', (payload) => {
+        console.log("[ByteBeatPlayer] Gate input received, resetting counter in worklet.", payload);
+      })
+    );
+    this.gateSubscriptions.push(
+      emitters.trigger_in?.on?.('trigger', (payload) => {
+        console.log("[ByteBeatPlayer] Trigger input received, resetting counter in worklet.", payload);
+      })
+    );
+  }
+
+
+
 }
 
 

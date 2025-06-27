@@ -196,15 +196,9 @@ export class BlockStateManager {
         isAiGenerated: false,
       }));
     }
+    // по какой-то причине то что отсюда уходит теряет compactRendererComponent
+    // возможно и другие поля тоже
     return mergedDefinitions.map(def => {
-      let rendererComponent; // Variable to hold the resolved component
-      if (def.compactRendererId) {
-        rendererComponent = compactRendererRegistry[def.compactRendererId];
-        // console.log(`[BlockStateManager]`, {rendererComponent});
-        if (!rendererComponent) {
-          console.warn(`[👨🏿‍💼 BlockStateManager]: Compact renderer for ID '${def.compactRendererId}' not found in registry for definition '${def.id}'.`);
-        }
-      }
 
       // Clean up parameters (remove currentValue from definition)
       const parametersWithoutCurrentValue = def.parameters?.map(p => {
@@ -216,7 +210,6 @@ export class BlockStateManager {
       return {
         ...def,
         parameters: parametersWithoutCurrentValue,
-        compactRendererComponent: rendererComponent, // Assign the resolved component (or undefined)
       };
     });
   }
@@ -315,7 +308,7 @@ export class BlockStateManager {
     if (!this._initializationDone) return;
     try {
       // instance это ссылка на объект, который не нужно сохранять в localStorage, поэтому мы удаляем его из каждого экземпляра
-      const blockInstances = [...this._blockInstances].map(instance => ({...instance, instance: null}))
+      const blockInstances = [...this._blockInstances].map(instance => ({ ...instance, instance: null }))
       localStorage.setItem('audioBlocks_instances', JSON.stringify(blockInstances));
     } catch (error) {
       debugger
@@ -404,30 +397,22 @@ export class BlockStateManager {
     return newInstance;
   }
 
+  // отправляет теперь только обновления, а не по каждому блоку
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
-    let wasUpdated = false;
-    this._blockInstances = this._blockInstances.map(currentBlockInst => {
+    this._blockInstances = this._blockInstances?.map(currentBlockInst => {
       if (currentBlockInst?.instanceId === instanceId) {
-        wasUpdated = true;
-
-        let newBlockState: BlockInstance;
         if (typeof updates === 'function') {
-          newBlockState = updates(currentBlockInst);
+          currentBlockInst = updates(currentBlockInst);
         } else {
-          newBlockState = { ...currentBlockInst, ...updates };
+          currentBlockInst = { ...currentBlockInst, ...updates };
         }
-
+        console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", currentBlockInst);
         if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
-        return newBlockState;
-      }
-      if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
-      return currentBlockInst;
-    });
 
-    if (wasUpdated) {
-      this._saveInstancesToLocalStorage();
-      if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
-    }
+        this._saveInstancesToLocalStorage();
+      }
+      return currentBlockInst
+    })
   }
 
   public deleteBlockInstance(instanceId: string): void {

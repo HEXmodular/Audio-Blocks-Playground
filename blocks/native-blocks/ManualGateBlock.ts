@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, EmitterProvider, BlockInstance, NativeBlock } from '@interfaces/block'; // Added EmitterProvider
+import { BlockDefinition, BlockParameter, BlockInstance, NativeBlock } from '@interfaces/block'; // Added EmitterProvider
 import { createParameterDefinitions } from '@constants/constants';
 import * as Tone from 'tone'; // Added Tone
 
@@ -23,7 +23,11 @@ interface ManualGateNodeOptions extends Tone.ToneAudioNodeOptions {
 }
 
 export class ManualGateBlock extends Tone.ToneAudioNode<ManualGateNodeOptions> implements NativeBlock { // Implemented EmitterProvider
-  private _emitter: Tone.Emitter; // Added emitter property
+  name = BLOCK_DEFINITION.name;
+  input = undefined;
+  output = undefined;
+  // TODO подумать как реализовать отправку множества сигналов, в том числе отднотипных
+  emitter: Tone.Emitter; // Added emitter property
 
   public static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
@@ -31,14 +35,12 @@ export class ManualGateBlock extends Tone.ToneAudioNode<ManualGateNodeOptions> i
 
   constructor(options?: ManualGateNodeOptions) {
     super(options);
-    this._emitter = new Tone.Emitter(); // Initialized emitter
+    this.emitter = new Tone.Emitter(); // Initialized emitter
   }
 
   public getEmitter(outputId: string): Tone.Emitter | undefined { // Implemented getEmitter
-    if (outputId === 'gate_out' && this._emitter) {
-      this._emitter.on('gate_change', (data) => {
-      })
-      return this._emitter;
+    if (outputId === 'gate_out' && this.emitter) {
+      return this.emitter;
     }
     return undefined;
   }
@@ -50,7 +52,7 @@ export class ManualGateBlock extends Tone.ToneAudioNode<ManualGateNodeOptions> i
       const newGateValue = !!gateActiveParam.currentValue;
       const prevGateValue = false//instance.
       // internalState?.prevGateValue;
-      this._emitter.emit('gate_change', { newState: newGateValue });
+      this.emitter.emit('gate_change', { newState: newGateValue });
 
 
       // if (newGateValue !== prevGateValue && this._emitter) {

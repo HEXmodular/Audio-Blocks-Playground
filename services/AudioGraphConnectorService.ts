@@ -88,15 +88,7 @@ class AudioGraphConnectorService {
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
         const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
         if (emitter) {
-          BlockStateManager.updateBlockInstance(
-            toInstance.instanceId,
-            { emitters: { [conn.toInputId]: emitter } }
-          );
-
-          // instanceUpdates.push({
-          //   instanceId: toInstance.instanceId,
-          //   updates: { internalState: { ...toInstance.internalState } }
-          // });
+          toInstance.instance?.setSubscription?.({ [conn.toInputId]: emitter })
         }
         return;
       } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {

@@ -60,11 +60,12 @@ export interface BlockDefinition {
     // audioWorkletCode?: string; 
     // logicCodeTests?: string; 
     // isAiGenerated?: boolean;
+    compactRendererId: string;
 }
 
 export interface BlockInstance {
     instanceId: string;
-    instance: Tone.ToneAudioNode & NativeBlock | null | undefined ; // The actual audio node instance
+    instance: Tone.ToneAudioNode & NativeBlock | null | undefined; // The actual audio node instance
     // definitionId: string; 
     definition: BlockDefinition;
     name: string;
@@ -88,9 +89,12 @@ export interface CompactRendererProps {
 }
 
 export interface NativeBlock {
-    input: Tone.ToneAudioNode | undefined;
-    output: Tone.ToneAudioNode | undefined;
+    input?: Tone.ToneAudioNode | undefined;
+    output?: Tone.ToneAudioNode | undefined;
+    gateSubscriptions?: Tone.Emitter<string>[];
+    emitter?: Tone.Emitter;
     // constructor: (options?: any) => void;
     updateFromBlockInstance: (instance: BlockInstance) => void;
-    getEmitter?: (outputId: string) =>Tone.Emitter | undefined
+    getEmitter?: (outputId: string) => Tone.Emitter | undefined
+    setSubscription?: (subscription: { [inputId: string]: Tone.Emitter }) => void;
 }

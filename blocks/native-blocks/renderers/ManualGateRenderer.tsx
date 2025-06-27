@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CompactRendererProps } from '@interfaces/common';
+import type { CompactRendererProps } from '@interfaces/block';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 
@@ -18,7 +18,6 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
       return;
     }
     setGateParam({ ...gateParam, currentValue: value });
-
 
     BlockStateManager.updateBlockInstance(
       blockInstance.instanceId,
@@ -42,9 +41,6 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
         blockInstance,
         blockDefinition,
         handleParameterChange,
-        // numberInputTextValues,
-        // handleNumberInputTextChange,
-        // processNumberInput
       })}
     </div>
   );

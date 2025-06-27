@@ -6,6 +6,7 @@ import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 import { debounce } from '@utils/utils';
+import { compactRendererRegistry } from '@/services/block-definitions/compactRendererRegistry';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
@@ -54,7 +55,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
   // const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
-  const blockDefinition = blockInstance.definition; 
+  const blockDefinition = blockInstance.definition;
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
 
@@ -151,6 +152,18 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     return marginTop + (portAreaHeight / (count - 1)) * index;
   };
 
+  const CompactRendererComponent = (compactRendererId: string) => {
+    const CR = compactRendererRegistry[compactRendererId];
+
+    if (CR) {
+      return (<CR blockInstance={blockInstance} blockDefinition={blockDefinition}></CR>)
+    }
+
+    return <DefaultCompactRenderer
+      blockInstance={blockInstance}
+      blockDefinition={blockDefinition} />
+  };
+
   return (
     <div
       style={{
@@ -189,7 +202,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             </span>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               BlockStateManager.deleteBlockInstance(blockInstance.instanceId);
             }}
             title="Delete Block"
@@ -203,17 +217,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Body: Custom or Default Compact Renderer */}
       <div className="flex-grow flex flex-col justify-center relative">
-        {blockDefinition?.compactRendererComponent ? (
-          <blockDefinition.compactRendererComponent
-            blockInstance={blockInstance}
-            blockDefinition={blockDefinition}
-          />
-        ) : (
-          blockDefinition && <DefaultCompactRenderer
-            blockInstance={blockInstance}
-            blockDefinition={blockDefinition}
-          />
-        )}
+        {CompactRendererComponent(blockDefinition.compactRendererId)}
       </div>
 
       {/* Input Port Stubs */}

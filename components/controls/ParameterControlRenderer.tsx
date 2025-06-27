@@ -46,7 +46,8 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
         <label className="flex items-center space-x-2 cursor-pointer h-8">
           <input
             id={`${blockInstance.instanceId}-${param.id}-panel-control`}
-            type="checkbox" checked={!!param.currentValue}
+            type="checkbox" 
+            checked={!!param.currentValue}
             onChange={(e) => handleParameterChange(param.id, e.target.checked)}
             className="form-checkbox h-4 w-4 text-sky-500 bg-gray-700 border-gray-600 rounded focus:ring-sky-500"
             aria-label={`${param.name} toggle`}
