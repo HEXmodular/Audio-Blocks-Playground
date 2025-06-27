@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import BlockDetailPanel from '@components/BlockDetailPanel'; // Import BlockDetailPanel
-import BlockStateManager from '@state/BlockStateManager';
 import ConnectionsRenderer from '@components/ConnectionsRenderer';
+
+import BlockStateManager from '@state/BlockStateManager';
+
 import { BlockInstance } from '@interfaces/block';
+
+import PubSubService from '@services/PubSubService';
 
 const App: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -16,6 +20,11 @@ const App: React.FC = () => {
     console.log("Get the latest block instances");
     setAppBlockInstances(BlockStateManager.getBlockInstances());
   }, [BlockStateManager.getBlockInstances()]);
+
+  PubSubService.subscribe('insctance-changed', (instances: BlockInstance[]) => {
+    setAppBlockInstances(instances);
+  })
+
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">

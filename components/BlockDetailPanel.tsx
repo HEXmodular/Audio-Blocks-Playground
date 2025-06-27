@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BlockInstance, BlockPort,  BlockDefinition } from '@interfaces/block';
+import type { BlockInstance, BlockPort } from '@interfaces/block';
 import { BlockView } from '@interfaces/block';
 import type { Connection } from '@interfaces/connection';
 import CodeLogToggle from '@components/CodeLogToggle';
@@ -13,7 +13,7 @@ import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import  ConnectionState  from '@services/ConnectionState';
-import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
+// import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task

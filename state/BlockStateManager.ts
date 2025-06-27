@@ -3,10 +3,13 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@interfaces/block';
-import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
 import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { debounce } from '@utils/utils';
+
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/AudioNodeCreator';
+import PubSubService from '@services/PubSubService';
+import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
+
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
   ...CONSTANT_DEFINITIONS,
@@ -81,11 +84,12 @@ export class BlockStateManager {
   private _onInstancesChange(instances: BlockInstance[]): void {
     instances.forEach(instance => {
       if (!instance.instance) {
-        console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+        // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
         return;
       }
       instance.instance.updateFromBlockInstance(instance);
     });
+    PubSubService.publish('insctance-changed', [...this._blockInstances]);
   }
 
   public static getInstance(): BlockStateManager {

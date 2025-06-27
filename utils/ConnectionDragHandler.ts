@@ -3,15 +3,16 @@
 // BlockInstanceComponent и ConnectionsRenderer
 
 import { RefObject } from 'react';
-import { PendingConnection, BlockPort, Connection } from '@interfaces/common';
+import { BlockPort } from '@interfaces/block';
+import { PendingConnection, Connection } from '@interfaces/connection';
+
 import { v4 as uuidv4 } from 'uuid';
-import BlockStateManager from '@/state/BlockStateManager';
-import ConnectionState from '@/services/ConnectionState';
+import BlockStateManager from '@state/BlockStateManager';
+import ConnectionState from '@services/ConnectionState';
 
 export interface ConnectionDragHandlerProps {
   svgRef: RefObject<SVGSVGElement>;
   updateConnections: (updater: (prev: Connection[]) => Connection[]) => void;
-  onStateChange: () => void;
 }
 
 export interface IConnectionDragHandler {
@@ -35,7 +36,6 @@ class ConnectionDragHandler implements IConnectionDragHandler {
   private svgRef!: RefObject<SVGSVGElement>;
   // private blockInstances!: BlockInstance[];
   // private updateConnections!: (updater: (prev: Connection[]) => Connection[]) => void;
-  public onStateChange = () => {};
 
   private constructor() {
     // Private constructor to prevent direct instantiation
@@ -85,7 +85,6 @@ class ConnectionDragHandler implements IConnectionDragHandler {
       currentX: portCenter.x,
       currentY: portCenter.y,
     };
-    this.onStateChange?.();
   }
 
   private handleGlobalMouseMove(e: MouseEvent): void {
@@ -160,9 +159,6 @@ class ConnectionDragHandler implements IConnectionDragHandler {
         stateChanged = true;
       }
 
-      if (stateChanged) {
-        this.onStateChange();
-      }
     }
   }
 
@@ -199,7 +195,6 @@ class ConnectionDragHandler implements IConnectionDragHandler {
       }
       this.pendingConnection = null;
       this.draggedOverPort = null;
-      this.onStateChange();
     }
   }
 

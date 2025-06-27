@@ -1,11 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 import { getPortColor as getBlockPortBgColor } from './BlockInstanceComponent';
 import ConnectionState from '@services/ConnectionState';
+import PubSubService from '@services/PubSubService';
+
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
-import { debounce } from '@utils/utils';
+
 import { BlockInstance } from '@interfaces/block';
+import { Connection } from '@interfaces/connection';
 
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
@@ -32,18 +35,16 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     const [, setForceUpdateKey] = useState<number>(0); // Value of forceUpdateKey is not directly used, only its change
     const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
     const [blockInstances, setBlockInstances] = useState(BlockStateManager.getBlockInstances());
+    const [connections, setConnections] = useState(ConnectionState.getConnections());
+    
+    PubSubService.subscribe('connections-changed', (connections: Connection[]) => {
+        setConnections(connections);
+    })
 
-    const connections = ConnectionState.getConnections();
-    const isCallbackSetted = useRef({setted: false}); // Use useRef to keep track of whether the callback is set
-    if (!isCallbackSetted.current.setted) {
-    BlockStateManager.onBlockInstanceChaged((blockInstances: BlockInstance[]) => {
-        isCallbackSetted.current.setted = true; // Set the callback only once
-        debounce(() => {
-            // Update the block instances state when block instances change
-            setBlockInstances(blockInstances);
-        }, 200)();
-    });
-}
+    PubSubService.subscribe('insctance-changed', (instances: BlockInstance[]) => {
+        setBlockInstances(instances);
+    })
+
     const onUpdateConnections = ConnectionState.updateConnections;
 
     ConnectionDragHandler.onStateChange = () => {
@@ -54,10 +55,8 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
         }
     };
 
-
     // forceUpdateKey is implicitly used by being part of the component's state,
     // so changing it will trigger a re-render of ConnectionsRenderer.
-
     return (
         <>
             {connections.map(conn => {
@@ -66,7 +65,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                 if (!fromInstance || !toInstance) return null;
 
                 const fromDef = fromInstance.definition;
-                const toDef =toInstance.definition;
+                const toDef = toInstance.definition;
                 if (!fromDef || !toDef) return null;
 
                 const outputPortDef = fromDef.outputs.find(p => p.id === conn.fromOutputId);
@@ -86,7 +85,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                         setTimeout(() => setForceUpdateKey(prev => prev + 1), 100);
                         return null; // Skip rendering this line for now
                     } else {
-                        console.warn(`[ConnectionsRenderer] Could not find port elements for connection ${conn.id} after 10 retries. Giving up on this connection for now.`);
+                        // console.warn(`[ConnectionsRenderer] Could not find port elements for connection ${conn.id} after 10 retries. Giving up on this connection for now.`);
                         // Optionally, mark as "given up" in retryAttemptsMap to prevent further logs if needed,
                         // e.g., setRetryAttemptsMap(prev => ({ ...prev, [conn.id]: Infinity }));
                         return null; // Stop trying to render this connection

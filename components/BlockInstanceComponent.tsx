@@ -189,7 +189,9 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             </span>
           )}
           <button
-            // onClick={(e) => { e.stopPropagation(); onDeleteInstance(blockInstance.instanceId); }}
+            onClick={(e) => { e.stopPropagation(); 
+              BlockStateManager.deleteBlockInstance(blockInstance.instanceId);
+            }}
             title="Delete Block"
             aria-label={`Delete block ${blockInstance.name}`}
             className="p-0.5 text-gray-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"

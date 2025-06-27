@@ -5,7 +5,8 @@
  * This notification system allows other parts of the application, such as the UI or the audio engine's graph connector, to react dynamically to modifications in the connection topology.
  * It acts as a centralized store and source of truth for the user-defined connections in the audio block interface.
  */
-import { Connection } from '@interfaces/common';
+import { Connection } from '@interfaces/connection';
+import PubSubService from '@services/PubSubService';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
@@ -14,7 +15,6 @@ type ConnectionStateListener = (connections: Connection[]) => void;
 class ConnectionState {
   private static instance: ConnectionState | null = null; // Singleton instance
   private connections: Connection[] = [];
-  private listeners: ConnectionStateListener[] = [];
 
   private constructor() { // Make the constructor private
     this.loadFromLocalStorage();
@@ -50,9 +50,6 @@ class ConnectionState {
     }
   }
 
-  private notifyListeners(): void {
-    this.listeners.forEach(listener => listener([...this.connections])); // Pass a copy
-  }
 
   public getConnections(): Connection[] {
     return [...this.connections]; // Return a copy
@@ -65,22 +62,16 @@ class ConnectionState {
       this.connections = updater;
     }
     this.persistToLocalStorage();
-    this.notifyListeners();
+    PubSubService.publish('connections-changed', this.connections); // Notify subscribers
   }
 
   public setAllConnections(newConnections: Connection[]): void {
     this.connections = [...newConnections]; // Ensure it's a new array
     this.persistToLocalStorage();
-    this.notifyListeners();
+    PubSubService.publish('connections-changed', this.connections); // Notify subscribers
+
   }
 
-  public onStateChange(callback: ConnectionStateListener): () => void {
-    this.listeners.push(callback);
-    // Return an unsubscribe function
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== callback);
-    };
-  }
 }
 
 export default ConnectionState.getInstance();
