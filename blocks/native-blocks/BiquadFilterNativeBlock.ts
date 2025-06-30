@@ -1,135 +1,154 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockInstance, BlockParameter, ManagedNativeNodeInfo as OriginalManagedNativeNodeInfo } from '@interfaces/common';
-// AudioParam is a global type, removed from common import
+import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '../../constants/constants';
-import { CreatableNode } from '@services/native-blocks/CreatableNode';
-import { ManagedEnvelopeNodeInfo } from './EnvelopeNativeBlock';
 
-export interface ManagedFilterNodeInfo extends OriginalManagedNativeNodeInfo {
-  toneFilter?: Tone.Filter;
+// Options for the constructor
+interface BiquadFilterNodeOptions extends Tone.ToneAudioNodeOptions {
+    initialParams?: BlockParameter[];
+    // Add instanceId to options if needed by the superclass or for logging
+    instanceId?: string;
 }
 
-export class BiquadFilterNativeBlock implements CreatableNode {
-    static getDefinition(): BlockDefinition {
-      return {
-        id: 'tone-filter-v1',
-        name: 'Filter (Tone)',
-        description: 'A Tone.Filter node, providing various filter types.',
-        runsAtAudioRate: true,
-        inputs: [
-          { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Filter input.' },
-          { id: 'freq_cv_in', name: 'Freq CV', type: 'audio', description: 'Modulates filter frequency (Tone.Signal).', audioParamTarget: 'frequency'},
-          { id: 'q_cv_in', name: 'Q CV', type: 'audio', description: 'Modulates filter Q factor (Tone.Param).', audioParamTarget: 'Q'},
-          { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates filter gain for relevant types (Tone.Param).', audioParamTarget: 'gain'}
-        ],
-        outputs: [
-          { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.Filter.' }
-        ],
-        parameters: createParameterDefinitions([
-          { id: 'frequency', name: 'Frequency', type: 'slider', min: 20, max: 20000, step: 1, defaultValue: 350, description: 'Filter cutoff/center frequency in Hz.', isFrequency: true },
-          { id: 'q', name: 'Q Factor', type: 'slider', min: 0.0001, max: 100, step: 0.0001, defaultValue: 1, description: 'Quality factor, controlling bandwidth.' },
-          { id: 'gain', name: 'Gain (dB)', type: 'slider', min: -40, max: 40, step: 0.1, defaultValue: 0, description: 'Gain in decibels, for Peaking, Lowshelf, Highshelf filters.' },
-          {
+const BLOCK_DEFINITION: BlockDefinition = {
+    id: 'tone-filter-v1',
+    name: 'Filter (Tone)',
+    description: 'A Tone.Filter node, providing various filter types.',
+    inputs: [
+        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Filter input.' },
+        // For CV inputs, we need to ensure they are represented in the definition
+        // if AudioGraphConnectorService relies on this for creating connections.
+        // The getCvInput method will provide the actual Tone.Param/Signal.
+        { id: 'freq_cv_in', name: 'Freq CV', type: 'audio', description: 'Modulates filter frequency.'},
+        { id: 'q_cv_in', name: 'Q CV', type: 'audio', description: 'Modulates filter Q factor.'},
+        { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates filter gain.'}
+    ],
+    outputs: [
+        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output from Tone.Filter.' }
+    ],
+    parameters: createParameterDefinitions([
+        { id: 'frequency', name: 'Frequency', type: 'slider', min: 20, max: 20000, step: 1, defaultValue: 350, description: 'Filter cutoff/center frequency in Hz.', isFrequency: true },
+        { id: 'q', name: 'Q Factor', type: 'slider', min: 0.0001, max: 100, step: 0.0001, defaultValue: 1, description: 'Quality factor, controlling bandwidth.' },
+        { id: 'gain', name: 'Gain (dB)', type: 'slider', min: -40, max: 40, step: 0.1, defaultValue: 0, description: 'Gain in decibels, for Peaking, Lowshelf, Highshelf filters.' },
+        {
             id: 'type',
             name: 'Filter Type',
             type: 'select',
             options: [
-              {value: "lowpass", label: "Lowpass"}, {value: "highpass", label: "Highpass"},
-              {value: "bandpass", label: "Bandpass"}, {value: "notch", label: "Notch"},
-              {value: "allpass", label: "Allpass"}, {value: "peaking", label: "Peaking"},
-              {value: "lowshelf", label: "Lowshelf"}, {value: "highshelf", label: "Highshelf"}
+                { value: "lowpass", label: "Lowpass" }, { value: "highpass", label: "Highpass" },
+                { value: "bandpass", label: "Bandpass" }, { value: "notch", label: "Notch" },
+                { value: "allpass", label: "Allpass" }, { value: "peaking", label: "Peaking" },
+                { value: "lowshelf", label: "Lowshelf" }, { value: "highshelf", label: "Highshelf" }
             ],
             defaultValue: "lowpass",
             description: 'The type of filtering algorithm.'
-          },
-        ]),
-      };
-    }
+        },
+    ]),
+    compactRendererId: 'DefaultCompactRenderer',
+};
 
-    constructor() {}
+export class BiquadFilterNativeBlock extends Tone.Filter implements NativeBlock {
+    readonly name: string = BLOCK_DEFINITION.name;
+    // input is inherited from Tone.Filter and is Tone.Param<'frequency'>
+    // output is inherited from Tone.Filter
+    // We need to explicitly define input and output for NativeBlock interface compliance
+    // if the inherited ones are not directly assignable or have different types.
+    // However, Tone.Filter itself is a Tone.ToneAudioNode, so `this` can be input/output.
+    // For clarity and to match the NativeBlock interface:
+    readonly inputNode: Tone.ToneAudioNode;
+    readonly outputNode: Tone.ToneAudioNode;
 
-    createNode(
-        instanceId: string,
-        definition: BlockDefinition,
-        initialParams: BlockParameter[]
-    ): ManagedFilterNodeInfo {
+
+    constructor(options?: BiquadFilterNodeOptions) {
+        const initialFrequency = options?.initialParams?.find(p => p.id === 'frequency')?.currentValue as number ??
+            BLOCK_DEFINITION.parameters.find(p => p.id === 'frequency')?.defaultValue as number;
+        const initialType = options?.initialParams?.find(p => p.id === 'type')?.currentValue as BiquadFilterType ??
+            BLOCK_DEFINITION.parameters.find(p => p.id === 'type')?.defaultValue as BiquadFilterType;
+        const initialQ = options?.initialParams?.find(p => p.id === 'q')?.currentValue as number ??
+            BLOCK_DEFINITION.parameters.find(p => p.id === 'q')?.defaultValue as number;
+        const initialGain = options?.initialParams?.find(p => p.id === 'gain')?.currentValue as number ??
+            BLOCK_DEFINITION.parameters.find(p => p.id === 'gain')?.defaultValue as number;
+
+
+        super({
+            ...options,
+            frequency: initialFrequency,
+            type: initialType,
+            Q: initialQ,
+            gain: initialGain,
+        });
+
+        this.inputNode = this;
+        this.outputNode = this;
+
+
         if (Tone.getContext().state !== 'running') {
-            console.warn('Tone.js context is not running. Filter node may not function correctly until context is started.');
+            console.warn(`[BiquadFilterNativeBlock constructor ${options?.instanceId || ''}] Tone.js context is not running. Filter node may not function correctly.`);
         }
 
-        const initialFrequency = initialParams.find(p => p.id === 'frequency')?.currentValue as number ?? 350;
-        const initialType = initialParams.find(p => p.id === 'type')?.currentValue as string ?? "lowpass";
-        const toneFilter = new Tone.Filter(initialFrequency, initialType as any, -12);
-
-        const specificParamTargetsForCv = new Map<string, AudioParam | Tone.Param<any> | Tone.Signal<any>>([
-            ['frequency', toneFilter.frequency],
-            ['Q', toneFilter.Q],
-            ['gain', toneFilter.gain as unknown as Tone.Param<any>]
-        ]);
-
-        const nodeInfo: ManagedFilterNodeInfo = {
-            definition,
-            instanceId,
-            toneFilter,
-            node: toneFilter as unknown as Tone.ToneAudioNode,
-            nodeForInputConnections: toneFilter as unknown as Tone.ToneAudioNode,
-            nodeForOutputConnections: toneFilter as unknown as Tone.ToneAudioNode,
-            mainProcessingNode: toneFilter as unknown as Tone.ToneAudioNode,
-            paramTargetsForCv: specificParamTargetsForCv,
-            internalGainNode: undefined,
-
-            internalState: {},
-        };
-
-        // this.updateNodeParams(nodeInfo, );
-
-        return nodeInfo;
+        // Apply all initial parameters, not just frequency and type
+        // This ensures Q and Gain are also set correctly from the start.
+        // Note: updateFromBlockInstance might be called by BlockStateManager after construction,
+        // so this might be redundant if initialParams are part of the BlockInstance used there.
+        // However, having it here ensures the node is correctly configured even if used standalone.
+        if (options?.initialParams) {
+            // Create a partial BlockInstance for updateFromBlockInstance
+            const pseudoInstance: Partial<BlockInstance> = {
+                parameters: options.initialParams,
+                // instanceId: options.instanceId, // if needed for logging in updateFromBlockInstance
+            };
+            this.updateFromBlockInstance(pseudoInstance as BlockInstance);
+        }
     }
 
-    updateNodeParams(
-        nodeInfo: ManagedEnvelopeNodeInfo,
-        blockInstance: BlockInstance,
-    ): void {
-        if (!nodeInfo.toneFilter) {
-            console.warn('Tone.Filter node not found in nodeInfo for BiquadFilterNativeBlock', nodeInfo);
+    public static getDefinition(): BlockDefinition {
+        return BLOCK_DEFINITION;
+    }
+
+    public updateFromBlockInstance(instance: BlockInstance): void {
+        if (!instance?.parameters) {
+            console.warn(`[BiquadFilterNativeBlock updateFromBlockInstance ${instance?.instanceId || ''}] No parameters found in instance`, instance);
             return;
         }
-        const currentToneFilter = nodeInfo.toneFilter;
-        const context = Tone.getContext();
-        const parameters = blockInstance.parameters;
 
-        parameters.forEach(param => {
+        const context = Tone.getContext();
+        instance.parameters.forEach(param => {
             switch (param.id) {
                 case 'frequency':
-                    currentToneFilter.frequency.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    if (this.frequency.value !== Number(param.currentValue)) {
+                        this.frequency.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    }
                     break;
                 case 'q':
-                    currentToneFilter.Q.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    if (this.Q.value !== Number(param.currentValue)) {
+                        this.Q.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    }
                     break;
                 case 'gain':
-                    currentToneFilter.gain.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    if (this.gain.value !== Number(param.currentValue)) {
+                        this.gain.setTargetAtTime(Number(param.currentValue), context.currentTime, 0.01);
+                    }
                     break;
                 case 'type':
-                    if (currentToneFilter.type !== param.currentValue as string) {
-                        currentToneFilter.type = param.currentValue as any;
+                    if (this.type !== param.currentValue as string) {
+                        this.type = param.currentValue as BiquadFilterType;
                     }
                     break;
             }
         });
     }
 
-    dispose(nodeInfo: ManagedFilterNodeInfo): void {
-        if (nodeInfo.toneFilter) {
-            nodeInfo.toneFilter.dispose();
-            console.log(`Disposed Tone.Filter node for instanceId: ${nodeInfo.instanceId}`);
+    // This method provides the Tone.js AudioParam or Signal for CV connection by AudioGraphConnectorService
+    public getCvInputTarget(inputId: string): Tone.Param<any> | Tone.Signal<any> | undefined {
+        switch (inputId) {
+            case 'freq_cv_in':
+                return this.frequency;
+            case 'q_cv_in':
+                return this.Q;
+            case 'gain_cv_in':
+                return this.gain; // This is Tone.Param<"decibels">
+            default:
+                console.warn(`[BiquadFilterNativeBlock] Unknown CV input ID for target: ${inputId}`);
+                return undefined;
         }
-    }
-
-    connect(_destination: any, _outputIndex?: number, _inputIndex?: number): any {
-        console.warn(`BiquadFilterNativeBlock.connect called. Connections typically managed by AudioGraphConnectorService.`);
-    }
-
-    disconnect(_destination?: any, _output?: number, _input?: number): void {
-        console.warn(`BiquadFilterNativeBlock.disconnect called. Connections typically managed by AudioGraphConnectorService.`);
     }
 }

@@ -14,11 +14,13 @@ import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
+import { BiquadFilterNativeBlock } from '@blocks/native-blocks/BiquadFilterNativeBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
+    [BiquadFilterNativeBlock.getDefinition().id, BiquadFilterNativeBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
