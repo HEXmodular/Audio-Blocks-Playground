@@ -73,40 +73,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
       ? [BlockView.UI, BlockView.CONNECTIONS]
       : [BlockView.UI, BlockView.CONNECTIONS, BlockView.CODE, BlockView.LOGS, BlockView.PROMPT, BlockView.TESTS];
 
-  useEffect(() => {
-    if (blockInstance) {
-      if (blockInstance.instanceId !== prevInstanceIdRef.current || blockInstance.name !== editableName) {
-        setEditableName(blockInstance.name);
-      }
-
-      if (!availableViewsForToggle.includes(currentViewInternal)) {
-        setCurrentViewInternal(BlockView.UI);
-      }
-
-      const newInitialTextValues: Record<string, string> = {};
-      blockInstance.parameters?.forEach(param => {
-        if (param.type === 'number_input') {
-          newInitialTextValues[param.id] = String(param.currentValue);
-        }
-      });
-
-      if (
-        blockInstance.instanceId !== prevInstanceIdRef.current ||
-        JSON.stringify(newInitialTextValues) !== JSON.stringify(numberInputTextValues)
-      ) {
-        setNumberInputTextValues(newInitialTextValues);
-      }
-      prevInstanceIdRef.current = blockInstance.instanceId;
-    } else {
-      if (prevInstanceIdRef.current !== null) {
-        setEditableName('');
-        setCurrentViewInternal(BlockView.UI);
-        setNumberInputTextValues({});
-        prevInstanceIdRef.current = null;
-      }
-    }
-  }, [blockInstance, blockDefinition, currentViewInternal, availableViewsForToggle, editableName, numberInputTextValues]);
-
+ 
   if (!blockInstance || !blockDefinition) {
     // If no block is selected (selectedInstanceId is null), don't render the panel at all or render a minimal version.
     // For this task, we'll not render it if selectedInstanceId is null, which will be handled in App.tsx
@@ -184,8 +151,8 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
 
     if (parsedValue !== null && !isNaN(parsedValue) && isFinite(parsedValue)) {
       let finalValue = parsedValue;
-      if (paramDef.min !== undefined) finalValue = Math.max(paramDef.min, finalValue);
-      if (paramDef.max !== undefined) finalValue = Math.min(paramDef.max, finalValue);
+      if (paramDef?.toneParam?.minValue !== undefined) finalValue = Math.max(paramDef?.toneParam?.minValue, finalValue);
+      if (paramDef?.toneParam?.maxValue !== undefined) finalValue = Math.min(paramDef?.toneParam?.maxValue, finalValue);
       
       // Update the actual parameter's currentValue
       handleParameterChange(paramId, finalValue);
@@ -266,7 +233,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
         {blockDefinition.parameters.map(paramDef => {
            const instanceParam = blockInstance.parameters.find(pInst => pInst.id === paramDef.id);
            if (!instanceParam) return <div key={paramDef.id} className="p-1 text-xs text-red-400">Control Error: Param '{paramDef.name}' data missing.</div>;
-          return(
+           return(
             <div key={paramDef.id}>
               <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.name}</label>
               {renderParameterControl({

@@ -28,13 +28,13 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
   if (!paramDef) return <p className="text-xs text-red-400">Param definition not found for {param.id}</p>;
 
   switch (param.type) {
+    // case 'knob':
     case 'slider':
-    case 'knob':
       return (
         <div className="flex items-center space-x-2">
           <input
             id={`${blockInstance.instanceId}-${param.id}-panel-control`}
-            type="range" min={param.min} max={param.max} step={param.step}
+            type="range" min={param?.toneParam?.minValue} max={param?.toneParam?.maxValue} step={param.step}
             value={param.currentValue} onChange={(e) => handleParameterChange(param.id, parseFloat(e.target.value))}
             className={`${commonProps} cursor-pointer flex-grow`} aria-label={`${param.name} slider`}
           />

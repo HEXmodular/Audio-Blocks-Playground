@@ -3,7 +3,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BlockInstance, BlockDefinition, BlockParameter, BlockPort } from '@interfaces/block';
-import { ALL_BLOCK_DEFINITIONS as CONSTANT_DEFINITIONS } from '@constants/constants'; // NEW
 import { debounce } from '@utils/utils';
 
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/AudioNodeCreator';
@@ -12,7 +11,6 @@ import { compactRendererRegistry } from '@services/block-definitions/compactRend
 
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
-  ...CONSTANT_DEFINITIONS,
   ...ALL_NATIVE_BLOCK_DEFINITIONS
 ];
 
@@ -347,29 +345,29 @@ export class BlockStateManager {
     // if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
-  public addBlockDefinition(definition: BlockDefinition): void {
-    const existingIndex = this._blockDefinitions.findIndex(d => d.id === definition.id);
-    if (existingIndex > -1) {
-      console.info(`[👨🏿‍💼 BlockStateManager]: Definition with ID ${definition.id} already exists. Updating it.`);
-      this._blockDefinitions = [
-        ...this._blockDefinitions.slice(0, existingIndex),
-        definition,
-        ...this._blockDefinitions.slice(existingIndex + 1)
-      ];
-    } else {
-      this._blockDefinitions = [...this._blockDefinitions, definition];
-    }
-    this._saveDefinitionsToLocalStorage();
-    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
-  }
+  // public addBlockDefinition(definition: BlockDefinition): void {
+  //   const existingIndex = this._blockDefinitions.findIndex(d => d.id === definition.id);
+  //   if (existingIndex > -1) {
+  //     console.info(`[👨🏿‍💼 BlockStateManager]: Definition with ID ${definition.id} already exists. Updating it.`);
+  //     this._blockDefinitions = [
+  //       ...this._blockDefinitions.slice(0, existingIndex),
+  //       definition,
+  //       ...this._blockDefinitions.slice(existingIndex + 1)
+  //     ];
+  //   } else {
+  //     this._blockDefinitions = [...this._blockDefinitions, definition];
+  //   }
+  //   this._saveDefinitionsToLocalStorage();
+  //   if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+  // }
 
-  public updateBlockDefinition(definitionId: string, updates: Partial<BlockDefinition>): void {
-    this._blockDefinitions = this._blockDefinitions.map(def =>
-      def.id === definitionId ? { ...def, ...updates } : def
-    );
-    this._saveDefinitionsToLocalStorage();
-    if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
-  }
+  // public updateBlockDefinition(definitionId: string, updates: Partial<BlockDefinition>): void {
+  //   this._blockDefinitions = this._blockDefinitions.map(def =>
+  //     def.id === definitionId ? { ...def, ...updates } : def
+  //   );
+  //   this._saveDefinitionsToLocalStorage();
+  //   if (this._onDefinitionsChangeCallback) this._onDefinitionsChangeCallback([...this._blockDefinitions]);
+  // }
 
 
   public addBlockInstance(definition: BlockDefinition, name?: string, position?: { x: number; y: number }): BlockInstance {
@@ -434,7 +432,6 @@ export class BlockStateManager {
   }
 
   public updateMultipleBlockInstances(instanceUpdates: Array<InstanceUpdatePayload>): void {
-
     let wasAnyInstanceUpdated = false;
 
     this._blockInstances = this._blockInstances.map(currentBlockInst => {

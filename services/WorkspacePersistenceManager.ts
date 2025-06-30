@@ -5,11 +5,12 @@
  * During import, it carefully restores the application state: it clears existing managed audio nodes, sets up block definitions (prioritizing core definitions and adding imported AI-generated ones), recreates block instances with appropriate initial states, re-establishes connections, and applies global settings.
  * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
  */
-import { BlockDefinition, BlockInstance, Connection } from '@interfaces/common';
+import { BlockDefinition, BlockInstance } from '@interfaces/block';
+// import { Connection } from '@interfaces/connection';
 import BlockStateManager from '@state/BlockStateManager'; // Import default instance
 import AudioEngineService from '@services/AudioEngineService'; // Import default instance
 import ConnectionState from '@services/ConnectionState'; // Import default instance
-import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
+// import { ALL_BLOCK_DEFINITIONS } from '@constants/constants';
 import * as Tone from 'tone'; // For getting BPM
 
 class WorkspacePersistenceManager {
@@ -74,20 +75,20 @@ class WorkspacePersistenceManager {
                 // Explicitly clearing nodes from AudioNodeCreator might be needed if setupNodes doesn't cover all cases.
 
                 const {
-                    blockDefinitions: importedDefinitions = [],
+                    // blockDefinitions: importedDefinitions = [],
                     blockInstances: importedInstances = [],
                     connections: importedConnections = [],
                     globalBpm: importedBpm,
                     selectedSinkId: importedSinkId,
                 } = workspace;
 
-                const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
-                importedDefinitions.forEach((def: BlockDefinition) => {
-                    if (!coreDefsMap.has(def.id)) {
-                        coreDefsMap.set(def.id, { ...def, isAiGenerated: true });
-                    }
-                });
-                this.blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
+                // const coreDefsMap = new Map(ALL_BLOCK_DEFINITIONS.map(def => [def.id, def]));
+                // importedDefinitions.forEach((def: BlockDefinition) => {
+                //     if (!coreDefsMap.has(def.id)) {
+                //         coreDefsMap.set(def.id, { ...def, isAiGenerated: true });
+                //     }
+                // });
+                // this.blockStateManager.setAllBlockDefinitions(Array.from(coreDefsMap.values()));
 
                 this.blockStateManager.setAllBlockInstances(importedInstances.map((inst: BlockInstance) => ({
                     ...inst,

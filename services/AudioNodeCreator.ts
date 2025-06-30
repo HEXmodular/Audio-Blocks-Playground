@@ -5,8 +5,7 @@ import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
-// import { OscillatorNativeBlock } from '@services/native-blocks/OscillatorNativeBlock';
-// import { BiquadFilterNativeBlock } from '@services/native-blocks/BiquadFilterNativeBlock';
+
 // import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 // import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
@@ -15,12 +14,14 @@ import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
 import { BiquadFilterNativeBlock } from '@blocks/native-blocks/BiquadFilterNativeBlock';
+import { OscillatorNativeBlock } from '@blocks/native-blocks/OscillatorNativeBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
     [BiquadFilterNativeBlock.getDefinition().id, BiquadFilterNativeBlock as any],
+    [OscillatorNativeBlock.getDefinition().id, OscillatorNativeBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array

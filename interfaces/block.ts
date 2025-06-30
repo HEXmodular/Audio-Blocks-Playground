@@ -20,9 +20,9 @@ export interface BlockParameter {
     currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
-    toneParam?: Tone.Param;
+    toneParam?: Partial<Tone.Param>;
     emitters?: { [inputId: string]: Tone.Emitter };
-
+    step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
     // isFrequency?: boolean;
 }
@@ -89,8 +89,8 @@ export interface CompactRendererProps {
 }
 
 export interface NativeBlock {
-    input?: Tone.ToneAudioNode | undefined;
-    output?: Tone.ToneAudioNode | undefined;
+    input?: Tone.ToneAudioNode;
+    output?: Tone.ToneAudioNode | Tone.OutputNode;
     gateSubscriptions?: Tone.Emitter<string>[];
     emitter?: Tone.Emitter;
     // constructor: (options?: any) => void;

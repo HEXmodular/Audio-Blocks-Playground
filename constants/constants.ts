@@ -1,9 +1,9 @@
-import { BlockDefinition, BlockParameterDefinition, BlockParameter } from '@interfaces/block';
+import { BlockParameter } from '@interfaces/block';
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 export const createParameterDefinitions = (
   params: Array<Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any, steps?: number, isFrequency?: boolean }>
-): BlockParameterDefinition[] => {
+): BlockParameter[] => {
   return params.map(pDefProto => {
     let typedDefaultValue = pDefProto.defaultValue;
     if (pDefProto.type === 'slider' || pDefProto.type === 'knob' || pDefProto.type === 'number_input') {
@@ -21,38 +21,37 @@ export const createParameterDefinitions = (
         : Array(numSteps).fill(false);
     }
     return {
-      id: pDefProto.id, name: pDefProto.name, type: pDefProto.type, options: pDefProto.options,
-      min: pDefProto.min, max: pDefProto.max, step: pDefProto.step, defaultValue: typedDefaultValue,
-      description: pDefProto.description, steps: pDefProto.steps, isFrequency: pDefProto.isFrequency,
+      ...pDefProto,
+      defaultValue: typedDefaultValue,
     };
   });
 };
 
 export const BPM_FRACTIONS = [
-  {value: 4, label: '1 Bar (4/4)'}, {value: 2, label: '1/2 Note'}, {value: 1, label: '1/4 Note (Beat)'},
-  {value: 0.5, label: '1/8 Note'}, {value: 0.25, label: '1/16 Note'}, {value: 0.125, label: '1/32 Note'},
-  {value: 1/3, label: '1/4 Triplet'}, {value: 1/6, label: '1/8 Triplet'}, {value: 1/12, label: '1/16 Triplet'},
-  {value: 0.75, label: 'Dotted 1/8 Note'}, {value: 1.5, label: 'Dotted 1/4 Note'}
+  { value: 4, label: '1 Bar (4/4)' }, { value: 2, label: '1/2 Note' }, { value: 1, label: '1/4 Note (Beat)' },
+  { value: 0.5, label: '1/8 Note' }, { value: 0.25, label: '1/16 Note' }, { value: 0.125, label: '1/32 Note' },
+  { value: 1 / 3, label: '1/4 Triplet' }, { value: 1 / 6, label: '1/8 Triplet' }, { value: 1 / 12, label: '1/16 Triplet' },
+  { value: 0.75, label: 'Dotted 1/8 Note' }, { value: 1.5, label: 'Dotted 1/4 Note' }
 ];
 BPM_FRACTIONS.sort((a, b) => b.value - a.value); // Sort from longest to shortest duration for UI
 
-export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
-  id: 'number-to-constant-audio-v1',
-  name: 'Number to Constant Audio',
-  description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
-  runsAtAudioRate: true,
-  inputs: [
-    { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
-  ],
-  outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
-  ],
-  parameters: createParameterDefinitions([
-    { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
-    { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.'}
-  ]),
-  // logicCode: "", // Removed
-};
+// export const NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION: BlockDefinition = {
+//   id: 'number-to-constant-audio-v1',
+//   name: 'Number to Constant Audio',
+//   description: 'Converts a number input to a constant audio signal via ConstantSourceNode, with gain control.',
+//   runsAtAudioRate: true,
+//   inputs: [
+//     { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
+//   ],
+//   outputs: [
+//     { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+//   ],
+//   parameters: createParameterDefinitions([
+//     { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },
+//     { id: 'max_input_value', name: 'Max Expected Input', type: 'number_input', min: 1, defaultValue: 255, description: 'Expected maximum of number_in, for normalization to -1 to 1 range before gain.' }
+//   ]),
+//   // logicCode: "", // Removed
+// };
 
 export const GEMINI_SYSTEM_PROMPT_FOR_BLOCK_DEFINITION = `
 You are an expert in Web Audio API and creative audio programming.
@@ -128,7 +127,3 @@ The tests use a Jest-like syntax: describe, it, expect. The 'it' callback receiv
 Respond with a JSON object: \`{ "fixedLogicCodeTests": "...", "analysis": "Brief analysis of the issues with the original tests and how they were improved." }\`.
 Ensure 'fixedLogicCodeTests' is a string containing the test code. Only provide the JSON object.
 `.trim();
-
-
-export const ALL_BLOCK_DEFINITIONS: BlockDefinition[] = [
-];
