@@ -4,17 +4,12 @@ import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
-// import { GainControlNativeBlock } from '@services/native-blocks/GainControlNativeBlock';
-
-// import { DelayNativeBlock } from '@services/native-blocks/DelayNativeBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
-// import { EnvelopeNativeBlock } from '@services/native-blocks/EnvelopeNativeBlock';
-// import { StepSequencerNativeBlock } from './native-blocks/sequencers/StepSequencerNativeBlock';
-// import { ManualGateNativeBlock } from './native-blocks/ManualGateNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
 import { BiquadFilterNativeBlock } from '@blocks/native-blocks/BiquadFilterNativeBlock';
 import { OscillatorNativeBlock } from '@blocks/native-blocks/OscillatorNativeBlock';
+import { PitchShiftBlock } from '@blocks/effects/PitchShiftBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -22,27 +17,12 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
     [BiquadFilterNativeBlock.getDefinition().id, BiquadFilterNativeBlock as any],
     [OscillatorNativeBlock.getDefinition().id, OscillatorNativeBlock as any],
+    [PitchShiftBlock.getDefinition().id, PitchShiftBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
     .from(BLOCK_HANDLERS.values())
     .map(classRef => classRef.getDefinition());
-
-// private initializeBlockHandlers(): void {
-//     // this.blockHandlers.set(GainControlNativeBlock.getDefinition().id, new GainControlNativeBlock());
-//     // this.blockHandlers.set(OscillatorNativeBlock.getOscillatorDefinition().id, new OscillatorNativeBlock());
-//     // this.blockHandlers.set(OscillatorNativeBlock.getLfoDefinition().id, new OscillatorNativeBlock());
-//     // this.blockHandlers.set(OscillatorNativeBlock.getLfoBpmSyncDefinition().id, new OscillatorNativeBlock());
-//     // this.blockHandlers.set(BiquadFilterNativeBlock.getDefinition().id, new BiquadFilterNativeBlock());
-//     // this.blockHandlers.set(DelayNativeBlock.getDefinition().id, new DelayNativeBlock());
-//     // this.blockHandlers.set(EnvelopeNativeBlock.getDefinition().id, new EnvelopeNativeBlock());
-//     this.blockHandlers.set(AudioOutputBlock.getDefinition().id, AudioOutputBlock);
-//     // this.blockHandlers.set(StepSequencerNativeBlock.getDefinition().id, new StepSequencerNativeBlock());
-//     this.blockHandlers.set(ManualGateBlock.getDefinition().id, ManualGateBlock);
-//     // this.blockHandlers.set(LyriaMasterBlock.getDefinition().id, new LyriaMasterBlock());
-//     this.blockHandlers.set(ByteBeatPlayer.getDefinition().id, ByteBeatPlayer);
-// }
-
 
 class AudioNodeCreator {
     private static instance: AudioNodeCreator;

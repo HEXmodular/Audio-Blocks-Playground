@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@interfaces/block';
+import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '@constants/constants';
 
 // Options for the constructor, extending Tone.ToneOscillatorNodeOptions
@@ -11,11 +11,11 @@ import { createParameterDefinitions } from '@constants/constants';
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'tone-oscillator-v1',
   name: 'Oscillator (Tone)',
-  description: 'Generates a basic waveform using a Tone.Oscillator and a Tone.Gain for amplitude.',
+  description: 'Generates a basic waveform using.',
   inputs: [
-    { id: 'freq_in', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
-    { id: 'gain_cv_in', name: 'Gain CV', type: 'audio', description: 'Modulates output gain.' },
-    { id: 'detune_in', name: 'Detune CV', type: 'audio', description: 'Modulates Oscillator detune.' }
+    { id: 'frequency', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
+    { id: 'volume', name: 'Gain CV', type: 'audio', description: 'Modulates output gain.' },
+    { id: 'detune', name: 'Detune CV', type: 'audio', description: 'Modulates Oscillator detune.' }
   ],
   outputs: [
     { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The generated audio signal.' }
@@ -54,7 +54,7 @@ export class OscillatorNativeBlock extends Tone.Oscillator implements NativeBloc
   readonly name: string = BLOCK_DEFINITION.name;
   // input автоматически заполняет сам Tone.js
   // output автоматически заполняет сам Tone.js
-  
+
   constructor() {
     super();
 

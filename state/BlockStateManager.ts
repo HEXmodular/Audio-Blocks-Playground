@@ -29,19 +29,10 @@ export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParamete
 
     // TODO: min max находится в toneParam
     const instanceParam: BlockParameter = {
-      id: paramDef.id,
-      name: paramDef.name,
-      type: paramDef.type,
+      ...paramDef,
       options: paramDef.options ? JSON.parse(JSON.stringify(paramDef.options)) : undefined,
-      // min: paramDef.min,
-      // max: paramDef.max,
-      // step: paramDef.step,
-      description: paramDef.description,
-      defaultValue: paramDef.defaultValue,
-      currentValue: paramDef.defaultValue,
-      // steps: paramDef.steps,
-      // isFrequency: paramDef.isFrequency,
-      toneParam: paramDef.toneParam //? JSON.parse(JSON.stringify(paramDef.toneParam)) : undefined,
+
+      currentValue: paramDef.defaultValue
     };
     return instanceParam;
   });
@@ -148,16 +139,8 @@ export class BlockStateManager {
                 }
               }
               const paramDef: BlockParameter = {
-                id: p.id,
-                name: p.name,
-                type: p.type,
-                defaultValue: typedDefaultValue,
-                options: p.options,
-                // min: p.min, max: p.max, step: p.step, 
-                toneParam: p.toneParam,
-                description: p.description,
-                // steps: p.steps, 
-                // isFrequency: p.isFrequency,
+                ...p,
+                defaultValue: typedDefaultValue
               };
               return paramDef;
             }),

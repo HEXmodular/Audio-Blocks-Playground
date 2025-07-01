@@ -16,11 +16,10 @@ export interface BlockParameter {
     options?: Array<{ value: string | number; label: string }>;
     // min?: number; 
     // max?: number; 
-    // step?: number; 
     currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
-    toneParam?: Partial<Tone.Param>;
+    toneParam?: Partial<Tone.Param>; // для хранения значений типа минимума максимума
     emitters?: { [inputId: string]: Tone.Emitter };
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 

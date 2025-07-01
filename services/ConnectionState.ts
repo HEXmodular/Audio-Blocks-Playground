@@ -10,8 +10,6 @@ import PubSubService from '@services/PubSubService';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
-type ConnectionStateListener = (connections: Connection[]) => void;
-
 class ConnectionState {
   private static instance: ConnectionState | null = null; // Singleton instance
   private connections: Connection[] = [];

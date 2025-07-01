@@ -17,7 +17,7 @@ type ConnectableParam = Tone.Param | AudioParam | Tone.Signal<any>;
 export interface ActiveWebAudioConnection {
   connectionId: string;
   sourceNode: ConnectableSource;
-  targetNode: ConnectableTargetNode; // Target node, even if connecting to its param
+  targetNode?: ConnectableTargetNode; // Target node, even if connecting to its param
   targetParam?: ConnectableParam;
 }
 
@@ -91,13 +91,13 @@ class AudioGraphConnectorService {
           toInstance.instance?.setSubscription?.({ [conn.toInputId]: emitter })
         }
         return;
-      } else if (outputPortDef.type === 'audio' && inputPortDef.type === 'audio') {
+      } else if (outputPortDef.type === 'audio' && ['audio', 'number'].includes(inputPortDef.type)) {
         const sourceNode = fromInstance.instance?.output as ConnectableSource | undefined;//fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
 
         if (!sourceNode) return;
 
 
-        let targetParam: ConnectableParam | undefined;
+        const targetParam = (toInstance.instance as any)?.[inputPortDef.id] as ConnectableParam | undefined;
 
         const targetNode = toInstance.instance?.input as ConnectableTargetNode | undefined;
         // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
@@ -105,13 +105,13 @@ class AudioGraphConnectorService {
 
         if (!targetNode && !targetParam) return;
 
-        if (sourceNode && targetParam && targetNode) {
+        if (sourceNode && targetParam) {
           try {
             (sourceNode as any).connect(targetParam as any);
-            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target param ${inputPortDef.audioParamTarget} of ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
-            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode, targetParam: targetParam });
+            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target param ${inputPortDef.id} of ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetParam: targetParam });
           } catch (e) {
-            console.error(`[AudioGraphConnectorService Conn] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
+            console.error(`[🕸 AudioGraphConnectorService] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
           }
         } else if (sourceNode && targetNode) {
           try {

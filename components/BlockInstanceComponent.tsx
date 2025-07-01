@@ -32,6 +32,7 @@ const calculateBlockHeight = (hasParam: boolean): number => {
 export const getPortColor = (type: BlockPort['type']): string => {
   switch (type) {
     case 'audio': return 'bg-sky-500';
+    case 'number': return 'bg-green-500';
     case 'trigger': return 'bg-pink-500';
     case 'gate': return 'bg-yellow-500';
     default: return 'bg-gray-500';
