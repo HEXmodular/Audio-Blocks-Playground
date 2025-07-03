@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo, EmitterProvider, BlockInstance, InputTerminal, OutputTerminal } from '@interfaces/common';
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo BlockInstance } from '@interfaces/block';
 import { CreatableNode } from '../CreatableNode';
 import { createParameterDefinitions } from '@constants/constants'; // Corrected import path
 import * as Tone from 'tone';
@@ -24,7 +24,6 @@ export class StepSequencerNativeBlock implements CreatableNode {
             id: 'native-step-sequencer-v1',
             name: 'Step Sequencer (Native)',
             description: 'A native step sequencer with gate and trigger inputs/outputs.',
-            runsAtAudioRate: true, // Primarily event-based
             inputs: [
                 { id: 'gate_in', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' },
                 { id: 'trigger_in', name: 'Trigger In', type: 'trigger', description: 'Advances the sequencer to the next step.' },
@@ -32,6 +31,8 @@ export class StepSequencerNativeBlock implements CreatableNode {
             outputs: [
                 { id: 'gate_out', name: 'Gate Output', type: 'gate', description: 'Outputs the gate state of the current step.' },
                 { id: 'trigger_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
+                { id: 'sequence', name: 'Sequence', type: 'string', description: 'Outputs sequence.' },
+
             ],
             parameters: createParameterDefinitions([
                 {
@@ -45,7 +46,7 @@ export class StepSequencerNativeBlock implements CreatableNode {
                 {
                     id: 'steps',
                     name: 'Number of Steps',
-                    type: 'number', // Or 'slider' if preferred
+                    type: 'number_input', // Or 'slider' if preferred
                     min: 1,
                     max: 16, // Max steps, can be adjusted
                     defaultValue: DEFAULT_STEPS,
