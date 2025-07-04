@@ -153,17 +153,20 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     return marginTop + (portAreaHeight / (count - 1)) * index;
   };
 
-  const CompactRendererComponent = (compactRendererId: string) => {
-    const CR = compactRendererRegistry[compactRendererId];
-
-    if (CR) {
-      return (<CR blockInstance={blockInstance} blockDefinition={blockDefinition}></CR>)
+  const CompactRendererComponent = useCallback((compactRendererId?: string) => {
+    if (compactRendererId) {
+      const CR = compactRendererRegistry[compactRendererId];
+      if (CR) {
+        return (<CR blockInstance={blockInstance} blockDefinition={blockDefinition}></CR>)
+      }
     }
 
     return <DefaultCompactRenderer
       blockInstance={blockInstance}
       blockDefinition={blockDefinition} />
-  };
+  }, [
+    [blockInstance, blockDefinition]
+  ])
 
   return (
     <div

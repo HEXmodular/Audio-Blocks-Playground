@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
 import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import BlockStateManager from '@state/BlockStateManager';
@@ -7,7 +7,7 @@ import BlockStateManager from '@state/BlockStateManager';
 const GAIN_PARAM_DISPLAY_HEIGHT = 20; // Consistent height
 
 const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
-  const [gateParam, setGateParam] = useState(blockInstance.parameters.find(p => p.id === 'gate_active'));
+  const gateParam = blockInstance.parameters.find(p => p.id === 'gate_active');
 
   const handleParameterChange = (paramId: string, value: any) => {
     // const targetParam = blockInstance.parameters.find(param => param.id === paramId)
@@ -17,7 +17,6 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
       console.warn('Gate parameter not found in block instance parameters');
       return;
     }
-    setGateParam({ ...gateParam, currentValue: value });
 
     BlockStateManager.updateBlockInstance(
       blockInstance.instanceId,

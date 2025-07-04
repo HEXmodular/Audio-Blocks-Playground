@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
 import BlockStateManager from '@state/BlockStateManager';
 import { renderParameterControl } from '@/components/controls/ParameterControlRenderer';
 
 const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
-  const [sequenceParam, setSequenceParam] = useState(blockInstance.parameters.find(p => p.id === 'sequence'));
+  const sequenceParam = blockInstance.parameters.find(p => p.id === 'sequence');
 
   if (!sequenceParam || sequenceParam.type !== 'step_sequencer_ui') {
     return (
@@ -19,7 +19,6 @@ const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, 
       console.warn('Gate parameter not found in block instance parameters');
       return;
     }
-    setSequenceParam({ ...sequenceParam, currentValue: value });
 
     BlockStateManager.updateBlockInstance(
       blockInstance.instanceId,

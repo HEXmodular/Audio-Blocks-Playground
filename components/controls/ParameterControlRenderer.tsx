@@ -107,7 +107,6 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
       }
 
       const currentStepIndexFromState = param?.storage?.currentStep || 0; //blockInstance.internalState?.currentStepIndex;
-
       // const isRule110TypeInitialPattern =
       //     (blockDefinition.id === RULE_110_BLOCK_DEFINITION.id || blockDefinition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id) &&
       //     param.id === 'initial_pattern_plus_boundaries';
@@ -160,7 +159,7 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
                 newSteps[index] = !newSteps[index];
                 handleParameterChange(param.id, newSteps);
               }}
-              className={`w-7 h-7 rounded border-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-400
+              className={`w-5 h-7 rounded border-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-400
                           ${isPatternStepActive ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500 hover:bg-gray-500 hover:border-gray-400'}
                           ${isSequencerPlayingStep ? 'ring-2 ring-yellow-300 ring-offset-1 ring-offset-gray-800 shadow-lg scale-105' : ''}
                           ${stepStyle}`}

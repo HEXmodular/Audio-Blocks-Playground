@@ -10,8 +10,8 @@ const BLOCK_DEFINITION: BlockDefinition = {
     name: 'Step Sequencer',
     description: 'A native step sequencer with gate and trigger inputs/outputs.',
     inputs: [
-        { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' },
         { id: 'next', name: 'Trigger In', type: 'trigger', description: 'Advances the sequencer to the next step.' },
+        { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
     ],
     outputs: [
         { id: 'output', name: 'Gate Output', type: 'number', description: 'Outputs the gate state of the current step.' },
@@ -293,7 +293,6 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
         if (!this._isEnabled || this._sequence.length === 0) {
             return;
         }
-
         this._currentStep = (this._currentStep + 1) % this._sequence.length;
         this._instance.parameters = this._instance.parameters.map(param => param.id === 'sequence' ? ({ ...param, storage: { currentStep: this._currentStep } }) : param)
         this._emitter.emit('trigger'); // Emit void for trigger
