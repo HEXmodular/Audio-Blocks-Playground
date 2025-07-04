@@ -39,7 +39,7 @@ const BLOCK_DEFINITION = {
             description: 'Number of steps in the sequence.',
         }
     ]),
-    // rendererId: 'StepSequencerControl', // If a custom compact renderer is used
+    rendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
 };
 
 // Interface for the internal state managed by the block instance
