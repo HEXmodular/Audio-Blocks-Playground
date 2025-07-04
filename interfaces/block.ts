@@ -13,7 +13,8 @@ export interface BlockParameter {
     id: string;
     name: string;
     type: 'slider' | 'knob' | 'toggle' | 'select' | 'number_input' | 'text_input' | 'step_sequencer_ui';
-    options?: Array<{ value: string | number; label: string }>;
+    options?: Array<{ value: string | number; label: string }>; // сейчас используется для передачи значений для select
+    storage?: any;
     // min?: number; 
     // max?: number; 
     currentValue?: any; // а это если какое-то значение уже было сохранено

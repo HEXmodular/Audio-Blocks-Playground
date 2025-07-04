@@ -27,7 +27,6 @@ const BLOCK_DEFINITION = {
             name: 'Sequence',
             type: 'step_sequencer_ui',
             defaultValue: [...DEFAULT_SEQUENCE],
-            // steps: DEFAULT_STEPS, // This is custom metadata for the UI component
             description: 'The sequence pattern.',
         },
         {
@@ -73,6 +72,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
     private _currentStep: number = 0;
     private _sequence: boolean[] = [...DEFAULT_SEQUENCE];
     private _isEnabled: boolean = true;
+    private _instance: BlockInstance;
 
     // private gateInSubscription?: { off: () => void }; // To store the subscription and allow unsubscribing
     // private triggerInSubscription?: { off: () => void }; // For trigger_in input
@@ -99,7 +99,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
 
         this._emitter.on('next', (payload) => {
             console.log("[StepSequencerBlock] Next input received.", payload);
-            this.handleTriggerIn();
+            if (payload === true) this.handleTriggerIn();
         })
     }
 
@@ -130,6 +130,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
 
     public updateFromBlockInstance(instance: BlockInstance): void {
         // this._instanceId = instance.instanceId; // Keep track of the instanceId
+        this._instance = instance;
 
         // Update parameters (sequence and number of steps)
         if (instance.parameters) {
@@ -286,6 +287,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
         // TODO: Persist this change to BlockInstance.internalState via a service call or event
     }
 
+    // next step
     public handleTriggerIn(): void {
         // console.log(`[StepSequencerBlock ${this._instanceId}] handleTriggerIn. Enabled: ${this._isEnabled}`);
         if (!this._isEnabled || this._sequence.length === 0) {
@@ -293,10 +295,10 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
         }
 
         this._currentStep = (this._currentStep + 1) % this._sequence.length;
-
+        this._instance.parameters = this._instance.parameters.map(param => param.id === 'sequence' ? ({ ...param, storage: { currentStep: this._currentStep } }) : param)
         this._emitter.emit('trigger'); // Emit void for trigger
-        const currentStepGateState = this._sequence[this._currentStep] ?? false;
-        this._emitter.emit('gate_change', { newState: currentStepGateState });
+        // const currentStepGateState = this._sequence[this._currentStep] ?? false;
+        // this._emitter.emit('gate_change', { newState: currentStepGateState });
 
         // console.log(`[StepSequencerBlock ${this._instanceId}] Advanced to step: ${this._currentStep}, Gate: ${currentStepGateState}`);
         // TODO: Persist _currentStep change to BlockInstance.internalState

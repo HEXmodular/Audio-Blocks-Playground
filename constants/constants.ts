@@ -14,12 +14,12 @@ export const createParameterDefinitions = (
     } else if (pDefProto.type === 'select' && pDefProto.options && pDefProto.options.length > 0) {
       const defaultOptionExists = pDefProto.options.find(opt => opt.value === pDefProto.defaultValue);
       typedDefaultValue = defaultOptionExists ? pDefProto.defaultValue : pDefProto.options[0].value;
-    } else if (pDefProto.type === 'step_sequencer_ui') {
-      const numSteps = typeof pDefProto.steps === 'number' && pDefProto.steps > 0 ? pDefProto.steps : 4;
-      typedDefaultValue = (Array.isArray(pDefProto.defaultValue) && pDefProto.defaultValue.length === numSteps && pDefProto.defaultValue.every(val => typeof val === 'boolean'))
-        ? pDefProto.defaultValue
-        : Array(numSteps).fill(false);
-    }
+    }  
+    // } else if (pDefProto.type === 'step_sequencer_ui') {
+    //   typedDefaultValue = (Array.isArray(pDefProto.defaultValue) && pDefProto.defaultValue.length === numSteps && pDefProto.defaultValue.every(val => typeof val === 'boolean'))
+    //     ? pDefProto.defaultValue
+    //     : Array(numSteps).fill(false);
+    // }
     return {
       ...pDefProto,
       defaultValue: typedDefaultValue,

@@ -97,7 +97,7 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
       );
     case 'step_sequencer_ui':
       let stepsArray = Array.isArray(param.currentValue) ? param.currentValue : [];
-      const numStepsFromParamDef = param.steps || (Array.isArray(param.defaultValue) ? param.defaultValue.length : 4);
+      const numStepsFromParamDef = Array.isArray(param.defaultValue) ? param.defaultValue.length : 4;
       const displayNumSteps = numStepsFromParamDef;
 
       if (stepsArray.length < displayNumSteps) {
@@ -106,49 +106,51 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
         stepsArray = stepsArray.slice(0, displayNumSteps);
       }
 
-      const currentStepIndexFromState = blockInstance.internalState?.currentStepIndex;
+      const currentStepIndexFromState = param?.storage?.currentStep || 0; //blockInstance.internalState?.currentStepIndex;
 
-      const isRule110TypeInitialPattern =
-          (blockDefinition.id === RULE_110_BLOCK_DEFINITION.id || blockDefinition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id) &&
-          param.id === 'initial_pattern_plus_boundaries';
+      // const isRule110TypeInitialPattern =
+      //     (blockDefinition.id === RULE_110_BLOCK_DEFINITION.id || blockDefinition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id) &&
+      //     param.id === 'initial_pattern_plus_boundaries';
+      const isRule110TypeInitialPattern = false;
+
 
       const renderStepButton = (index: number, isPatternStepActive: boolean, isSequencerPlayingStep: boolean) => {
         let stepStyle = "";
         let stepTitle = `Step ${index + 1}`;
-        let labelText: string | null = null;
-        const labelClass = "text-center text-[10px] text-gray-400 w-7 h-4 block";
+        // let labelText: string | null = null;
+        // const labelClass = "text-center text-[10px] text-gray-400 w-7 h-4 block";
 
-        if (isRule110TypeInitialPattern) {
-          const coreLengthParam = blockInstance.parameters.find(p => p.id === 'core_length');
-          const currentCoreLength = coreLengthParam ? Number(coreLengthParam.currentValue) : 8;
+        // if (isRule110TypeInitialPattern) {
+        //   const coreLengthParam = blockInstance.parameters.find(p => p.id === 'core_length');
+        //   const currentCoreLength = coreLengthParam ? Number(coreLengthParam.currentValue) : 8;
 
-          if (index === 0) {
-            stepStyle = "border-orange-400";
-            stepTitle = `Left Boundary (coreLen: ${currentCoreLength})`;
-            labelText = "L-Bnd";
-          } else if (index > 0 && index <= currentCoreLength) {
-             stepStyle = "border-sky-300";
-             stepTitle = `Core Cell ${index} (coreLen: ${currentCoreLength})`;
-             if (index === 1) labelText = "Core";
-          } else if (index === currentCoreLength + 1) {
-            stepStyle = "border-orange-400";
-            stepTitle = `Right Boundary (coreLen: ${currentCoreLength})`;
-            labelText = "R-Bnd";
-          } else {
-             stepStyle = "opacity-30 border-gray-600";
-             stepTitle = `Unused Step ${index + 1} (coreLen: ${currentCoreLength})`;
-             if (index === currentCoreLength + 2) labelText = "Unused";
-          }
-        }
+        //   if (index === 0) {
+        //     stepStyle = "border-orange-400";
+        //     stepTitle = `Left Boundary (coreLen: ${currentCoreLength})`;
+        //     labelText = "L-Bnd";
+        //   } else if (index > 0 && index <= currentCoreLength) {
+        //      stepStyle = "border-sky-300";
+        //      stepTitle = `Core Cell ${index} (coreLen: ${currentCoreLength})`;
+        //      if (index === 1) labelText = "Core";
+        //   } else if (index === currentCoreLength + 1) {
+        //     stepStyle = "border-orange-400";
+        //     stepTitle = `Right Boundary (coreLen: ${currentCoreLength})`;
+        //     labelText = "R-Bnd";
+        //   } else {
+        //      stepStyle = "opacity-30 border-gray-600";
+        //      stepTitle = `Unused Step ${index + 1} (coreLen: ${currentCoreLength})`;
+        //      if (index === currentCoreLength + 2) labelText = "Unused";
+        //   }
+        // }
 
         return (
           <div className="flex flex-col items-center m-0.5" key={index}>
-            {(isRule110TypeInitialPattern && labelText) && <span className={labelClass} aria-hidden="true">{labelText}</span>}
+            {/* {(isRule110TypeInitialPattern && labelText) && <span className={labelClass} aria-hidden="true">{labelText}</span>}
             {(isRule110TypeInitialPattern && !labelText &&
               ( (index > 1 && index <= (blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8) ) ||
                 (index > (blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8) + 2 && index < displayNumSteps) )
             ) && <span className={labelClass} aria-hidden="true">&nbsp;</span>}
-            {(!isRule110TypeInitialPattern && !labelText) && <span className={labelClass} aria-hidden="true">&nbsp;</span>}
+            {(!isRule110TypeInitialPattern && !labelText) && <span className={labelClass} aria-hidden="true">&nbsp;</span>} */}
 
             <button
               type="button"

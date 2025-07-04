@@ -133,10 +133,7 @@ export class BlockStateManager {
               } else if (p.type === 'step_sequencer_ui') {
                 if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
                   typedDefaultValue = p.defaultValue;
-                } else {
-                  const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
-                  typedDefaultValue = Array(numSteps).fill(false);
-                }
+                }  
               }
               const paramDef: BlockParameter = {
                 ...p,
