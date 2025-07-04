@@ -5,7 +5,7 @@ import { Emitter, ToneAudioNode, } from 'tone';
 const DEFAULT_STEPS = 8;
 const DEFAULT_SEQUENCE = Array(DEFAULT_STEPS).fill(false);
 
-const BLOCK_DEFINITION = {
+const BLOCK_DEFINITION: BlockDefinition = {
     id: 'native-step-sequencer-v1',
     name: 'Step Sequencer',
     description: 'A native step sequencer with gate and trigger inputs/outputs.',
@@ -39,7 +39,7 @@ const BLOCK_DEFINITION = {
             description: 'Number of steps in the sequence.',
         }
     ]),
-    rendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
+    compactRendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
 };
 
 // Interface for the internal state managed by the block instance

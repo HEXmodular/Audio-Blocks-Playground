@@ -7,7 +7,6 @@ import { debounce } from '@utils/utils';
 
 import { ALL_NATIVE_BLOCK_DEFINITIONS } from '@services/AudioNodeCreator';
 import PubSubService from '@services/PubSubService';
-import { compactRendererRegistry } from '@services/block-definitions/compactRendererRegistry';
 
 
 const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
