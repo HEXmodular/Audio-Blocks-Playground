@@ -10,7 +10,7 @@ import { createParameterDefinitions } from '@constants/constants';
 
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'tone-oscillator-v1',
-  name: 'Oscillator (Tone)',
+  name: 'Oscillator',
   description: 'Generates a basic waveform using.',
   inputs: [
     { id: 'frequency', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
@@ -50,7 +50,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   compactRendererId: 'oscillator',
 };
 
-export class OscillatorNativeBlock extends Tone.Oscillator implements NativeBlock {
+export class OscillatorBlock extends Tone.Oscillator implements NativeBlock {
   readonly name: string = BLOCK_DEFINITION.name;
   // input автоматически заполняет сам Tone.js
   // output автоматически заполняет сам Tone.js
@@ -72,7 +72,7 @@ export class OscillatorNativeBlock extends Tone.Oscillator implements NativeBloc
 
   public updateFromBlockInstance(instance: BlockInstance): void {
     if (!instance?.parameters) {
-      console.warn(`[OscillatorNativeBlock updateFromBlockInstance] Invalid or missing parameters for instance ${instance.instanceId}.`);
+      console.warn(`[OscillatorBlock updateFromBlockInstance] Invalid or missing parameters for instance ${instance.instanceId}.`);
       return;
     }
     const parameters = instance.parameters;
@@ -91,7 +91,7 @@ export class OscillatorNativeBlock extends Tone.Oscillator implements NativeBloc
       if (['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse'].includes(targetType)) {
         this.type = targetType;
       } else {
-        console.warn(`[OscillatorNativeBlock updateFromBlockInstance] Unsupported waveform type: ${targetType}. Defaulting to sine.`);
+        console.warn(`[OscillatorBlock updateFromBlockInstance] Unsupported waveform type: ${targetType}. Defaulting to sine.`);
         this.type = 'sine';
       }
     }

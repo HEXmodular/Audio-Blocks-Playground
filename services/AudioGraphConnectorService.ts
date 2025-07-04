@@ -86,10 +86,10 @@ class AudioGraphConnectorService {
 
       // для пробрасывания эмитера получателю
       if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
-        const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
-        if (emitter) {
-          toInstance.instance?.setSubscription?.({ [conn.toInputId]: emitter })
-        }
+        // const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
+        fromInstance.instance?.on?.(conn.fromOutputId, (data) => {
+          toInstance.instance?.emit(conn.toInputId, data)
+        })
         return;
       } else if (outputPortDef.type === 'audio' && ['audio', 'number'].includes(inputPortDef.type)) {
         const sourceNode = fromInstance.instance?.output as ConnectableSource | undefined;//fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;

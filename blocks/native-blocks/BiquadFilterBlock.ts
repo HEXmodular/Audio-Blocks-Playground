@@ -3,18 +3,18 @@ import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@in
 import { createParameterDefinitions } from '../../constants/constants';
 
 // Options for the constructor
-interface BiquadFilterNodeOptions extends Tone.ToneAudioNodeOptions {
-    initialParams?: BlockParameter[];
-    // Add instanceId to options if needed by the superclass or for logging
-    instanceId?: string;
-}
+// interface BiquadFilterNodeOptions extends Tone.ToneAudioNodeOptions {
+//     initialParams?: BlockParameter[];
+//     // Add instanceId to options if needed by the superclass or for logging
+//     instanceId?: string;
+// }
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-filter-v1',
     name: 'Filter (Tone)',
-    description: 'A Tone.js Filter node, providing various filter types.',
+    description: 'A Filter, providing various filter types.',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Filter input.' },
+        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Filter input.' },
         // For CV inputs, we need to ensure they are represented in the definition
         // if AudioGraphConnectorService relies on this for creating connections.
         // The getCvInput method will provide the actual Tone.Param/Signal.
@@ -46,7 +46,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     compactRendererId: 'DefaultCompactRenderer',
 };
 
-export class BiquadFilterNativeBlock extends Tone.Filter implements NativeBlock {
+export class BiquadFilterBlock extends Tone.Filter implements NativeBlock {
     readonly name: string = BLOCK_DEFINITION.name;
 
     constructor() {
@@ -59,7 +59,7 @@ export class BiquadFilterNativeBlock extends Tone.Filter implements NativeBlock 
 
     public updateFromBlockInstance(instance: BlockInstance): void {
         if (!instance?.parameters) {
-            console.warn(`[BiquadFilterNativeBlock updateFromBlockInstance ${instance?.instanceId || ''}] No parameters found in instance`, instance);
+            console.warn(`[BiquadFilterBlock updateFromBlockInstance ${instance?.instanceId || ''}] No parameters found in instance`, instance);
             return;
         }
 

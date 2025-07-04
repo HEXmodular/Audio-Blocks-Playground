@@ -7,17 +7,21 @@ import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
-import { BiquadFilterNativeBlock } from '@blocks/native-blocks/BiquadFilterNativeBlock';
-import { OscillatorNativeBlock } from '@blocks/native-blocks/OscillatorNativeBlock';
+import { BiquadFilterBlock } from '@blocks/native-blocks/BiquadFilterBlock';
+import { OscillatorBlock } from '@blocks/native-blocks/OscillatorBlock';
 import { PitchShiftBlock } from '@blocks/effects/PitchShiftBlock';
+import { PianoGenieBlock } from '@blocks/magenta/PianoGenieBlock';
+import { StepSequencerBlock } from '@/blocks/native-blocks/sequencers/StepSequencerBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
-    [BiquadFilterNativeBlock.getDefinition().id, BiquadFilterNativeBlock as any],
-    [OscillatorNativeBlock.getDefinition().id, OscillatorNativeBlock as any],
+    [BiquadFilterBlock.getDefinition().id, BiquadFilterBlock as any],
+    [OscillatorBlock.getDefinition().id, OscillatorBlock as any],
     [PitchShiftBlock.getDefinition().id, PitchShiftBlock as any],
+    [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
+    [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
@@ -59,7 +63,7 @@ class AudioNodeCreator {
 
     // генерирует тонну говна
     private addLog(instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info') {
-        BlockStateManager.addLogToBlockInstance(instanceId, message);
+        // BlockStateManager.addLogToBlockInstance(instanceId, message);
     }
 
     public async processAudioNodeSetupAndTeardown(

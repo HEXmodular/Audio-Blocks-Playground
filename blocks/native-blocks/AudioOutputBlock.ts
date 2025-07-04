@@ -11,10 +11,10 @@ interface AudioOutputNodeOptions extends Tone.ToneAudioNodeOptions {
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'system-audio-output-tone-v1',
-    name: 'Audio Output (Tone)',
-    description: 'Plays the incoming audio signal through Tone.Destination. Contains an internal Tone.Gain for volume control.',
+    name: 'Audio Output',
+    description: 'Outputs the incoming audio signal.',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to play. Connects to the internal volume Tone.Gain.' },
+        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to output.' },
         // { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
     ],
     outputs: [],

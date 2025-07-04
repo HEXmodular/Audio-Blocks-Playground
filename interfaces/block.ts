@@ -59,7 +59,7 @@ export interface BlockDefinition {
     // audioWorkletCode?: string; 
     // logicCodeTests?: string; 
     // isAiGenerated?: boolean;
-    compactRendererId: string;
+    compactRendererId?: string;
 }
 
 export interface BlockInstance {

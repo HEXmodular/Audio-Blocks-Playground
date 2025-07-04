@@ -1,4 +1,4 @@
-import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/common'; // Updated import
+import { BlockDefinition, BlockParameter, ManagedNativeNodeInfo } from '@interfaces/block'
 import { createParameterDefinitions } from '../../constants/constants'; // Adjust path as needed
 import { CreatableNode } from './CreatableNode';
 
@@ -11,7 +11,6 @@ export class OscilloscopeNativeBlock implements CreatableNode {
         id: 'analyser-oscilloscope-v1',
         name: 'Oscilloscope (Analyser)',
         description: 'Visualizes an audio signal waveform using a native AnalyserNode. The UI is shown in the block detail panel.',
-        runsAtAudioRate: true,
         inputs: [ { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to visualize.' } ],
         outputs: [],
         parameters: createParameterDefinitions([

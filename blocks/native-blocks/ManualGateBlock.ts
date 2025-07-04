@@ -1,11 +1,11 @@
-import { BlockDefinition, BlockParameter, BlockInstance, NativeBlock } from '@interfaces/block'; // Added EmitterProvider
+import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block'; // Added EmitterProvider
 import { createParameterDefinitions } from '@constants/constants';
-import * as Tone from 'tone'; // Added Tone
+import { ToneAudioNode, Emitter } from 'tone';
 
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'native-manual-gate-v1', // Changed ID to reflect native implementation
-  name: 'Manual Gate (Native)', // Changed name to reflect native implementation
-  description: 'Provides a manual gate signal via a toggle UI parameter, using a native ConstantSourceNode.',
+  name: 'Manual Gate', // Changed name to reflect native implementation
+  description: 'Provides a manual gate signal via a toggle UI parameter.',
   inputs: [],
   outputs: [
     { id: 'gate_out', name: 'Gate Output', type: 'gate', description: 'Boolean gate signal.' }
@@ -16,34 +16,29 @@ const BLOCK_DEFINITION: BlockDefinition = {
   compactRendererId: 'manual-gate',
 };
 
-interface ManualGateNodeOptions extends Tone.ToneAudioNodeOptions {
-  // sampleRate?: number; // Kept for consistency, though fixed in worklet for formula
-  initialParams?: BlockParameter[];//  BlockParameter[]; // для загрузки сохраненных параметров из localstorage или файла
-  // definition?: BlockDefinition; // для хранения дополнительной информации, которая вне Tone.ToneAudioNode
-}
-
-export class ManualGateBlock extends Tone.ToneAudioNode<ManualGateNodeOptions> implements NativeBlock { // Implemented EmitterProvider
+export class ManualGateBlock extends ToneAudioNode implements NativeBlock { // Implemented EmitterProvider
   name = BLOCK_DEFINITION.name;
   input = undefined;
   output = undefined;
   // TODO подумать как реализовать отправку множества сигналов, в том числе отднотипных
-  emitter: Tone.Emitter; // Added emitter property
+  private _emitter = new Emitter();
 
   public static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
   }
 
-  constructor(options?: ManualGateNodeOptions) {
-    super(options);
-    this.emitter = new Tone.Emitter(); // Initialized emitter
+  constructor() {
+    super();
   }
 
-  public getEmitter(outputId: string): Tone.Emitter | undefined { // Implemented getEmitter
-    if (outputId === 'gate_out' && this.emitter) {
-      return this.emitter;
-    }
-    return undefined;
-  }
+
+  // для выходящий соединений отправляю
+  public on(event: any, callback: (...args: any[]) => void) {
+    console.log("[Manual Gate]|--->")
+    this._emitter.on(event, callback)
+
+    return this
+  };
 
   public updateFromBlockInstance(instance: BlockInstance): void {
     const parameters = instance.parameters || [];
@@ -51,16 +46,8 @@ export class ManualGateBlock extends Tone.ToneAudioNode<ManualGateNodeOptions> i
     if (gateActiveParam) {
       const newGateValue = !!gateActiveParam.currentValue;
       const prevGateValue = false//instance.
-      // internalState?.prevGateValue;
-      this.emitter.emit('gate_change', { newState: newGateValue });
-
-
-      // if (newGateValue !== prevGateValue && this._emitter) {
-      //   this._emitter.emit('gate_change', { newState: newGateValue });
-      //   // if (nodeInfo.internalState) {
-      //   //   nodeInfo.internalState.prevGateValue = newGateValue;
-      //   // }
-      // }
+      console.log("emmited", this._emitter);
+      this._emitter.emit("gate_out", newGateValue);
     }
   }
 
