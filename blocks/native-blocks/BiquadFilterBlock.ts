@@ -13,6 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-filter-v1',
     name: 'Filter (Tone)',
     description: 'A Filter, providing various filter types.',
+    category: 'filter',
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Filter input.' },
         // For CV inputs, we need to ensure they are represented in the definition

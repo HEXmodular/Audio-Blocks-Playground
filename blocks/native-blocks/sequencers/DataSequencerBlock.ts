@@ -1,16 +1,16 @@
 import { BlockDefinition, BlockParameter, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '@constants/constants';
 import { Emitter, ToneAudioNode, Time, getTransport, getDraw } from 'tone';
-import BlockStateManager from '@/state/BlockStateManager';
+import BlockStateManager from '@state/BlockStateManager';
 
-const DEFAULT_STEPS = 8;
-const DEFAULT_SEQUENCE = Array(DEFAULT_STEPS).fill(false);
+const DEFAULT_STEPS = 4;
+const DEFAULT_SEQUENCE = Array(DEFAULT_STEPS).fill("");
 
 const BLOCK_DEFINITION: BlockDefinition = {
-    id: 'native-step-sequencer-v1',
-    name: 'Step Sequencer',
-    description: 'A native step sequencer with gate and trigger inputs/outputs.',
+    id: 'native-data-sequencer-v1',
+    name: 'Data Sequencer',
     category: 'data',
+    description: 'A native data sequencer with gate and trigger inputs/outputs.',
     inputs: [
         { id: 'next', name: 'Next trigger In', type: 'trigger', description: 'Advances the sequencer to the next step.' },
         { id: 'reset', name: 'Reset trigger In', type: 'trigger', description: 'Resets the sequencer to the next step.' },
@@ -26,11 +26,11 @@ const BLOCK_DEFINITION: BlockDefinition = {
     ],
     parameters: createParameterDefinitions([
         {
-            id: 'sequence',
-            name: 'Sequence',
-            type: 'step_sequencer_ui',
-            defaultValue: [...DEFAULT_SEQUENCE],
-            description: 'The sequence pattern.',
+            id: 'data',
+            name: 'Data',
+            type: 'text_inputs',
+            defaultValue: DEFAULT_SEQUENCE,
+            description: 'The sequence data.',
         },
         {
             id: 'steps',
@@ -42,19 +42,20 @@ const BLOCK_DEFINITION: BlockDefinition = {
             description: 'Number of steps in the sequence.',
         },
         {
+            id: 'loopPeriod',
+            name: 'Loop Period',
+            type: 'text_input',
+            defaultValue: '8n',
+            description: 'Period of the sequencer loop in Tone.js Time notation (e.g., "4n", "8t", "1m").',
+        },
+        {
             id: 'loop',
             name: 'Loop',
             type: 'toggle',
             defaultValue: false,
             description: 'Enable or disable looping of the sequencer.',
         },
-        {
-            id: 'loopPeriod',
-            name: 'Loop Period',
-            type: 'text_input',
-            defaultValue: '8n',
-            description: 'Period of the sequencer loop in Tone.js Time notation (e.g., "4n", "8t", "1m").',
-        }
+
     ]),
     compactRendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
 };
@@ -69,8 +70,8 @@ interface StepSequencerInternalState {
     // gateInEmitter?: Tone.Emitter<any>; // No longer needed here, managed by setInputEmitter
 }
 
-export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
-    readonly name: string = StepSequencerBlock.getDefinition().name;
+export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
+    readonly name: string = DataSequencerBlock.getDefinition().name;
     readonly input: undefined; // No direct audio input nodes
     readonly output: undefined; // No direct audio output nodes
     private _emitter = new Emitter();

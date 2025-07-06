@@ -6,6 +6,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   id: 'native-manual-gate-v1', // Changed ID to reflect native implementation
   name: 'Manual Gate', // Changed name to reflect native implementation
   description: 'Provides a manual gate signal via a toggle UI parameter.',
+  category: 'logic',
   inputs: [],
   outputs: [
     { id: 'gate_out', name: 'Gate Output', type: 'gate', description: 'Boolean gate signal.' }
@@ -40,14 +41,15 @@ export class ManualGateBlock extends ToneAudioNode implements NativeBlock { // I
     return this
   };
 
+  // TODO: как только происходит обновление параметро в другомблоке этот стреляет каждый раз, что не правильно
   public updateFromBlockInstance(instance: BlockInstance): void {
     const parameters = instance.parameters || [];
     const gateActiveParam = parameters.find(p => p.id === 'gate_active');
     if (gateActiveParam) {
       const newGateValue = !!gateActiveParam.currentValue;
       const prevGateValue = false//instance.
-      console.log("emmited", this._emitter);
-      this._emitter.emit("gate_out", newGateValue);
+      // console.log("emmited", this._emitter);
+      // this._emitter.emit("gate_out", newGateValue);
     }
   }
 

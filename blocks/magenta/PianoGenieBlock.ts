@@ -9,6 +9,7 @@ const CHECKPOINT_URL = 'https://storage.googleapis.com/magentadata/js/checkpoint
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'magenta-piano-genie-v1',
     name: 'Piano Genie',
+    category: 'ai',
     description: 'Generates melodies using Magenta.js Piano Genie.',
     inputs: [
         { id: 'sequence', name: 'Sequence', type: 'string', description: 'Input sequence (comma-separated numbers for keyList).' },

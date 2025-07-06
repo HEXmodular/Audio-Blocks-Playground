@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/block';
 import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
@@ -289,4 +289,12 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   );
 };
 
-export default BlockInstanceComponent;
+// export default BlockInstanceComponent;
+export default memo(BlockInstanceComponent,
+  (prev: BlockInstanceComponentProps, next: BlockInstanceComponentProps) => {
+    const { position: prevPosition, parameters: prevParameters } = prev.blockInstance;
+    const { position: nextPosition, parameters: nextParameters } = next.blockInstance;
+    const isEqual = JSON.stringify({ position: prevPosition, parameters: prevParameters }) === JSON.stringify({ position: nextPosition, parameters: nextParameters })
+    return isEqual;
+  });
+

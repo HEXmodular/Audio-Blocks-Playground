@@ -46,13 +46,13 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
         <label className="flex items-center space-x-2 cursor-pointer h-8">
           <input
             id={`${blockInstance.instanceId}-${param.id}-panel-control`}
-            type="checkbox" 
+            type="checkbox"
             checked={!!param.currentValue}
             onChange={(e) => handleParameterChange(param.id, e.target.checked)}
             className="form-checkbox h-4 w-4 text-sky-500 bg-gray-700 border-gray-600 rounded focus:ring-sky-500"
             aria-label={`${param.name} toggle`}
           />
-           <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
+          <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
         </label>
       );
     case 'select':
@@ -78,8 +78,8 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
               processNumberInput(param.id);
               (e.target as HTMLInputElement).blur();
             } else if (e.key === 'Escape') {
-               // Revert text to current valid numeric value on Escape
-               handleNumberInputTextChange(param.id, String(param.currentValue));
+              // Revert text to current valid numeric value on Escape
+              handleNumberInputTextChange(param.id, String(param.currentValue));
               (e.target as HTMLInputElement).blur();
             }
           }}
@@ -95,7 +95,26 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
           className={commonProps} aria-label={`${param.name} text input`}
         />
       );
-    case 'step_sequencer_ui':
+    case 'text_inputs': {
+      let dataArray = Array.isArray(param.currentValue) ? param.currentValue : param.defaultValue;
+      // const numStepsFromParamDef = Array.isArray(param.defaultValue) ? param.defaultValue.length : 4;
+      // const displayNumSteps = numStepsFromParamDef;
+      return (<>
+        {dataArray.map((item: string, index: number) => (
+          <input
+            key={index}
+            id={`${blockInstance.instanceId}-${param.id}-panel-control-${index}`}
+            type="text" value={item} onChange={(e) => {
+              const newDataArray = [...dataArray];
+              newDataArray[index] = e.target.value;
+              handleParameterChange(param.id, newDataArray);
+            }}
+            className={commonProps} aria-label={`${param.name} text input`}
+          />
+        ))}
+      </>);
+    }
+    case 'step_sequencer_ui': {
       let stepsArray = Array.isArray(param.currentValue) ? param.currentValue : [];
       const numStepsFromParamDef = Array.isArray(param.defaultValue) ? param.defaultValue.length : 4;
       const displayNumSteps = numStepsFromParamDef;
@@ -171,23 +190,24 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
       };
 
       return (
-          <div>
-              <div className={`flex flex-wrap ${isRule110TypeInitialPattern ? 'items-start' : 'items-end'}`} role="toolbar" aria-label={`${param.name} step sequencer`}>
-              {Array.from({ length: displayNumSteps }).map((_, index) => {
-                  const isPatternStepActive = stepsArray[index] === true;
-                  const isSequencerPlayingStep = index === currentStepIndexFromState && !isRule110TypeInitialPattern;
-                  return renderStepButton(index, isPatternStepActive, isSequencerPlayingStep);
-              })}
-              </div>
-              {isRule110TypeInitialPattern && (
-              <p className="text-xs text-gray-500 mt-1.5">
-                  Pattern uses {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8) + 2} cells: Left Boundary,
-                  {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8)} Core cells, Right Boundary.
-                  <br/>Click cells to set initial state. Unused cells are ignored by the automaton.
-              </p>
-              )}
+        <div>
+          <div className={`flex flex-wrap ${isRule110TypeInitialPattern ? 'items-start' : 'items-end'}`} role="toolbar" aria-label={`${param.name} step sequencer`}>
+            {Array.from({ length: displayNumSteps }).map((_, index) => {
+              const isPatternStepActive = stepsArray[index] === true;
+              const isSequencerPlayingStep = index === currentStepIndexFromState && !isRule110TypeInitialPattern;
+              return renderStepButton(index, isPatternStepActive, isSequencerPlayingStep);
+            })}
           </div>
+          {isRule110TypeInitialPattern && (
+            <p className="text-xs text-gray-500 mt-1.5">
+              Pattern uses {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8) + 2} cells: Left Boundary,
+              {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8)} Core cells, Right Boundary.
+              <br />Click cells to set initial state. Unused cells are ignored by the automaton.
+            </p>
+          )}
+        </div>
       );
+    }
     default:
       return <p className="text-xs text-red-400">Unsupported param type: {param.type}</p>;
   }

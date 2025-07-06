@@ -12,6 +12,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   id: 'tone-oscillator-v1',
   name: 'Oscillator',
   description: 'Generates a basic waveform using.',
+  category: 'oscillator',
   inputs: [
     { id: 'frequency', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
     { id: 'volume', name: 'Gain CV', type: 'audio', description: 'Modulates output gain.' },

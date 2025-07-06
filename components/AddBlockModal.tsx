@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Add useCallback
 import BlockStateManager from '@state/BlockStateManager';
-import type { BlockDefinition } from '../interfaces/common'; // Corrected import path
+import { BlockDefinition } from '@interfaces/block';
 
 // Local BlockDefinition interface removed, using imported one.
 
@@ -11,10 +11,7 @@ interface AddBlockModalProps {
   onClose: () => void;
 }
 
-const GROUP_AI = "AI Generated";
-const GROUP_AUDIO = "Audio Rate Blocks";
-const GROUP_CONTROL = "Control & Logic Blocks";
-const GROUP_ORDER = [GROUP_AI, GROUP_AUDIO, GROUP_CONTROL];
+const GROUP_ORDER = ['data', 'audio', 'control', 'logic', 'ai', 'i/o', 'filter', 'oscillator', '8-bit', 'pitch'];
 
 const AddBlockModal: React.FC<AddBlockModalProps> = ({
   // appBlockDefinitionsFromCtx, // REMOVE THIS
@@ -54,19 +51,17 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
   }, [blockDefinitions, filterText]); // CHANGED dependency
 
   const groupedAndFilteredBlocks = useMemo(() => {
-    const groups: Record<string, BlockDefinition[]> = {
-      [GROUP_AI]: [],
-      [GROUP_AUDIO]: [],
-      [GROUP_CONTROL]: [],
-    };
+    const groups: Record<string, BlockDefinition[]> = GROUP_ORDER.reduce((acc, group) => {
+      acc[group] = [];
+      return acc;
+    }, {} as Record<string, BlockDefinition[]>);
+
 
     filteredBlocks.forEach(def => {
-      if (def.isAiGenerated) {
-        groups[GROUP_AI].push(def);
-      } else if (def.runsAtAudioRate) {
-        groups[GROUP_AUDIO].push(def);
+      if (groups[def.category]) {
+        groups[def.category].push(def);
       } else {
-        groups[GROUP_CONTROL].push(def);
+        console.error(`Error adding block to group: ${def.category}`);
       }
     });
     return groups;
@@ -109,7 +104,7 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
                 return (
                   <div key={groupTitle} className="mb-4"> {/* Increased bottom margin for group spacing */}
                     <h3 className="text-xl font-semibold text-sky-300 mt-2 mb-3 sticky top-0 bg-gray-750 py-2 z-10"> {/* Adjusted padding and margin for header */}
-                      {groupTitle}
+                      {groupTitle.toUpperCase()}
                     </h3>
                     <div className="flex flex-wrap gap-3"> {/* Changed to gap-3 for slightly more spacing */}
                       {blocksInGroup.map((def) => (

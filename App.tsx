@@ -17,14 +17,13 @@ const App: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    console.log("Get the latest block instances");
+    // console.log("Get the latest block instances");
     setAppBlockInstances(BlockStateManager.getBlockInstances());
   }, [BlockStateManager.getBlockInstances()]);
 
   PubSubService.subscribe('insctance-changed', (instances: BlockInstance[]) => {
     setAppBlockInstances(instances);
   })
-
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">

@@ -12,6 +12,7 @@ interface AudioOutputNodeOptions extends Tone.ToneAudioNodeOptions {
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'system-audio-output-tone-v1',
     name: 'Audio Output',
+    category: 'i/o',
     description: 'Outputs the incoming audio signal.',
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to output.' },

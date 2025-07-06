@@ -1,5 +1,5 @@
 // создает ноды из списка классов блоков
-import * as Tone from 'tone'; // Added Tone import
+import { ToneAudioNode } from 'tone'; // Added Tone import
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
@@ -11,7 +11,8 @@ import { BiquadFilterBlock } from '@blocks/native-blocks/BiquadFilterBlock';
 import { OscillatorBlock } from '@blocks/native-blocks/OscillatorBlock';
 import { PitchShiftBlock } from '@blocks/effects/PitchShiftBlock';
 import { PianoGenieBlock } from '@blocks/magenta/PianoGenieBlock';
-import { StepSequencerBlock } from '@/blocks/native-blocks/sequencers/StepSequencerBlock';
+import { StepSequencerBlock } from '@blocks/native-blocks/sequencers/StepSequencerBlock';
+import { DataSequencerBlock } from '@blocks/native-blocks/sequencers/DataSequencerBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -22,6 +23,7 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [PitchShiftBlock.getDefinition().id, PitchShiftBlock as any],
     [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
     [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
+    [DataSequencerBlock.getDefinition().id, DataSequencerBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
@@ -47,12 +49,12 @@ class AudioNodeCreator {
     // создает экземпляр класса
     public setupManagedNativeNode(
         instance: BlockInstance, // Use BlockInstance directly
-    ): Tone.ToneAudioNode & NativeBlock | null {
+    ): ToneAudioNode & NativeBlock | null {
         // console.log(`[AudioNodeCreator/Native Setup] Setting up Tone.js based node for '${definition.name}' (ID: ${instanceId})`);
         try {
             const classRef = this.blockHandlers.get(instance.definition.id) as any //as ({constructor: new (params: BlockParameter[]) => Tone.ToneAudioNode});
             // initialParams
-            const instanceRef = new classRef() as Tone.ToneAudioNode & NativeBlock; // Create an instance of the Tone.js based node class
+            const instanceRef = new classRef() as ToneAudioNode & NativeBlock; // Create an instance of the Tone.js based node class
             return instanceRef;
         } catch (e) {
             console.error(`Failed to construct Tone.js based node: ${(e as Error).message}`);

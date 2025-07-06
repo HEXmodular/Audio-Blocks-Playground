@@ -1,10 +1,23 @@
 import React from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
 import BlockStateManager from '@state/BlockStateManager';
-import { renderParameterControl } from '@/components/controls/ParameterControlRenderer';
+import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
+import { getDraw, getTransport } from 'tone';
 
 const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
-  const sequenceParam = blockInstance.parameters.find(p => p.id === 'sequence');
+  // const [sequenceParam, setSequenceParam] = React.useState(blockInstance.parameters.find(p => p.id === 'sequence'));
+  const sequenceParam  = blockInstance.parameters.find(p => p.id === 'sequence');
+
+  // getTransport().schedule((time) => {
+  //   // use the time argument to schedule a callback with Draw
+  //   getDraw().schedule(() => {
+  //     // do drawing or DOM manipulation here
+  //     const sequenceParam = blockInstance.parameters.find(p => p.id === 'sequence');
+  //     console.log(sequenceParam)
+  //     setSequenceParam(sequenceParam)
+  //   }, time);
+  // }, "+0.5");
+
 
   if (!sequenceParam || sequenceParam.type !== 'step_sequencer_ui') {
     return (

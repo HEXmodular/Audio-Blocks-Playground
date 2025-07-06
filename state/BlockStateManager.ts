@@ -383,7 +383,7 @@ export class BlockStateManager {
         } else {
           currentBlockInst = { ...currentBlockInst, ...updates };
         }
-        console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", currentBlockInst);
+        // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", currentBlockInst);
         if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
 
         this._saveInstancesToLocalStorage();

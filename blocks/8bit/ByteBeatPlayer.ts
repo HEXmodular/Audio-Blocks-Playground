@@ -8,6 +8,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   id: 'bytebeat-processor-v1',
   name: 'ByteBeat Player',
   description: 'Plays audio generated from a bytebeat formula.',
+  category: '8-bit',
   // runsAtAudioRate: true,
   inputs: [
     { id: 'trigger_in', name: 'Trigger Input', type: 'trigger', description: 'Reset counter' }
