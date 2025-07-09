@@ -20,6 +20,53 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
   const [toneTransportStatus, setToneTransportStatus] = useState<string>(Tone.getTransport().state); // Initialize with Tone.js context state
+  const [bpm, setBpm] = useState<number>(Tone.getTransport().bpm.value);
+  const [timeSignature, setTimeSignature] = useState<[number, number]>(() => {
+    const ts = Tone.getTransport().timeSignature;
+    return Array.isArray(ts) ? [ts[0], ts[1]] : [ts, 4]; // Normalize to [beats, unit]
+  });
+
+  useEffect(() => {
+    const handleBpmChange = () => setBpm(Tone.getTransport().bpm.value);
+    Tone.getTransport().on("change:bpm", handleBpmChange);
+
+    const handleTransportTimeSignatureChange = () => {
+      const ts = Tone.getTransport().timeSignature;
+      setTimeSignature(Array.isArray(ts) ? [ts[0], ts[1]] : [ts, 4]);
+    };
+    Tone.getTransport().on("change:timeSignature", handleTransportTimeSignatureChange);
+
+    return () => {
+      Tone.getTransport().off("change:bpm", handleBpmChange);
+      Tone.getTransport().off("change:timeSignature", handleTransportTimeSignatureChange);
+    };
+  }, []);
+
+  const handleBpmInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newBpm = parseFloat(event.target.value);
+    if (!isNaN(newBpm)) {
+      Tone.getTransport().bpm.value = newBpm;
+      setBpm(newBpm);
+    }
+  };
+
+  const handleTimeSignatureBeatsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newBeats = parseInt(event.target.value, 10);
+    if (!isNaN(newBeats) && newBeats > 0 && newBeats <= 32) {
+      const newTs: [number, number] = [newBeats, timeSignature[1]];
+      Tone.getTransport().timeSignature = newTs;
+      setTimeSignature(newTs);
+    }
+  };
+
+  const handleTimeSignatureUnitChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newUnit = parseInt(event.target.value, 10);
+    if (!isNaN(newUnit) && [1, 2, 4, 8, 16, 32].includes(newUnit)) { // Common denominators
+      const newTs: [number, number] = [timeSignature[0], newUnit];
+      Tone.getTransport().timeSignature = newTs;
+      setTimeSignature(newTs);
+    }
+  };
 
   const handleToolbarToggleGeminiPanel = useCallback(() => {
     // Placeholder for actual Gemini Panel logic
@@ -113,19 +160,45 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div> */}
 
       {/* BPM Input */}
-      {/* <div className="flex items-center ml-2">
+      <div className="flex items-center ml-2">
         <label htmlFor="bpm-input" className="text-xs text-gray-400 mr-1.5">BPM:</label>
         <input
           type="number"
           id="bpm-input"
-          value={globalBpm.toString()}
-          onChange={handleBpmInputChange}
+           value={bpm}
+           onChange={handleBpmInputChange}
           min="1"
           max="999"
           className="bg-gray-700 text-white w-16 px-2 py-1 rounded-md text-sm border border-gray-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500"
           aria-label="Global Beats Per Minute (BPM)"
         />
-      </div> */}
+      </div>
+
+      {/* Time Signature Input */}
+      <div className="flex items-center ml-2">
+        <label htmlFor="time-signature-beats-input" className="text-xs text-gray-400 mr-1.5">Time Sig:</label>
+        <input
+          type="number"
+          id="time-signature-beats-input"
+          value={timeSignature[0]}
+          onChange={handleTimeSignatureBeatsChange}
+          min="1"
+          max="32"
+          className="bg-gray-700 text-white w-12 px-2 py-1 rounded-md text-sm border border-gray-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500"
+          aria-label="Time Signature Beats Per Measure"
+        />
+        <span className="text-gray-400 mx-0.5">/</span>
+        <input
+          type="number"
+          id="time-signature-unit-input"
+          value={timeSignature[1]}
+          onChange={handleTimeSignatureUnitChange}
+          min="1"
+          max="32"
+          className="bg-gray-700 text-white w-12 px-2 py-1 rounded-md text-sm border border-gray-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500"
+          aria-label="Time Signature Beat Unit"
+        />
+      </div>
 
       {/* Audio Output Device Selector */}
       {/* {availableOutputDevices.length > 0 && (typeof AudioContext !== 'undefined' && (AudioContext.prototype as any).setSinkId) && (
