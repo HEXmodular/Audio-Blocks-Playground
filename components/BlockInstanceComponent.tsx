@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/block';
-import { TrashIcon, ExclamationTriangleIcon, ArrowsPointingOutIcon } from '@icons/icons';
+import { TrashIcon, ExclamationTriangleIcon, } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
@@ -190,7 +190,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         style={{
           transform: `translate(${position?.x}px, ${position?.y}px)`,
           width: `${size.width}px`,
-          height: `${size.height}px`,
+          minHeight: `${size.height}px`,
         }}
         className="absolute bg-red-800 border-2 border-red-600 rounded-md shadow-lg p-3 text-white text-xs flex flex-col justify-center items-center"
       >
@@ -244,7 +244,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
         width: `${size.width}px`,
-        height: `${size.height}px`, // Use height from state
+        minHeight: `${size.height}px`, // Use height from state
       }}
       // className={`absolute bg-gray-800 rounded-lg shadow-xl flex flex-col border-2 group
       //             ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
@@ -304,12 +304,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Resize Handle */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100 js-interactive-element"
-        style={{ background: 'rgba(255,255,255,0.2)', borderTopLeftRadius: '4px' }}
+        // className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100 js-interactive-element"
+        className="resize-handle"
+        // style={{ background: 'rgba(255,255,255,0.2)', borderTopLeftRadius: '4px' }}
         onMouseDown={handleResizeMouseDown}
         title="Resize Block"
       >
-        <ArrowsPointingOutIcon className="w-3 h-3 text-gray-400 absolute bottom-0.5 right-0.5" />
+        {/* <ArrowsPointingOutIcon className="w-3 h-3 text-gray-400 absolute bottom-0.5 right-0.5" /> */}
       </div>
 
 
