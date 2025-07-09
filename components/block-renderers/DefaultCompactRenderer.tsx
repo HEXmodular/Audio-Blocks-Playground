@@ -9,7 +9,7 @@ const DEFAULT_PARAM_DISPLAY_HEIGHT = 20;
 const DefaultCompactRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
   return (
     <div
-      className="flex items-center justify-start px-1" // Reduced padding slightly for default
+      // className="flex items-center justify-start px-1" // Reduced padding slightly for default
       style={{ height: `${DEFAULT_PARAM_DISPLAY_HEIGHT}px` }}
       title={`Block: ${blockDefinition.name} - Instance: ${blockInstance.name}`}
     >

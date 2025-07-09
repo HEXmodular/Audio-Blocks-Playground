@@ -1,0 +1,19 @@
+
+.block-instance-container {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.block-instance-name {
+    font-size: 9px;
+    color: #fff;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 2px 4px 0;
+}
+
+

@@ -20,10 +20,12 @@ const DataSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, 
 
   return (
     <div
-      className="p-1 border border-gray-700 rounded bg-gray-800"
+      // className="p-1 border border-gray-700 rounded bg-gray-800"
       title={`${blockDefinition.name}: ${blockInstance.name} - Sequence`}
     >
-      <div className="text-xs text-sky-300 font-mono break-all">
+      <div 
+      // className="text-xs text-sky-300 font-mono break-all"
+      >
         <StepSequencerControl
           stepsArray={sequenceParam?.currentValue}
           currentStepIndex={0}

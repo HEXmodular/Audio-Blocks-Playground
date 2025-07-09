@@ -7,10 +7,11 @@ import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 import { debounce } from '@utils/utils';
 import { compactRendererRegistry } from '@/services/block-definitions/compactRendererRegistry';
+import './BlockInstanceComponent.css';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
-const COMPACT_BLOCK_HEADER_HEIGHT = 38;
+const COMPACT_BLOCK_HEADER_HEIGHT = 18;
 const PARAM_DISPLAY_HEIGHT = 20; // Height for the single parameter display line
 const PORT_STUB_DIAMETER = 12;
 const COMPACT_BLOCK_VERTICAL_PADDING = 5; // Top/bottom padding inside the block
@@ -173,12 +174,14 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
         width: `${COMPACT_BLOCK_WIDTH}px`,
-        height: `${blockHeight}px`,
+        minHeight: `${blockHeight}px`,
       }}
-      className={`absolute bg-gray-800 rounded-lg shadow-xl flex flex-col border-2 group
-                  ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
-                  transition-all duration-150 cursor-grab active:cursor-grabbing`}
-      onMouseDown={handleMouseDown}
+      // className={`absolute bg-gray-800 rounded-lg shadow-xl flex flex-col border-2 group
+      //             ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
+      //             transition-all duration-150 cursor-grab active:cursor-grabbing`}
+      className="block-instance-container"
+      
+                  onMouseDown={handleMouseDown}
       onClickCapture={(e) => {
         if (!(e.target as HTMLElement).closest('.js-interactive-element') && !(e.target as HTMLElement).closest('[data-port-id]')) {
           onSelect(blockInstance.instanceId);
@@ -189,23 +192,25 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-2.5 py-1 border-b border-gray-700/70"
-        style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px`, flexShrink: 0 }}
+        // className="flex items-center justify-between px-2.5 py-1 border-b border-gray-700/70"
+        style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px`}}
       >
         <h3
           id={`${blockInstance.instanceId}-compact-name`}
-          className="text-xs font-semibold text-gray-100 truncate"
+          // className="text-xs font-semibold text-gray-100 truncate"
+          className="block-instance-name"
           title={blockInstance.name}
         >
           {blockInstance.name}
         </h3>
-        <div className="flex items-center space-x-1 js-interactive-element">
+        {/* <div className="flex items-center space-x-1 js-interactive-element"> */}
           {blockInstance.error && (
             <span title={`Error: ${blockInstance.error}`}>
               <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
             </span>
           )}
-          <button
+          {/* delete */}
+          {/* <button
             onClick={(e) => {
               e.stopPropagation();
               BlockStateManager.deleteBlockInstance(blockInstance.instanceId);
@@ -215,12 +220,14 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             className="p-0.5 text-gray-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
           >
             <TrashIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          </button> */}
+        {/* </div> */}
       </div>
 
       {/* Body: Custom or Default Compact Renderer */}
-      <div className="flex-grow flex flex-col justify-center relative">
+      <div 
+      // className="flex-grow flex flex-col justify-center relative"
+      >
         {CompactRendererComponent(blockDefinition.compactRendererId)}
       </div>
 
