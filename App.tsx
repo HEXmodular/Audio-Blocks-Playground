@@ -38,6 +38,12 @@ const App: React.FC = () => {
           <ConnectionsRenderer
             svgRef={svgRef as React.RefObject<SVGSVGElement>}
           />
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="lightgray" strokeWidth="0.1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
 
         {appBlockInstances.filter(instance => instance).map(instance => (

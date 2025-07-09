@@ -1,5 +1,5 @@
 // создает ноды из списка классов блоков
-import { ToneAudioNode } from 'tone'; // Added Tone import
+import { ToneAudioNode, Tremolo, Vibrato } from 'tone'; // Added Tone import
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
@@ -19,6 +19,17 @@ import { AutoWahBlock } from '@blocks/effects/AutoWah';
 import { BitCrusherBlock } from '@blocks/effects/BitCrusher';
 import { ChebyshevBlock } from '@blocks/effects/Chebyshev';
 import { ChorusBlock } from '@blocks/effects/Chorus';
+import { DistortionBlock } from '@/blocks/effects/Distortion';
+import { PhaserBlock } from '@/blocks/effects/Phaser';
+import { FeedbackDelayBlock } from '@/blocks/effects/FeedbackDelay';
+import { FreeverbBlock } from '@/blocks/effects/Freeverb';
+import { FrequencyShifterBlock } from '@/blocks/effects/FrequencyShifter';
+import { JCReverbBlock } from '@/blocks/effects/JCReverb';
+import { PingPongDelayBlock } from '@/blocks/effects/PingPongDelay';
+import { ReverbBlock } from '@/blocks/effects/Reverb';
+import { StereoWidenerBlock } from '@/blocks/effects/StereoWidener';
+import { TremoloBlock } from '@/blocks/effects/Tremolo';
+import { VibratoBlock } from '@/blocks/effects/Vibrato';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -26,7 +37,6 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
     [BiquadFilterBlock.getDefinition().id, BiquadFilterBlock as any],
     [OscillatorBlock.getDefinition().id, OscillatorBlock as any],
-    [PitchShiftBlock.getDefinition().id, PitchShiftBlock as any],
     [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
     [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
     [DataSequencerBlock.getDefinition().id, DataSequencerBlock as any],
@@ -38,7 +48,18 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [BitCrusherBlock.getDefinition().id, BitCrusherBlock as any],
     [ChebyshevBlock.getDefinition().id, ChebyshevBlock as any],
     [ChorusBlock.getDefinition().id, ChorusBlock as any],
-    
+    [DistortionBlock.getDefinition().id, DistortionBlock as any],
+    [FeedbackDelayBlock.getDefinition().id, FeedbackDelayBlock as any],
+    [FreeverbBlock.getDefinition().id, FreeverbBlock as any],
+    [FrequencyShifterBlock.getDefinition().id, FrequencyShifterBlock as any],
+    [JCReverbBlock.getDefinition().id, JCReverbBlock as any],
+    [PhaserBlock.getDefinition().id, PhaserBlock as any],
+    [PingPongDelayBlock.getDefinition().id, PingPongDelayBlock as any],
+    [PitchShiftBlock.getDefinition().id, PitchShiftBlock as any],
+    [ReverbBlock.getDefinition().id, ReverbBlock as any],
+    [StereoWidenerBlock.getDefinition().id, StereoWidenerBlock as any],
+    [TremoloBlock.getDefinition().id, TremoloBlock as any],
+    [VibratoBlock.getDefinition().id, VibratoBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
