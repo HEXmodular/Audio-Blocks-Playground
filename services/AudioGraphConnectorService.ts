@@ -85,7 +85,11 @@ class AudioGraphConnectorService {
       if (!outputPortDef || !inputPortDef) return;
 
       // для пробрасывания эмитера получателю
-      if (outputPortDef.type === 'gate' || outputPortDef.type === 'trigger') {
+      if (outputPortDef.type === 'gate'
+        || outputPortDef.type === 'trigger'
+        || outputPortDef.type === 'string'
+        || outputPortDef.type === 'number'
+      ) {
         // const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
         fromInstance.instance?.on?.(conn.fromOutputId, (data) => {
           toInstance.instance?.emit(conn.toInputId, data)

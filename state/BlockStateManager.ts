@@ -70,6 +70,7 @@ export class BlockStateManager {
   private _selectedBlockInstanceId: string | null = null; // Added selected instance ID state
 
   private _onInstancesChange(instances: BlockInstance[]): void {
+    // console.log("[BlockStateManager] _onInstancesChange", instances);
     instances.forEach(instance => {
       if (!instance.instance) {
         // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);

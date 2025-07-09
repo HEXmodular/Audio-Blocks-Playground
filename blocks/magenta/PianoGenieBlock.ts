@@ -1,7 +1,7 @@
 import { PianoGenie } from '@magenta/music/es6/piano_genie';
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block'; // Added BlockParameter
 import { createParameterDefinitions } from '@constants/constants';
-import { ToneAudioNode, Emitter, Signal } from 'tone';
+import { ToneAudioNode, Emitter, Signal, Midi } from 'tone';
 
 // TODO: Determine if the checkpoint URL should be configurable or if this is standard.
 const CHECKPOINT_URL = 'https://storage.googleapis.com/magentadata/js/checkpoints/piano_genie/model/epiano/stp_iq_auto_contour_dt_166006';
@@ -88,26 +88,31 @@ export class PianoGenieBlock extends ToneAudioNode implements NativeBlock, Emitt
 
         // для обработки входящих гейтов/тригеров
         this._emitter.on('gate_change', (payload) => {
-            console.log("[Piano Genie] Gate input received.", payload);
+            // console.log("[Piano Genie] Gate input received.", payload);
             payload && this.onTrigger();
         })
 
         this._emitter.on('trigger', (payload) => {
-            console.log("[Piano Genie] Gate input received.", payload);
+            // console.log("[Piano Genie] Gate input received.", payload);
             this.onTrigger();
+        })
+
+        this._emitter.on('button', (payload) => {
+            // console.log("[Piano Genie] Button input received.", payload);
+            this.button.value = payload;
         })
     }
 
     // для входящих соединений
     public emit(event: any, ...args: any[]) {
-        console.log("--->|")
+        // console.log("--->|")
         this._emitter.emit(event, args?.[0])
         return this;
     };
 
     // для выходящий соединений отправляю
     public on(event: any, callback: (...args: any[]) => void){
-        console.log("|--->")
+        // console.log("|--->")
         this._emitter.on(event, callback)
         return this
     };
@@ -125,16 +130,18 @@ export class PianoGenieBlock extends ToneAudioNode implements NativeBlock, Emitt
         }
         try {
 
-            const keyList = [36, 38, 40, 41, 43, 45, 47]
+            const keyList = [36, 38, 40, 41, 43, 45, 47].map(n => n+12);
             //   this._currentSequenceString.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
             if (keyList.length === 0) {
                 console.warn('No valid sequence provided to Piano Genie.');
                 // Potentially emit a default or error value, or do nothing
                 return;
             }
-            const nextNote = this._genie.nextFromKeyList(this.button.value, keyList, this._currentTemperature, this._currentSeed);
+            // console.log("[PianoGenieBlock] button", this.button.value);
+            const nextNote: number = this._genie.nextFromKeyList(this.button.value, keyList, this._currentTemperature, this._currentSeed);
+            const frequencyDirect = new Midi(nextNote+12).toFrequency();
             console.log(nextNote)
-            this.emit('next_note_event', nextNote);
+            this.emit('next_note', frequencyDirect);
         } catch (error) {
             console.error('Error generating note from Piano Genie:', error);
         }

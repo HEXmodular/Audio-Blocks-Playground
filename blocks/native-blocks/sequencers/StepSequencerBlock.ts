@@ -56,7 +56,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
             description: 'Period of the sequencer loop in Tone.js Time notation (e.g., "4n", "8t", "1m").',
         }
     ]),
-    compactRendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
+    compactRendererId: 'step-sequencer', // If a custom compact renderer is used
 };
 
 // Interface for the internal state managed by the block instance

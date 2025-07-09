@@ -129,6 +129,7 @@ class ConnectionDragHandler implements IConnectionDragHandler {
           )
             typesCompatible = true;
           else if (sourcePortType === 'number' && targetPortType === 'number') typesCompatible = true;
+          else if (sourcePortType === 'number' && targetPortType === 'string') typesCompatible = true;
           else if (sourcePortType === 'string' && targetPortType === 'string') typesCompatible = true;
           else if (sourcePortType === 'boolean' && targetPortType === 'boolean') typesCompatible = true;
           else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;

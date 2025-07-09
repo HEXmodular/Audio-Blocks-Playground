@@ -1,39 +1,27 @@
 // components/controls/StepSequencerControl.tsx
 import React from 'react';
-import { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/common'; // Adjust path as needed
 
 interface StepSequencerControlProps {
-  parameter: BlockParameter;
-  blockInstance: BlockInstance;
-  blockDefinition: BlockDefinition;
+  stepsArray: boolean[] | string[];
+  // blockInstance: BlockInstance;
+  currentStepIndex: number;
   onChange: (paramId: string, newValue: boolean[]) => void;
 }
 
-const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
-  parameter,
-  blockInstance,
+export const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
+  stepsArray,
+  // blockInstance,
+  currentStepIndex,
   onChange,
 }) => {
-  let stepsArray = Array.isArray(parameter.currentValue) ? parameter.currentValue : [];
-  const numStepsFromParamDef = parameter.steps || (Array.isArray(parameter.defaultValue) ? parameter.defaultValue.length : 4);
-  const displayNumSteps = numStepsFromParamDef;
-
-  if (stepsArray.length < displayNumSteps) {
-    stepsArray = [...stepsArray, ...Array(displayNumSteps - stepsArray.length).fill(false)];
-  } else if (stepsArray.length > displayNumSteps) {
-    stepsArray = stepsArray.slice(0, displayNumSteps);
-  }
-
-  const currentStepIndexFromState = blockInstance.internalState?.currentStepIndex;
 
   // const isRule110TypeInitialPattern =
   //     (blockDefinition.id === RULE_110_BLOCK_DEFINITION.id || blockDefinition.id === RULE_110_OSCILLATOR_BLOCK_DEFINITION.id) &&
   //     parameter.id === 'initial_pattern_plus_boundaries';
 
-  const renderStepButton = (index: number, isPatternStepActive: boolean, isSequencerPlayingStep: boolean) => {
+  const renderStepButton = (index: number, isSequencerPlayingStep: boolean, labelText: string | null) => {
     let stepStyle = "";
     let stepTitle = `Step ${index + 1}`;
-    let labelText: string | null = null;
     const labelClass = "text-center text-[10px] text-gray-400 w-7 h-4 block";
 
     // if (isRule110TypeInitialPattern) {
@@ -74,36 +62,31 @@ const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
           onClick={() => {
             const newSteps = [...stepsArray];
             newSteps[index] = !newSteps[index];
+            // TODO для изменения в отображении
             onChange(parameter.id, newSteps);
           }}
           className={`w-7 h-7 rounded border-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-400
-                      ${isPatternStepActive ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500 hover:bg-gray-500 hover:border-gray-400'}
+                     
                       ${isSequencerPlayingStep ? 'ring-2 ring-yellow-300 ring-offset-1 ring-offset-gray-800 shadow-lg scale-105' : ''}
                       ${stepStyle}`}
-          aria-pressed={isPatternStepActive}
           aria-label={stepTitle}
-        />
+          
+        > {labelText} </button>
       </div>
     );
   };
 
   return (
-      <div>
-          <div className={`flex flex-wrap 'items-end'`} role="toolbar" aria-label={`${parameter.name} step sequencer`}>
-          {Array.from({ length: displayNumSteps }).map((_, index) => {
-              const isPatternStepActive = stepsArray[index] === true;
-              const isSequencerPlayingStep = index === currentStepIndexFromState; 
-              return renderStepButton(index, isPatternStepActive, isSequencerPlayingStep);
-          })}
-          </div>
-          {/* {isRule110TypeInitialPattern && (
-          <p className="text-xs text-gray-500 mt-1.5">
-              Pattern uses {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8) + 2} cells: Left Boundary,
-              {(blockInstance.parameters.find(p => p.id === 'core_length') ? Number(blockInstance.parameters.find(p => p.id === 'core_length')!.currentValue) : 8)} Core cells, Right Boundary.
-              <br/>Click cells to set initial state. Unused cells are ignored by the automaton.
-          </p>
-          )} */}
+    <div>
+      <div className={`flex flex-wrap 'items-end'`} role="toolbar" aria-label={`Step sequencer`}>
+        {stepsArray?.map((step, index) => {
+          // const isPatternStepActive = stepsArray[index] === true;
+          const isSequencerPlayingStep = index === currentStepIndex;
+          console.log(step)
+          return renderStepButton(index, isSequencerPlayingStep, step);
+        })}
       </div>
+    </div>
   );
 };
 

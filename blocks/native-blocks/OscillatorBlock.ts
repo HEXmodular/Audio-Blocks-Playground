@@ -1,12 +1,7 @@
-import * as Tone from 'tone';
+import { Emitter, getTransport, Oscillator, ToneOscillatorType } from 'tone';
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '@constants/constants';
 
-// Options for the constructor, extending Tone.ToneOscillatorNodeOptions
-// We might not need many custom options if we initialize based on BlockInstance params
-// interface OscillatorNodeOptions extends Tone.ToneOscillatorOptions {
-//   // initialParams?: BlockParameter[]; // Optional: if we want to pass BlockInstance parameters directly
-// }
 
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'tone-oscillator-v1',
@@ -15,6 +10,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   category: 'oscillator',
   inputs: [
     { id: 'frequency', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
+    { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Modulates Oscillator frequency.' },
     { id: 'volume', name: 'Gain CV', type: 'audio', description: 'Modulates output gain.' },
     { id: 'detune', name: 'Detune CV', type: 'audio', description: 'Modulates Oscillator detune.' }
   ],
@@ -51,25 +47,46 @@ const BLOCK_DEFINITION: BlockDefinition = {
   compactRendererId: 'oscillator',
 };
 
-export class OscillatorBlock extends Tone.Oscillator implements NativeBlock {
+export class OscillatorBlock extends Oscillator implements NativeBlock {
   readonly name: string = BLOCK_DEFINITION.name;
+  private _emitter = new Emitter();
+
   // input автоматически заполняет сам Tone.js
   // output автоматически заполняет сам Tone.js
 
   constructor() {
     super();
 
-    Tone.getTransport().on('stop', () => {
+    getTransport().on('stop', () => {
       this.stop();
     })
-    Tone.getTransport().on('start', () => {
+    getTransport().on('start', () => {
       this.start();
+    })
+
+    this._emitter.on('frequency_string', (data) => {
+      // console.log("[OscillatorBlock] frequency_string event", data);
+      this.frequency.value = Number(data);
     })
   }
 
   public static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
   }
+
+  // для выходящий соединений отправляю
+  public on(event: any, callback: (...args: any[]) => void) {
+    // console.log("[StepSequencerBlock]--->")
+    this._emitter.on(event, callback)
+    return this
+  };
+
+  // для входящих соединений
+  public emit(event: any, ...args: any[]) {
+    // console.log("--->[StepSequencerBlock]")
+    this._emitter.emit(event, args?.[0])
+    return this;
+  };
 
   public updateFromBlockInstance(instance: BlockInstance): void {
     if (!instance?.parameters) {
@@ -79,16 +96,23 @@ export class OscillatorBlock extends Tone.Oscillator implements NativeBlock {
     const parameters = instance.parameters;
 
     const freqParam = parameters.find(p => p.id === 'frequency');
+    // const freqStringParam = parameters.find(p => p.id === 'frequency_string');
     const waveformParam = parameters.find(p => p.id === 'waveform');
     const volumeParam = parameters.find(p => p.id === 'volume');
     const detuneParam = parameters.find(p => p.id === 'detune');
 
     if (freqParam) {
+      // console.log("[OscillatorBlock] frequency", freqParam.currentValue);
       this.frequency.value = Number(freqParam.currentValue);
     }
 
+    // if (freqStringParam) {
+    //   console.log("[OscillatorBlock] frequency_string", freqStringParam.currentValue);
+    //   this.frequency.value = Number(freqStringParam.currentValue);
+    // }
+
     if (waveformParam) {
-      const targetType = waveformParam.currentValue as Tone.ToneOscillatorType;
+      const targetType = waveformParam.currentValue as ToneOscillatorType;
       if (['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse'].includes(targetType)) {
         this.type = targetType;
       } else {

@@ -17,8 +17,9 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
     ],
     outputs: [
-        { id: 'output', name: 'Gate Output', type: 'number', description: 'Outputs the gate state of the current step.' },
-        { id: 'trigger_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
+        { id: 'output_string', name: 'Data Output string', type: 'string', description: 'Outputs the data of the current step.' },
+        { id: 'output_number', name: 'Data Output number', type: 'number', description: 'Outputs the data of the current step.' },
+        { id: 'next_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
         // The 'sequence' output was typed as 'string', which is unusual for a boolean array.
         // If it's meant to be an event-based output of the current sequence array,
         // it would need its own emitter. For now, assuming it's a parameter.
@@ -57,7 +58,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         },
 
     ]),
-    compactRendererId: 'StepSequencerRenderer', // If a custom compact renderer is used
+    compactRendererId: 'data-sequencer', // If a custom compact renderer is used
 };
 
 // Interface for the internal state managed by the block instance
@@ -137,6 +138,7 @@ export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
 
         // Update parameters (sequence and number of steps)
         if (instance.parameters) {
+            // console.log("[DataSequencerBlock] updateFromBlockInstance", instance.parameters);
             this.updateParameters(instance.parameters);
         }
 
@@ -212,7 +214,7 @@ export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
             }
         }
 
-        const sequenceParam = parameters.find(p => p.id === 'sequence');
+        const sequenceParam = parameters.find(p => p.id === 'data');
         if (sequenceParam && Array.isArray(sequenceParam.currentValue)) {
             // Only update if the sequence actually changed to avoid unnecessary processing
             if (JSON.stringify(this._sequence) !== JSON.stringify(sequenceParam.currentValue)) {
@@ -268,11 +270,11 @@ export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
     }
 
     public handleResetIn(time?: number) {
-        this.handleTriggerIn(time, true );
+        this.handleTriggerIn(time, true);
     }
 
     // next step
-    public handleTriggerIn(time?: number, isReset?: boolean ): void { // time parameter is from Transport callback
+    public handleTriggerIn(time?: number, isReset?: boolean): void { // time parameter is from Transport callback
         // console.log(`[StepSequencerBlock ${this._instance?.instanceId}] handleTriggerIn. Enabled: ${this._isEnabled}, Loop: ${this._loop}, Transport: ${Transport.state}`);
 
         // If looping, only advance if Tone.Transport is started.
@@ -292,13 +294,18 @@ export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
                 param.id === 'sequence' ? ({ ...param, storage: { ...param.storage, currentStep: isReset ? 0 : this._currentStep } }) : param
             );
 
+            this._emitter.emit('next_out', true);
+            this._emitter.emit('output_string', this._sequence[this._currentStep]); // Emit void for trigger
+            this._emitter.emit('output_number', this._sequence[this._currentStep]); // Emit void for trigger
+            // console.log("[DataSequencerBlock] output_number", this._sequence[this._currentStep], this._sequence);
+
             // синхранизирует с моментом следующей отрисовки
             getDraw().schedule(() => {
-                BlockStateManager.updateBlockInstance(this._instance.instanceId, { parameters: this._instance.parameters }); // Use context function
+                // BlockStateManager.updateBlockInstance(this._instance.instanceId, { parameters: this._instance.parameters }); // Use context function
             }, time || 0)
 
         }
-        this._emitter.emit('trigger'); // Emit void for trigger
+
     }
 
     // --- NativeBlock stubs ---
