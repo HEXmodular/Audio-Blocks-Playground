@@ -13,6 +13,12 @@ import { PitchShiftBlock } from '@blocks/effects/PitchShiftBlock';
 import { PianoGenieBlock } from '@blocks/magenta/PianoGenieBlock';
 import { StepSequencerBlock } from '@blocks/native-blocks/sequencers/StepSequencerBlock';
 import { DataSequencerBlock } from '@blocks/native-blocks/sequencers/DataSequencerBlock';
+import { AutoFilterBlock } from '@blocks/effects/AutoFilter';
+import { AutoPannerBlock } from '@blocks/effects/AutoPanner';
+import { AutoWahBlock } from '@blocks/effects/AutoWah';
+import { BitCrusherBlock } from '@blocks/effects/BitCrusher';
+import { ChebyshevBlock } from '@blocks/effects/Chebyshev';
+import { ChorusBlock } from '@blocks/effects/Chorus';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -24,6 +30,15 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
     [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
     [DataSequencerBlock.getDefinition().id, DataSequencerBlock as any],
+   
+    // effects
+    [AutoFilterBlock.getDefinition().id, AutoFilterBlock as any],
+    [AutoPannerBlock.getDefinition().id, AutoPannerBlock as any],
+    [AutoWahBlock.getDefinition().id, AutoWahBlock as any],
+    [BitCrusherBlock.getDefinition().id, BitCrusherBlock as any],
+    [ChebyshevBlock.getDefinition().id, ChebyshevBlock as any],
+    [ChorusBlock.getDefinition().id, ChorusBlock as any],
+    
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array

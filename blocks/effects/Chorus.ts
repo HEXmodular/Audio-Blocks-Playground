@@ -12,7 +12,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-chorus-v1',
     name: 'Chorus',
     description: 'A Tone.js Chorus node.',
-    category: 'modulation',
+    category: 'effects',
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Chorus input.' },
         // TODO: Add CV inputs for parameters

@@ -11,7 +11,7 @@ interface AddBlockModalProps {
   onClose: () => void;
 }
 
-const GROUP_ORDER = ['data', 'audio', 'control', 'logic', 'ai', 'i/o', 'filter', 'oscillator', '8-bit', 'pitch'];
+const GROUP_ORDER = ['data', 'audio', 'control', 'logic', 'ai', 'i/o', 'filter', 'oscillator', '8-bit', 'pitch', 'effects'];
 
 const AddBlockModal: React.FC<AddBlockModalProps> = ({
   // appBlockDefinitionsFromCtx, // REMOVE THIS

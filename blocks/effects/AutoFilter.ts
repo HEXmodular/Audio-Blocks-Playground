@@ -18,7 +18,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-autofilter-v1',
     name: 'AutoFilter',
     description: 'A Tone.js AutoFilter node.',
-    category: 'filter', // Or modulation?
+    category: 'effects', // Or modulation?
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.AutoFilter input.' },
         // TODO: Add CV inputs for parameters

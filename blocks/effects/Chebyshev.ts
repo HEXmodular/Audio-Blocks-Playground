@@ -12,7 +12,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-chebyshev-v1',
     name: 'Chebyshev',
     description: 'A Tone.js Chebyshev waveshaper node.',
-    category: 'effect', // Or distortion?
+    category: 'effects', // Or distortion?
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Chebyshev input.' },
         // TODO: Add CV inputs for parameters

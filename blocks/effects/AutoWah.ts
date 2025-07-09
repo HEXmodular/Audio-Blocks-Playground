@@ -12,7 +12,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-autowah-v1',
     name: 'AutoWah',
     description: 'A Tone.js AutoWah node.',
-    category: 'filter', // Or modulation?
+    category: 'effects', // Or modulation?
     inputs: [
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.AutoWah input.' },
         // TODO: Add CV inputs for parameters

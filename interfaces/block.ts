@@ -49,7 +49,7 @@ export interface BlockDefinition {
     id: string;
     name: string;
     description?: string;
-    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch';
+    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch' | 'effects';
     inputs: BlockPort[];
     outputs: BlockPort[];
     parameters: BlockParameter[]; // для загрузки и сохранения описаний и значений параметров
