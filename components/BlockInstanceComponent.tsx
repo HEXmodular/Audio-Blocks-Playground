@@ -1,7 +1,7 @@
 
-import React, { useState, useCallback, useEffect, memo } from 'react';
+import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/block';
-import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
+import { TrashIcon, ExclamationTriangleIcon, ArrowsPointingOutIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
@@ -56,6 +56,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
+  const [size, setSize] = useState({
+    width: blockInstance.width || COMPACT_BLOCK_WIDTH,
+    height: blockInstance.height || calculateBlockHeight(true)
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+
   // const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
   const blockDefinition = blockInstance.definition;
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
@@ -97,8 +104,10 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsResizing(false); // Add this line
   }, []);
 
+  // Effect for dragging
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -113,15 +122,75 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // Resize handlers
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      width: size.width,
+      height: size.height,
+    };
+  };
+
+  const handleResizeMouseMove = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const dx = e.clientX - resizeStartRef.current.x;
+      const dy = e.clientY - resizeStartRef.current.y;
+
+      let newWidth = resizeStartRef.current.width + dx;
+      let newHeight = resizeStartRef.current.height + dy;
+
+      // Snap to grid
+      newWidth = Math.round(newWidth / GRID_STEP) * GRID_STEP;
+      newHeight = Math.round(newHeight / GRID_STEP) * GRID_STEP;
+
+      // Enforce minimum size
+      newWidth = Math.max(newWidth, COMPACT_BLOCK_WIDTH); // Min width
+      newHeight = Math.max(newHeight, calculateBlockHeight(true)); // Min height based on content
+
+      debounce(() => {
+        onUpdateInstancePosition(blockInstance.instanceId, {
+          width: newWidth,
+          height: newHeight,
+        });
+      }, 50)();
+
+      setSize({ width: newWidth, height: newHeight });
+    }
+  }, [isResizing, blockInstance.instanceId, onUpdateInstancePosition]);
+
+  // Effect for resizing
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMouseMove);
+      document.addEventListener('mouseup', handleMouseUp); // Reuse mouseup from drag
+    } else {
+      document.removeEventListener('mousemove', handleResizeMouseMove);
+      // mouseup listener is managed by the drag effect, ensure it's also removed if only resizing was active
+      if (!isDragging) {
+        document.removeEventListener('mouseup', handleMouseUp);
+      }
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMouseMove);
+      if (!isDragging) { // Only remove if not also dragging
+        document.removeEventListener('mouseup', handleMouseUp);
+      }
+    };
+  }, [isResizing, handleResizeMouseMove, handleMouseUp, isDragging]);
+
 
   if (!blockDefinition && blockInstance) {
-    const errorBlockHeight = calculateBlockHeight(false);
+    // const errorBlockHeight = calculateBlockHeight(false); // Not used with current size state
     return (
       <div
         style={{
           transform: `translate(${position?.x}px, ${position?.y}px)`,
-          width: `${COMPACT_BLOCK_WIDTH}px`,
-          height: `${errorBlockHeight}px`,
+          width: `${size.width}px`,
+          height: `${size.height}px`,
         }}
         className="absolute bg-red-800 border-2 border-red-600 rounded-md shadow-lg p-3 text-white text-xs flex flex-col justify-center items-center"
       >
@@ -143,7 +212,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   //   ? blockInstance.parameters.find(p => p.id === firstNumericalParamDef.id)
   //   : undefined;
 
-  const blockHeight = calculateBlockHeight(true); // Content area is always active for a renderer
+  // const blockHeight = calculateBlockHeight(true); // Now using size.height
+  const blockHeight = size.height; // Use dynamic height
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
@@ -173,13 +243,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     <div
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
-        width: `${COMPACT_BLOCK_WIDTH}px`,
-        minHeight: `${blockHeight}px`,
+        width: `${size.width}px`,
+        height: `${size.height}px`, // Use height from state
       }}
       // className={`absolute bg-gray-800 rounded-lg shadow-xl flex flex-col border-2 group
       //             ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
       //             transition-all duration-150 cursor-grab active:cursor-grabbing`}
-      className="block-instance-container"
+      className={`block-instance-container ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
       
                   onMouseDown={handleMouseDown}
       onClickCapture={(e) => {
@@ -225,15 +295,27 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       </div>
 
       {/* Body: Custom or Default Compact Renderer */}
-      <div 
-      // className="flex-grow flex flex-col justify-center relative"
+      <div
+        // className="flex-grow flex flex-col justify-center relative"
+        style={{ height: `calc(100% - ${COMPACT_BLOCK_HEADER_HEIGHT}px)` }} // Ensure body fills available space
       >
         {CompactRendererComponent(blockDefinition.compactRendererId)}
       </div>
 
+      {/* Resize Handle */}
+      <div
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100 js-interactive-element"
+        style={{ background: 'rgba(255,255,255,0.2)', borderTopLeftRadius: '4px' }}
+        onMouseDown={handleResizeMouseDown}
+        title="Resize Block"
+      >
+        <ArrowsPointingOutIcon className="w-3 h-3 text-gray-400 absolute bottom-0.5 right-0.5" />
+      </div>
+
+
       {/* Input Port Stubs */}
       {blockDefinition?.inputs.map((port, index) => {
-        const portY = getPortY(index, blockDefinition.inputs.length, blockHeight);
+        const portY = getPortY(index, blockDefinition.inputs.length, size.height); // Use size.height
         const isPendingSource = ConnectionDragHandler.pendingConnection?.fromInstanceId === blockInstance.instanceId && ConnectionDragHandler.pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
@@ -264,7 +346,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Output Port Stubs */}
       {blockDefinition?.outputs.map((port, index) => {
-        const portY = getPortY(index, blockDefinition.outputs.length, blockHeight);
+        const portY = getPortY(index, blockDefinition.outputs.length, size.height); // Use size.height
         const isPendingSource = ConnectionDragHandler.pendingConnection?.fromInstanceId === blockInstance.instanceId && ConnectionDragHandler.pendingConnection.fromPort.id === port.id;
         const isDraggedOver = draggedOverPort?.instanceId === blockInstance.instanceId && draggedOverPort?.portId === port.id;
         return (
@@ -297,11 +379,27 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 };
 
 // export default BlockInstanceComponent;
-export default memo(BlockInstanceComponent,
-  (prev: BlockInstanceComponentProps, next: BlockInstanceComponentProps) => {
-    const { position: prevPosition, parameters: prevParameters } = prev.blockInstance;
-    const { position: nextPosition, parameters: nextParameters } = next.blockInstance;
-    const isEqual = JSON.stringify({ position: prevPosition, parameters: prevParameters }) === JSON.stringify({ position: nextPosition, parameters: nextParameters })
-    return isEqual;
-  });
+export default memo(BlockInstanceComponent, (prevProps, nextProps) => {
+  // Compare relevant props to prevent unnecessary re-renders
+  const prev = prevProps.blockInstance;
+  const next = nextProps.blockInstance;
+
+  if (prev.instanceId !== next.instanceId) return false;
+  if (prev.definitionId !== next.definitionId) return false;
+  if (prevProps.isSelected !== nextProps.isSelected) return false;
+  if (ConnectionDragHandler.draggedOverPort?.instanceId === prev.instanceId || ConnectionDragHandler.draggedOverPort?.instanceId === next.instanceId) return false;
+
+
+  // Deep comparison for position, width, height, and parameters can be costly.
+  // Consider specific checks if performance issues arise.
+  const positionChanged = prev.position.x !== next.position.x || prev.position.y !== next.position.y;
+  const sizeChanged = (prev.width || COMPACT_BLOCK_WIDTH) !== (next.width || COMPACT_BLOCK_WIDTH) ||
+                      (prev.height || calculateBlockHeight(true)) !== (next.height || calculateBlockHeight(true));
+  const parametersChanged = JSON.stringify(prev.parameters) !== JSON.stringify(next.parameters); // Basic check
+
+  if (positionChanged || sizeChanged || parametersChanged) return false;
+
+
+  return true; // Props are equal, don't re-render
+});
 
