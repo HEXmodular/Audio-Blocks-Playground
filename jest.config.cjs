@@ -13,7 +13,6 @@ module.exports = {
     "/node_modules/(?!tone)" // Simpler pattern: transpile tone, ignore others in node_modules
   ],
   moduleNameMapper: {
-    '^tone$': '<rootDir>/node_modules/tone/build/esm/index.js', // Point to ESM build
     // '^@google/genai$': '<rootDir>/__mocks__/@google/genai.js', // Ensure this is commented out
     // Standard path mappings
     '^@/(.*)$': '<rootDir>/$1',
