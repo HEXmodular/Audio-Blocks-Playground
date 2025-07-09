@@ -4,4 +4,9 @@ export * from './AutoWah';
 export * from './BitCrusher';
 export * from './Chebyshev';
 export * from './Chorus';
-export * from './PitchShiftBlock'; // Assuming PitchShiftBlock should also be exported
+export * from './PitchShiftBlock';
+export * from './PingPongDelay';
+export * from './Reverb';
+export * from './StereoWidener';
+export * from './Tremolo';
+export * from './Vibrato';
