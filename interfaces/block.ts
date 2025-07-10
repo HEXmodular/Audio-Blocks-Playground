@@ -49,7 +49,7 @@ export interface BlockDefinition {
     id: string;
     name: string;
     description?: string;
-    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch' | 'effects';
+    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch' | 'effects' | 'container';
     inputs: BlockPort[];
     outputs: BlockPort[];
     parameters: BlockParameter[]; // для загрузки и сохранения описаний и значений параметров
@@ -80,6 +80,8 @@ export interface BlockInstance {
     // isRunning?: boolean; 
     error?: string | null;
     // audioWorkletNodeId?: string; 
+    children?: string[];
+    parentId?: string;
 }
 
 //   export type ValueType = 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'gate' | 'any' | 'object' | 'array';

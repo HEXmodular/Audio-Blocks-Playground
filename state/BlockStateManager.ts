@@ -370,6 +370,15 @@ export class BlockStateManager {
     };
 
     this._blockInstances = [...this._blockInstances, newInstance];
+
+    if (newInstance.parentId) {
+      this._blockInstances = this._blockInstances.map(b =>
+        b.instanceId === newInstance.parentId
+          ? { ...b, children: [...(b.children || []), newInstance.instanceId] }
+          : b
+      );
+    }
+
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
     return newInstance;
@@ -377,23 +386,63 @@ export class BlockStateManager {
 
   // отправляет теперь только обновления, а не по каждому блоку
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
-    this._blockInstances = this._blockInstances?.map(currentBlockInst => {
-      if (currentBlockInst?.instanceId === instanceId) {
-        if (typeof updates === 'function') {
-          currentBlockInst = updates(currentBlockInst);
-        } else {
-          currentBlockInst = { ...currentBlockInst, ...updates };
-        }
-        // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", currentBlockInst);
-        if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    const originalBlock = this._blockInstances.find(b => b?.instanceId === instanceId);
+    if (!originalBlock) return;
 
-        this._saveInstancesToLocalStorage();
+    let updatedBlock: BlockInstance;
+    if (typeof updates === 'function') {
+      updatedBlock = updates(originalBlock);
+    } else {
+      updatedBlock = { ...originalBlock, ...updates };
+    }
+
+    // Handle parentId changes
+    if (originalBlock.parentId !== updatedBlock.parentId) {
+      // Remove from old parent's children
+      if (originalBlock.parentId) {
+        this._blockInstances = this._blockInstances.map(b =>
+          b.instanceId === originalBlock.parentId
+            ? { ...b, children: b.children?.filter(id => id !== instanceId) }
+            : b
+        );
       }
-      return currentBlockInst
-    })
+      // Add to new parent's children
+      if (updatedBlock.parentId) {
+        this._blockInstances = this._blockInstances.map(b =>
+          b.instanceId === updatedBlock.parentId
+            ? { ...b, children: [...(b.children || []), instanceId] }
+            : b
+        );
+      }
+    }
+
+    this._blockInstances = this._blockInstances.map(b =>
+      b?.instanceId === instanceId ? updatedBlock : b
+    );
+
+    // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    this._saveInstancesToLocalStorage();
   }
 
   public deleteBlockInstance(instanceId: string): void {
+    const blockToDelete = this._blockInstances.find(b => b?.instanceId === instanceId);
+    if (!blockToDelete) return;
+
+    // Recursively delete children if it's a container
+    if (blockToDelete.children && blockToDelete.children.length > 0) {
+      blockToDelete.children.forEach(childId => this.deleteBlockInstance(childId));
+    }
+
+    // Remove from parent's children array
+    if (blockToDelete.parentId) {
+      this._blockInstances = this._blockInstances.map(b =>
+        b.instanceId === blockToDelete.parentId
+          ? { ...b, children: b.children?.filter(id => id !== instanceId) }
+          : b
+      );
+    }
+
     this._blockInstances = this._blockInstances.filter(b => b?.instanceId !== instanceId);
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);

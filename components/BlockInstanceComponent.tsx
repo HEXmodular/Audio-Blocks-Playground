@@ -1,7 +1,7 @@
 
-import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, memo, useRef, useMemo } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/block';
-import { TrashIcon, ExclamationTriangleIcon, } from '@icons/icons';
+import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
@@ -68,7 +68,15 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
 
-  const onUpdateInstancePosition = BlockStateManager.updateBlockInstance;
+  const { updateBlockInstance, getBlockInstances } = BlockStateManager;
+
+  const childInstances = useMemo(() => {
+    if (blockDefinition.category === 'container' && blockInstance.children) {
+      const allInstances = getBlockInstances();
+      return allInstances.filter(inst => blockInstance.children!.includes(inst.instanceId));
+    }
+    return [];
+  }, [blockInstance, blockDefinition, getBlockInstances]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
@@ -90,17 +98,18 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       const newY = e.clientY - dragStart.y;
 
       const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
+      const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
       const snappedY = Math.round(newY / GRID_STEP) * GRID_STEP;
 
       debounce(() => {
-        onUpdateInstancePosition(blockInstance.instanceId, {
+        updateBlockInstance(blockInstance.instanceId, {
           position: { x: snappedX, y: snappedY },
         });
       }, 50)(); // Debounce to reduce updates
 
       setPosition({ x: snappedX, y: snappedY });
     }
-  }, [isDragging, dragStart, blockInstance.instanceId, onUpdateInstancePosition]);
+  }, [isDragging, dragStart, blockInstance.instanceId, updateBlockInstance]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -152,7 +161,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       newHeight = Math.max(newHeight, calculateBlockHeight(true)); // Min height based on content
 
       debounce(() => {
-        onUpdateInstancePosition(blockInstance.instanceId, {
+        updateBlockInstance(blockInstance.instanceId, {
           width: newWidth,
           height: newHeight,
         });
@@ -160,7 +169,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       setSize({ width: newWidth, height: newHeight });
     }
-  }, [isResizing, blockInstance.instanceId, onUpdateInstancePosition]);
+  }, [isResizing, blockInstance.instanceId, updateBlockInstance]);
 
   // Effect for resizing
   useEffect(() => {
@@ -297,9 +306,21 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       {/* Body: Custom or Default Compact Renderer */}
       <div
         // className="flex-grow flex flex-col justify-center relative"
-        style={{ height: `calc(100% - ${COMPACT_BLOCK_HEADER_HEIGHT}px)` }} // Ensure body fills available space
+        style={{ height: `calc(100% - ${COMPACT_BLOCK_HEADER_HEIGHT}px)`, position: 'relative' }} // Ensure body fills available space
       >
         {CompactRendererComponent(blockDefinition.compactRendererId)}
+        {blockDefinition.category === 'container' && (
+          <div className="absolute inset-0 overflow-auto p-2">
+            {childInstances.map(child => (
+              <BlockInstanceComponent
+                key={child.instanceId}
+                blockInstance={child}
+                isSelected={false} // Child blocks are not selectable directly for now
+                onSelect={() => {}} // Child blocks are not selectable directly for now
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Resize Handle */}
