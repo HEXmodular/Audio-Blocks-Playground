@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "@google/genai": "^1.3.0",

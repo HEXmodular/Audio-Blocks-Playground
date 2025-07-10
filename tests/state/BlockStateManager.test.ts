@@ -2,7 +2,7 @@ import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManag
 import { BlockDefinition, BlockInstance } from '@interfaces/common'; // Added BlockInstance
 // import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking - Removed
 // import { AudioEngineService } from '../../services/AudioEngineService'; // No longer needed for getAudioOutputDefinition
-import { AudioOutputBlock } from '@services/native-blocks/AudioOutputBlock'; // Added
+import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock'; // Changed path
 
 // Minimal mock for CORE_BLOCK_DEFINITIONS_ARRAY to avoid import issues in test
 const MOCK_CORE_BLOCK_DEFINITIONS_ARRAY: BlockDefinition[] = [

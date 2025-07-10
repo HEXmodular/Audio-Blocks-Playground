@@ -25,6 +25,7 @@ export interface BlockParameter {
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
     // isFrequency?: boolean;
+    showInConnections?: boolean; // Added for customizable visibility in connections view
 }
 
 // export type BlockParameter = BlockParameterBase;

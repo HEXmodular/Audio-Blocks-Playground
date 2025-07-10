@@ -245,6 +245,28 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
                 handleNumberInputTextChange,
                 processNumberInput
               })}
+              {/* Checkbox to toggle showInConnections */}
+              <div className="mt-1 flex items-center">
+                <input
+                  type="checkbox"
+                  id={`${blockInstance.instanceId}-${paramDef.id}-showInConnections`}
+                  checked={!!instanceParam.showInConnections}
+                  onChange={(e) => {
+                    const newShowInConnections = e.target.checked;
+                    updateBlockInstance(blockInstance.instanceId, (prevInstance) => {
+                      const updatedParams = prevInstance.parameters.map(p =>
+                        p.id === paramDef.id ? { ...p, showInConnections: newShowInConnections } : p
+                      );
+                      setBlockInstance({ ...prevInstance, parameters: updatedParams });
+                      return { ...prevInstance, parameters: updatedParams };
+                    });
+                  }}
+                  className="mr-1.5 h-3.5 w-3.5 rounded border-gray-600 bg-gray-700 text-sky-500 focus:ring-sky-600 focus:ring-offset-gray-800"
+                />
+                <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-showInConnections`} className="text-xs text-gray-400 hover:text-gray-300 cursor-pointer">
+                  Show in Connections View
+                </label>
+              </div>
             </div>
           );
         })}
@@ -340,7 +362,39 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
       <div className="space-y-4 text-sm">
         <div>
           <h4 className="font-semibold text-gray-300 mb-2 flex items-center"><LinkIcon className="w-4 h-4 mr-1.5 text-sky-400"/>Inputs:</h4>
-          {blockDefinition.inputs.length === 0 && <p className="text-xs text-gray-500 italic">No inputs defined for this block.</p>}
+          {blockDefinition.inputs.length === 0 &&
+           (!blockDefinition.parameters.some(p => p.showInConnections) || !blockInstance.parameters.find(ip => ip.showInConnections)) && // Also check instance params
+           <p className="text-xs text-gray-500 italic">No inputs or connectable parameters defined/selected for this block.</p>}
+
+          {/* Display parameters marked for connection as inputs */}
+          {blockInstance.parameters.filter(p => p.showInConnections).map(param => {
+            // Logic for displaying parameters as connectable inputs
+            // This is a simplified version; you might need to adapt based on how parameter connections are handled
+            const incomingConnections = connections.filter(c => c.toInstanceId === blockInstance.instanceId && c.toInputId === param.id);
+            return (
+              <div key={`param-input-${param.id}`} className="p-2 bg-gray-700/50 rounded-md mb-1.5 border-l-2 border-sky-500">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <span className="font-medium text-gray-200">{param.name}</span> <span className="text-xs text-gray-400">({param.type === "number_input" ? "number" : param.type})</span> {/* Adjust type display as needed */}
+                    </div>
+                </div>
+                {incomingConnections.length > 0 ? (incomingConnections.map(conn => {
+                    const sourcePortDef = getPortDefinitionFromList(conn.fromInstanceId, conn.fromOutputId, true);
+                    return (
+                        <div key={conn.id} className="flex items-center justify-between pl-3 mt-1">
+                            <p className="text-xs text-sky-400">← {findConnectedBlockName(conn.fromInstanceId)} ({sourcePortDef?.name || conn.fromOutputId})</p>
+                            <button
+                                onClick={() => handleDisconnect(conn.id)}
+                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded-md transition-colors"
+                                aria-label={`Disconnect ${param.name} from ${findConnectedBlockName(conn.fromInstanceId)}`}
+                            >Disconnect</button>
+                        </div>
+                    );
+                 })) : <p className="text-xs text-gray-500 italic pl-3 mt-1">Not connected</p>}
+              </div>
+            );
+          })}
+
           {blockDefinition.inputs.map(port => {
             const incomingConnections = connections.filter(c => c.toInstanceId === blockInstance.instanceId && c.toInputId === port.id);
             return (
