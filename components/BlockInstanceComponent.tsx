@@ -98,7 +98,6 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       const newY = e.clientY - dragStart.y;
 
       const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
-      const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
       const snappedY = Math.round(newY / GRID_STEP) * GRID_STEP;
 
       debounce(() => {
@@ -222,7 +221,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   //   : undefined;
 
   // const blockHeight = calculateBlockHeight(true); // Now using size.height
-  const blockHeight = size.height; // Use dynamic height
+  // const blockHeight = size.height; // Use dynamic height
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;

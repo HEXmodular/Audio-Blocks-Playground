@@ -1,5 +1,5 @@
 // создает ноды из списка классов блоков
-import { ToneAudioNode, Tremolo, Vibrato } from 'tone'; // Added Tone import
+import { ToneAudioNode } from 'tone'; // Added Tone import
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
@@ -30,7 +30,7 @@ import { ReverbBlock } from '@/blocks/effects/Reverb';
 import { StereoWidenerBlock } from '@/blocks/effects/StereoWidener';
 import { TremoloBlock } from '@/blocks/effects/Tremolo';
 import { VibratoBlock } from '@/blocks/effects/Vibrato';
-
+import { ContainerBlock } from '@/blocks/native-blocks/ContainerBlock';
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
@@ -60,6 +60,9 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [StereoWidenerBlock.getDefinition().id, StereoWidenerBlock as any],
     [TremoloBlock.getDefinition().id, TremoloBlock as any],
     [VibratoBlock.getDefinition().id, VibratoBlock as any],
+
+    // containers
+    [ContainerBlock.getDefinition().id, ContainerBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
