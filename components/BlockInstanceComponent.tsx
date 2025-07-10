@@ -111,9 +111,42 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   }, [isDragging, dragStart, blockInstance.instanceId, updateBlockInstance]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      const { x: dropX, y: dropY } = position; // Current position of the dragged block
+
+      const allInstances = BlockStateManager.getBlockInstances();
+      let newParentId: string | undefined | null = null;
+
+      for (const potentialParentInstance of allInstances) {
+        if (
+          potentialParentInstance.instanceId !== blockInstance.instanceId &&
+          potentialParentInstance.definition.category === 'container'
+        ) {
+          const parentPos = potentialParentInstance.position;
+          const parentWidth = potentialParentInstance.width || COMPACT_BLOCK_WIDTH; // Use a fallback if width is not set
+          const parentHeight = potentialParentInstance.height || calculateBlockHeight(true); // Use a fallback
+
+          if (
+            dropX >= parentPos.x &&
+            dropX <= parentPos.x + parentWidth &&
+            dropY >= parentPos.y &&
+            dropY <= parentPos.y + parentHeight
+          ) {
+            newParentId = potentialParentInstance.instanceId;
+            break; // Found a container, no need to check others
+          }
+        }
+      }
+
+      // Update parentId if it has changed or if it was set and now needs to be cleared
+      if (newParentId !== blockInstance.parentId) {
+        updateBlockInstance(blockInstance.instanceId, { parentId: newParentId });
+      }
+    }
+
     setIsDragging(false);
-    setIsResizing(false); // Add this line
-  }, []);
+    setIsResizing(false);
+  }, [isDragging, position, blockInstance.instanceId, blockInstance.parentId, updateBlockInstance, BlockStateManager.getBlockInstances]);
 
   // Effect for dragging
   useEffect(() => {
