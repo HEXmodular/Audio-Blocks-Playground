@@ -19,21 +19,6 @@ export enum MusicGenerationMode {
     LOW_LATENCY = "LOW_LATENCY",
 }
 
-// Enums for Lyria Service Integration (matching those in LiveMusicService.ts)
-export enum Scale {
-    C_MAJOR_A_MINOR = "C_MAJOR_A_MINOR",
-    D_MAJOR_B_MINOR = "D_MAJOR_B_MINOR",
-    D_SHARP_MAJOR_C_MINOR = "D_SHARP_MAJOR_C_MINOR",
-    E_MAJOR_C_SHARP_MINOR = "E_MAJOR_C_SHARP_MINOR",
-    F_MAJOR_D_MINOR = "F_MAJOR_D_MINOR",
-    F_SHARP_MAJOR_D_SHARP_MINOR = "F_SHARP_MAJOR_D_SHARP_MINOR",
-    G_MAJOR_E_MINOR = "G_MAJOR_E_MINOR",
-    G_SHARP_MAJOR_F_MINOR = "G_SHARP_MAJOR_F_MINOR",
-    A_MAJOR_F_SHARP_MINOR = "A_MAJOR_F_SHARP_MINOR",
-    A_SHARP_MAJOR_G_MINOR = "A_SHARP_MAJOR_G_MINOR",
-    B_MAJOR_G_SHARP_MINOR = "B_MAJOR_G_SHARP_MINOR",
-}
-
 export enum PlaybackState {
     STOPPED = "STOPPED",
     PLAYING = "PLAYING",

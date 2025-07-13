@@ -6,6 +6,8 @@
  * These utilities are foundational for services that handle encoded audio or binary data, such as the `LiveMusicService`.
  */
 
+import { ToneAudioBuffer } from "tone";
+
 // Simple debounce function
 export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
   let timeout: number | undefined;
@@ -33,15 +35,11 @@ export function decode(base64String: string): Uint8Array
 
 export async function decodeAudioData(
   data: Uint8Array,
-  ctx: AudioContext,
   sampleRate: number,
   numChannels: number,
-): Promise<AudioBuffer> {
-  const buffer = ctx.createBuffer(
-    numChannels,
-    data.length / 2 / numChannels,
-    sampleRate,
-  );
+): Promise<ToneAudioBuffer> {
+  const buffer = new ToneAudioBuffer()
+
 
   const invDivisor = 1 / 32768.0;
   const dataInt16 = new Int16Array(data.buffer);
@@ -49,7 +47,7 @@ export async function decodeAudioData(
 
   // Extract interleaved channels
   if (numChannels === 0) {
-    buffer.copyToChannel(dataFloat32, 0);
+    buffer.fromArray(dataFloat32)
   } else {
     let channelsData = Array.from({ length: numChannels }, () => new Float32Array(dataFloat32.length / numChannels));
 
@@ -59,9 +57,7 @@ export async function decodeAudioData(
       channelsData[channelIndex][bufferIndex] = dataFloat32[i];
     }
 
-    for (let i = 0; i < numChannels; i++) {
-      buffer.copyToChannel(channelsData[i], i);
-    }
+      buffer.fromArray(channelsData);
   }
 
   return buffer;

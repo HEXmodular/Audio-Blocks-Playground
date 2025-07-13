@@ -1,20 +1,20 @@
 import * as Tone from 'tone';
 import {
-  Scale as AppScale,
 } from '@interfaces/lyria';
 
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '../../constants/constants';
 import { LiveMusicService, DEFAULT_MUSIC_GENERATION_CONFIG, type LiveMusicServiceCallbacks, PlaybackState, type WeightedPrompt, type LiveMusicGenerationConfig } from '@services/LiveMusicService';
-import { Scale as LyriaScale } from '@services/LiveMusicService';
-import { ToneAudioNode } from 'tone';
+import { getTransport, ToneAudioBuffer, ToneAudioNode } from 'tone';
 import { Emitter } from 'tone';
+import { Scale } from '@google/genai';
 
 
-const LYRIA_SCALE_OPTIONS = Object.entries(AppScale).map(([label, value]) => ({
+const LYRIA_SCALE_OPTIONS = Object.entries(Scale).map(([label, value]) => ({
   label: label.replace(/_/g, ' ').replace('SHARP', '#').replace('FLAT', 'b'),
   value: value,
 }));
+
 
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'lyria-realtime-master-v1',
@@ -43,14 +43,14 @@ const BLOCK_DEFINITION: BlockDefinition = {
   ],
   parameters: createParameterDefinitions([
     { id: 'initial_prompt_text', name: 'Initial Prompt Text', type: 'text_input', defaultValue: 'cinematic lofi hip hop', description: 'Default text prompt for Lyria session.' },
-    { id: 'scale', name: 'Scale', type: 'select', options: LYRIA_SCALE_OPTIONS, defaultValue: AppScale.C_MAJOR_A_MINOR, description: 'Lyria Scale. Overridden by CV if connected.' },
-    { id: 'brightness', name: 'Brightness', type: 'slider', toneParam: { minValue: 0, maxValue: 1}, step: 0.01, defaultValue: 0.5 , description: 'Lyria Brightness (0-1). Overridden by CV.' },
-    { id: 'density', name: 'Density', type: 'slider', toneParam: { minValue: 0, maxValue: 1}, step: 0.01, defaultValue: 0.5 , description: 'Lyria Density (0-1). Overridden by CV.' },
+    { id: 'scale', name: 'Scale', type: 'select', options: LYRIA_SCALE_OPTIONS, defaultValue: Scale.SCALE_UNSPECIFIED, description: 'Lyria Scale. Overridden by CV if connected.' },
+    { id: 'brightness', name: 'Brightness', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Brightness (0-1). Overridden by CV.' },
+    { id: 'density', name: 'Density', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Density (0-1). Overridden by CV.' },
     { id: 'seed', name: 'Seed', type: 'number_input', defaultValue: 0, description: 'Lyria Seed (0 for random date-based). Overridden by CV.' },
-    { id: 'temperature', name: 'Temperature', type: 'slider', toneParam: { minValue: 0.1, maxValue: 2}, step: 0.01, defaultValue: 1.1 , description: 'Lyria Temperature. Overridden by CV.' },
-    { id: 'guidance_scale', name: 'Guidance Scale', type: 'slider', toneParam: { minValue: 1, maxValue: 20}, step: 0.1, defaultValue: 7.0 , description: 'Lyria Guidance Scale. Overridden by CV.' },
-    { id: 'top_k', name: 'Top K', type: 'number_input', toneParam: { minValue: 1, maxValue: 100}, step: 1, defaultValue: 40 , description: 'Lyria Top K. Overridden by CV.' },
-    { id: 'bpm', name: 'BPM', type: 'number_input', toneParam: { minValue: 30, maxValue: 240}, step: 1, defaultValue: 120 , description: 'Lyria BPM. Overridden by CV.' },
+    { id: 'temperature', name: 'Temperature', type: 'slider', toneParam: { minValue: 0.1, maxValue: 2 }, step: 0.01, defaultValue: 1.1, description: 'Lyria Temperature. Overridden by CV.' },
+    { id: 'guidance_scale', name: 'Guidance Scale', type: 'slider', toneParam: { minValue: 1, maxValue: 20 }, step: 0.1, defaultValue: 7.0, description: 'Lyria Guidance Scale. Overridden by CV.' },
+    { id: 'top_k', name: 'Top K', type: 'number_input', toneParam: { minValue: 1, maxValue: 100 }, step: 1, defaultValue: 40, description: 'Lyria Top K. Overridden by CV.' },
+    { id: 'bpm', name: 'BPM', type: 'number_input', toneParam: { minValue: 30, maxValue: 240 }, step: 1, defaultValue: 120, description: 'Lyria BPM. Overridden by CV.' },
   ]),
 };
 
@@ -58,21 +58,18 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
 
   name = BLOCK_DEFINITION.name;
   input = new Tone.Gain(1); // PianoGenie doesn't process audio through Tone.js standard signal chain
-  output = new Tone.Gain(1); // Output is via emitter
+  output  = new Tone.Player(); // Output is via emitter
+  player = this.output;
 
   private liveMusicService: LiveMusicService | null = null;
   private prevParams: Record<string, any> = {};
   private prevInputs: Record<string, any> = {};
   private prevEffectivePrompts: WeightedPrompt[] = [];
-  private activeSources: AudioBufferSourceNode[] = [];
-  private audioBufferQueue: { buffer: AudioBuffer, bpm: number }[] = [];
-  private nextBufferStartTime: number = 0;
-  private readonly serviceBufferTimeSec = 2;
 
-  // private outputGainNode: Tone.Gain | null = null;
+
   private isPlayingAudio: boolean = false;
-  private schedulerIntervalId: NodeJS.Timeout | null = null;
-  private readonly SCHEDULING_INTERVAL_MS = 50;
+  private nextPlayTime = 0; // time of next scheduled play
+
 
   static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
@@ -82,12 +79,10 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
   constructor(
   ) {
     super();
+    this.initialize();
   }
 
-  initialize(initialState?: Partial<BlockInstance>) {
-    // this.outputGainNode = new Tone.Gain(1);
-    // this.input = new Tone.Gain(1);
-    // this.output = this.outputGainNode;
+  initialize() {
 
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
@@ -115,12 +110,10 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       onOutputNodeChanged: () => {
         console.log('👩‍🦳 [LyriaMasterBlock] LiveMusicService internal output node changed. This block will manage its own output.');
       },
-      onAudioBufferProcessed: ((buffer: AudioBuffer) => {
-        this.audioBufferQueue.push({ buffer, bpm: 666 });
-        if (this.isPlayingAudio && !this.schedulerIntervalId) {
-          this.startScheduler();
-        }
-      })
+      onAudioBufferProcessed: (buffer: ToneAudioBuffer) => {
+        this.addToQueue(buffer);
+
+      }
     };
 
     this.isPlayingAudio = false;
@@ -129,13 +122,13 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       const initialServiceConfig: Partial<LiveMusicGenerationConfig> = {
         ...DEFAULT_MUSIC_GENERATION_CONFIG,
       };
-      initialState?.parameters.forEach(param => {
-        if (param.id === 'bpm' && param.currentValue !== undefined) {
-          initialServiceConfig.bpm = param.currentValue as number;
+      BLOCK_DEFINITION.parameters.forEach(param => {
+        if (param.id === 'bpm' && param.defaultValue !== undefined) {
+          initialServiceConfig.bpm = param.defaultValue as number;
         }
-        if (param.id === 'scale' && param.currentValue !== undefined) {
-          const scaleValue = param.currentValue as string;
-          if (Object.values(LyriaScale).some(validScale => validScale === scaleValue)) {
+        if (param.id === 'scale' && param.defaultValue !== undefined) {
+          const scaleValue = param.defaultValue as string;
+          if (Object.values(Scale).some(validScale => validScale === scaleValue)) {
             initialServiceConfig.scale = scaleValue as any;
           } else {
             console.warn(`👩‍🦳 [LyriaMasterBlock] Invalid initial scale value: ${scaleValue}`);
@@ -143,18 +136,18 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
         }
       });
 
-      this.liveMusicService = LiveMusicService.getInstance(apiKey, this.audioContext, callbacks, initialServiceConfig);
+      this.liveMusicService = LiveMusicService.getInstance(apiKey, callbacks, initialServiceConfig);
 
       this.liveMusicService.connect()
         .then(() => {
           console.log('👩‍🦳 [LyriaMasterBlock] LiveMusicService connect() initiated.');
-          const initialPromptTextParam = initialState?.parameters.find(p => p.id === 'initial_prompt_text');
-          const initialPromptWeightParam = initialState?.parameters.find(p => p.id === 'initial_prompt_weight');
+          const initialPromptTextParam = BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_prompt_text');
+          const initialPromptWeightParam = BLOCK_DEFINITION.parameters.find(p => p.id === 'initial_prompt_weight');
           let initialPrompts: WeightedPrompt[] = [];
-          if (initialPromptTextParam && initialPromptTextParam.currentValue) {
+          if (initialPromptTextParam && initialPromptTextParam.defaultValue) {
             initialPrompts = [{
-              text: initialPromptTextParam.currentValue as string,
-              weight: (initialPromptWeightParam?.currentValue as number) ?? 1.0
+              text: initialPromptTextParam.defaultValue as string,
+              weight: (initialPromptWeightParam?.defaultValue as number) ?? 1.0
             }];
             return this.liveMusicService?.setWeightedPrompts(initialPrompts);
           }
@@ -171,13 +164,31 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       console.error('👩‍🦳 [LyriaMasterBlock] LiveMusicService could not be initialized due to missing API key or AudioContext.');
     }
 
-    initialState?.parameters.forEach(param => {
-      this.prevParams[param.id] = param.currentValue;
+    BLOCK_DEFINITION.parameters.forEach(param => {
+      this.prevParams[param.id] = param.defaultValue;
     });
     this.prevInputs = {};
   }
 
-  update(
+  // --- Функция для добавления в очередь ---
+  private addToQueue(buffer: ToneAudioBuffer) {
+    // Рассчитываем время старта: сразу после предыдущего звука
+    // или сейчас, если очередь пуста.
+    const startTime = Math.max(Tone.now(), this.nextPlayTime);
+
+    // Планируем событие на транспорте
+    getTransport().scheduleOnce((time: number) => {
+      this.player.buffer = buffer;
+      this.player.start(time);
+    }, startTime);
+
+    // Обновляем время конца очереди
+    this.nextPlayTime = startTime + buffer.duration;
+
+    // console.log(`👩‍🦳 [LyriaMasterBlock] Добавлен звук в очередь на время ${startTime.toFixed(2)}с. Длительность: ${buffer.duration.toFixed(2)}с`);
+  }
+
+  updateFromBlockInstance(
     instance: BlockInstance,
   ): void {
     if (!this.liveMusicService) {
@@ -249,8 +260,8 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       if (valueSource !== 'none') {
         if (serviceKey === 'scale') {
           const scaleStringValue = String(valueToSet);
-          if (Object.values(LyriaScale).some(validScale => validScale === scaleStringValue)) {
-            newConfig.scale = scaleStringValue as LyriaScale | undefined;
+          if (Object.values(Scale).some(validScale => validScale === scaleStringValue)) {
+            newConfig.scale = scaleStringValue as (Scale | undefined);
           }
         } else if (serviceKey === 'seed') {
           const numSeed = Math.floor(Number(valueToSet));
@@ -282,7 +293,7 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       const prevParamValue = this.prevParams?.[blockParamKey];
       let effectiveOldValue = (prevCvValue !== undefined && prevCvValue !== null) ? prevCvValue : prevParamValue;
       if (serviceKey === 'seed' && valueSource === 'param' && Number(paramValue) === 0 && (prevCvValue === undefined || prevCvValue === null) && Number(this.prevParams?.[blockParamKey]) === 0) {
-      } else if (serviceKey === 'scale' && !Object.values(LyriaScale).includes(valueToSet as LyriaScale)) {
+      } else if (serviceKey === 'scale' && !Object.values(Scale).includes(valueToSet)) {
         if (valueToSet !== effectiveOldValue) configChanged = true;
       }
       else if (newConfig[serviceKey] !== undefined && newConfig[serviceKey] !== effectiveOldValue) {
@@ -346,14 +357,16 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       console.log('👩‍🦳 [LyriaMasterBlock] Stop trigger activated.');
       this.liveMusicService.stop();
       this.isPlayingAudio = false;
-      this.stopScheduler(true);
+      // todo
+      // this.stopScheduler(true);
       return;
     }
 
     if (reconnectTrigger && !prevReconnectTrigger) {
       console.log('👩‍🦳 [LyriaMasterBlock] Reconnect trigger activated.');
       this.isPlayingAudio = false;
-      this.stopScheduler(true);
+      // todo
+      // this.stopScheduler(true);
       this.liveMusicService.reconnect();
       return;
     }
@@ -362,18 +375,20 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       if (!this.isPlayingAudio || currentServiceState === PlaybackState.PAUSED || currentServiceState === PlaybackState.STOPPED) {
         console.log(`👩‍🦳 [LyriaMasterBlock] Play gate high. Current state: ${currentServiceState}, isPlayingAudio: ${this.isPlayingAudio}. Requesting play.`);
         if (currentServiceState === PlaybackState.STOPPED) {
-          this.nextBufferStartTime = 0;
+          // this.nextBufferStartTime = 0;
         }
         this.liveMusicService.play(this.prevEffectivePrompts);
         this.isPlayingAudio = true;
-        this.startScheduler();
+        // todo
+        // this.startScheduler();
       }
     } else {
       if (this.isPlayingAudio && (currentServiceState === PlaybackState.PLAYING || currentServiceState === PlaybackState.LOADING)) {
         console.log(`👩‍🦳 [LyriaMasterBlock] Play gate low. Current state: ${currentServiceState}, isPlayingAudio: ${this.isPlayingAudio}. Requesting pause.`);
         this.liveMusicService.pause();
         this.isPlayingAudio = false;
-        this.stopScheduler(false);
+        // todo
+        // this.stopScheduler(false);
       }
     }
   }
@@ -409,70 +424,13 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
     }
   }
 
-  private schedulePlayback(): void {
-    if (!this.isPlayingAudio) {
-      if (!this.isPlayingAudio && this.schedulerIntervalId) {
-        clearInterval(this.schedulerIntervalId);
-        this.schedulerIntervalId = null;
-      }
-      return;
-    }
+ 
 
-    const currentTime = this.audioContext.currentTime;
-
-    if (this.nextBufferStartTime === 0 && this.audioBufferQueue.length > 0) {
-      this.nextBufferStartTime = currentTime + this.serviceBufferTimeSec;
-      console.log(`👩‍🦳 [LyriaMasterBlock] Initializing playback. First buffer to start at: ${this.nextBufferStartTime.toFixed(3)} (current: ${currentTime.toFixed(3)})`);
-    }
-
-    while (this.audioBufferQueue.length > 0 && this.nextBufferStartTime <= currentTime + this.serviceBufferTimeSec + 1.0) {
-      if (this.nextBufferStartTime < currentTime - 0.1) {
-        console.log(`👩‍🦳 [LyriaMasterBlock] Buffer underrun or significant scheduling lag. Resetting buffer time. Next expected: ${this.nextBufferStartTime.toFixed(3)}, Current: ${currentTime.toFixed(3)}`);
-        this.nextBufferStartTime = currentTime + this.serviceBufferTimeSec;
-      }
-
-      const audioItem = this.audioBufferQueue.shift();
-      if (!audioItem) continue;
-
-      const source = new Tone.ToneBufferSource();
-      source.buffer = audioItem.buffer as Tone.ToneAudioBuffer;
-      source.connect(this.output);
-
-      source.start(this.nextBufferStartTime);
-
-      this.nextBufferStartTime += audioItem.buffer.duration;
-    }
-  }
-
-  private startScheduler(): void {
-    if (this.schedulerIntervalId === null) {
-      this.schedulePlayback();
-      this.schedulerIntervalId = setInterval(() => this.schedulePlayback(), this.SCHEDULING_INTERVAL_MS);
-      console.log(`👩‍🦳 [LyriaMasterBlock] Playback scheduler started. Interval ID: ${this.schedulerIntervalId}`);
-    }
-  }
-
-  private stopScheduler(clearAudio: boolean): void {
-    if (this.schedulerIntervalId !== null) {
-      global.clearInterval(this.schedulerIntervalId);
-      this.schedulerIntervalId = null;
-      console.log('👩‍🦳 [LyriaMasterBlock] Playback scheduler stopped.');
-    }
-    if (clearAudio) {
-      this.audioBufferQueue = [];
-      this.activeSources.forEach(source => {
-        try { source.stop(); } catch (e) { /* already stopped or not started */ }
-        source.disconnect();
-      });
-      this.activeSources = [];
-      this.nextBufferStartTime = 0;
-      console.log('👩‍🦳 [LyriaMasterBlock] Audio queue and active sources cleared.');
-    }
-  }
+  
 
   destroy() {
-    this.stopScheduler(true);
-    this.liveMusicService?.close();
+    // this.stopScheduler(true);
+    this.liveMusicService?.dispose();
     this.output.dispose();
     this.input.dispose();
   }

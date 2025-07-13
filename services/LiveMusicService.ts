@@ -8,7 +8,6 @@
 // Fix: Import LiveMusicGenerationConfig instead of MusicGenerationConfig
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value
-import * as Tone from 'tone'; // Added Tone import
 import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig } from '@google/genai';
 import { PlaybackState } from '@interfaces/lyria'; // Import PlaybackState ENUM
 import { decode, decodeAudioData } from '@utils/utils';
@@ -17,7 +16,7 @@ import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utili
 const MODEL_NAME = 'lyria-realtime-exp';
 
 // Local Scale enum removed, will import from interfaces/common (which re-exports @google/genai's Scale)
-import { Scale } from '@interfaces/lyria'; // Import the centralized Scale
+import { ToneAudioBuffer } from 'tone';
 
 export enum MusicGenerationMode {
   QUALITY = "QUALITY",
@@ -34,7 +33,7 @@ export interface LiveMusicServiceCallbacks {
   onError: (error: string) => void;
   onClose: (message: string) => void;
   onOutputNodeChanged: (newNode: AudioNode) => void;
-  onAudioBufferProcessed?: (buffer: AudioBuffer) => void; // New callback for looper
+  onAudioBufferProcessed?: (buffer: ToneAudioBuffer) => void; // New callback for looper
 }
 
 // Re-export MusicGenerationConfig and enums if they are to be used externally by consuming UI
@@ -64,8 +63,8 @@ export class LiveMusicService {
 
   private ai: GoogleGenAI;
   private session: LiveMusicSession | null = null;
-  private audioContext: AudioContext;
-  private outputNode: Tone.Gain;
+  // private audioContext: AudioContext;
+  // private outputNode: Tone.Gain;
   // private nextStartTime = 0; // Removed as playback scheduling is delegated
   // private readonly bufferTime = 2; // Removed as buffering logic is delegated
   private connectionError = false;
@@ -84,7 +83,6 @@ export class LiveMusicService {
 
   private constructor(
     apiKey: string,
-    audioCtx: AudioContext,
     callbacks: LiveMusicServiceCallbacks,
     initialConfig?: Partial<LiveMusicGenerationConfig>,
     initialMode?: MusicGenerationMode // Optional: way to set localMusicMode
@@ -97,9 +95,7 @@ export class LiveMusicService {
       apiVersion: 'v1alpha', // Required for Lyria live music
       
       });
-    this.audioContext = audioCtx;
     this.callbacks = callbacks;
-    this.outputNode = new Tone.Gain(1); //this.audioContext.createGain();
     this.musicConfig = { ...DEFAULT_MUSIC_GENERATION_CONFIG, ...initialConfig };
     if (initialMode) {
         this.localMusicMode = initialMode;
@@ -108,7 +104,7 @@ export class LiveMusicService {
 
   public static getInstance(
     apiKey: string,
-    audioCtx: AudioContext,
+    // audioCtx: AudioContext,
     callbacks: LiveMusicServiceCallbacks,
     initialConfig?: Partial<LiveMusicGenerationConfig>,
     initialMode?: MusicGenerationMode
@@ -116,7 +112,6 @@ export class LiveMusicService {
     if (LiveMusicService.instance === null) {
       LiveMusicService.instance = new LiveMusicService(
         apiKey,
-        audioCtx,
         callbacks,
         initialConfig,
         initialMode
@@ -137,13 +132,6 @@ export class LiveMusicService {
     }
   }
 
-  public getOutputNode(): Tone.Gain {
-    return this.outputNode;
-  }
-
-  public getCurrentAudioContextTime(): number {
-    return this.audioContext.currentTime;
-  }
 
   public getCurrentMusicGenerationConfig(): Readonly<LiveMusicGenerationConfig> {
     // Return a copy, ensuring undefined fields are preserved
@@ -287,7 +275,6 @@ export class LiveMusicService {
 
         const audioBuffer = await decodeAudioData(
           decodedBytes,
-          this.audioContext,
           48000,
           2,
         );
@@ -610,13 +597,6 @@ export class LiveMusicService {
   dispose() {
     console.log('[LiveMusicService dispose] Dispose called.');
     this.stopInternally(true); 
-    if (this.outputNode) {
-      try {
-        this.outputNode.disconnect();
-      } catch(e: any) {
-        console.warn("Error disconnecting output node during dispose:", e.message);
-    }
-    }
     this.resolveSetupComplete = null;
     this.rejectSetupComplete = null;
     this.setupCompletePromise = null;

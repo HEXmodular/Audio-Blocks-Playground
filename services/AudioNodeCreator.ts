@@ -31,15 +31,21 @@ import { StereoWidenerBlock } from '@/blocks/effects/StereoWidener';
 import { TremoloBlock } from '@/blocks/effects/Tremolo';
 import { VibratoBlock } from '@/blocks/effects/Vibrato';
 import { ContainerBlock } from '@/blocks/native-blocks/ContainerBlock';
+import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
+
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
     [BiquadFilterBlock.getDefinition().id, BiquadFilterBlock as any],
     [OscillatorBlock.getDefinition().id, OscillatorBlock as any],
-    [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
+
     [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
     [DataSequencerBlock.getDefinition().id, DataSequencerBlock as any],
+
+    // ai
+    [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
+    [LyriaMasterBlock.getDefinition().id, LyriaMasterBlock as any],
    
     // effects
     [AutoFilterBlock.getDefinition().id, AutoFilterBlock as any],
