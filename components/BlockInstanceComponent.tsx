@@ -45,12 +45,14 @@ interface BlockInstanceComponentProps {
   isSelected: boolean;
   onSelect: (instanceId: string | null) => void;
   draggedOverPort?: { instanceId: string; portId: string } | null; // To highlight target port
+  parentInstanceId?: string | null;
 }
 
 const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   blockInstance,
   isSelected,
   onSelect,
+  parentInstanceId,
   // draggedOverPort,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -68,15 +70,15 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
 
-  const { updateBlockInstance, getBlockInstances } = BlockStateManager;
+  const { updateBlockInstance } = BlockStateManager;
 
   const childInstances = useMemo(() => {
     if (blockDefinition.category === 'container' && blockInstance.children) {
-      const allInstances = getBlockInstances();
+      const allInstances = BlockStateManager.getBlockInstances();//getBlockInstances();
       return allInstances.filter(inst => blockInstance.children!.includes(inst.instanceId));
     }
     return [];
-  }, [blockInstance, blockDefinition, getBlockInstances]);
+  }, [blockInstance, blockDefinition]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
@@ -116,12 +118,14 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       const allInstances = BlockStateManager.getBlockInstances();
       let newParentId: string | undefined | null = null;
+      let newParentInstance: BlockInstance;
 
       for (const potentialParentInstance of allInstances) {
         if (
           potentialParentInstance.instanceId !== blockInstance.instanceId &&
           potentialParentInstance.definition.category === 'container'
         ) {
+          potentialParentInstance.position
           const parentPos = potentialParentInstance.position;
           const parentWidth = potentialParentInstance.width || COMPACT_BLOCK_WIDTH; // Use a fallback if width is not set
           const parentHeight = potentialParentInstance.height || calculateBlockHeight(true); // Use a fallback
@@ -133,14 +137,16 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             dropY <= parentPos.y + parentHeight
           ) {
             newParentId = potentialParentInstance.instanceId;
+            newParentInstance = potentialParentInstance;
             break; // Found a container, no need to check others
           }
         }
       }
 
       // Update parentId if it has changed or if it was set and now needs to be cleared
-      if (newParentId !== blockInstance.parentId) {
-        updateBlockInstance(blockInstance.instanceId, { parentId: newParentId });
+      if (newParentId && newParentInstance && newParentId !== blockInstance.parentId) {
+        updateBlockInstance(blockInstance.instanceId, { parentId: newParentId || undefined });
+        updateBlockInstance(newParentId, { children: [...newParentInstance.children, blockInstance.instanceId] });
       }
     }
 
@@ -280,6 +286,10 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     [blockInstance, blockDefinition]
   ])
 
+  if (!parentInstanceId && blockInstance.parentId) {
+    return;
+  }
+
   return (
     <div
       style={{
@@ -342,11 +352,12 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       >
         {CompactRendererComponent(blockDefinition.compactRendererId)}
         {blockDefinition.category === 'container' && (
-          <div className="absolute inset-0 overflow-auto p-2">
+          <div className="">
             {childInstances.map(child => (
               <BlockInstanceComponent
                 key={child.instanceId}
                 blockInstance={child}
+                parentInstanceId={blockInstance.instanceId}
                 isSelected={false} // Child blocks are not selectable directly for now
                 onSelect={() => {}} // Child blocks are not selectable directly for now
               />
