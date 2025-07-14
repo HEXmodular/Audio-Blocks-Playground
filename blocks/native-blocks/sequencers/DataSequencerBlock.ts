@@ -291,13 +291,12 @@ export class DataSequencerBlock extends ToneAudioNode implements NativeBlock {
         this._currentStep = (this._currentStep + 1) % this._sequence.length;
         if (this._instance) {
             this._instance.parameters = this._instance.parameters.map(param =>
-                param.id === 'sequence' ? ({ ...param, storage: { ...param.storage, currentStep: isReset ? 0 : this._currentStep } }) : param
+                param.id === 'data' ? ({ ...param, storage: { ...param.storage, currentStep: isReset ? 0 : this._currentStep } }) : param
             );
 
             this._emitter.emit('next_out', true);
             this._emitter.emit('output_string', this._sequence[this._currentStep]); // Emit void for trigger
             this._emitter.emit('output_number', this._sequence[this._currentStep]); // Emit void for trigger
-            // console.log("[DataSequencerBlock] output_number", this._sequence[this._currentStep], this._sequence);
 
             // синхранизирует с моментом следующей отрисовки
             getDraw().schedule(() => {

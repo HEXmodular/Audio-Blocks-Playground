@@ -1,7 +1,7 @@
 import { PianoGenie } from '@magenta/music/es6/piano_genie';
-import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block'; // Added BlockParameter
+import { BlockDefinition, BlockInstance, NativeBlock, WithEmitter } from '@interfaces/block'; // Added BlockParameter
 import { createParameterDefinitions } from '@constants/constants';
-import { ToneAudioNode, Emitter, Signal, Midi } from 'tone';
+import { ToneAudioNode, Signal, Midi } from 'tone';
 
 // TODO: Determine if the checkpoint URL should be configurable or if this is standard.
 const CHECKPOINT_URL = 'https://storage.googleapis.com/magentadata/js/checkpoints/piano_genie/model/epiano/stp_iq_auto_contour_dt_166006';
@@ -44,7 +44,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     //   compactRendererId: 'piano-genie', // Optional: if a custom compact renderer is needed
 };
 
-export class PianoGenieBlock extends ToneAudioNode implements NativeBlock, Emitter {
+export class PianoGenieBlock extends WithEmitter implements Partial<ToneAudioNode>, NativeBlock {
     name = BLOCK_DEFINITION.name;
     input = undefined; // PianoGenie doesn't process audio through Tone.js standard signal chain
     output = undefined; // Output is via emitter
@@ -58,9 +58,6 @@ export class PianoGenieBlock extends ToneAudioNode implements NativeBlock, Emitt
     private _isGenieInitialized: boolean = false;
     // private _gateSubscriptions: Emitter<string>[] = [];
     button: Signal;
-
-    private _emitter = new Emitter();
-
 
     constructor() {
         super();
@@ -102,21 +99,6 @@ export class PianoGenieBlock extends ToneAudioNode implements NativeBlock, Emitt
             this.button.value = payload;
         })
     }
-
-    // для входящих соединений
-    public emit(event: any, ...args: any[]) {
-        // console.log("--->|")
-        this._emitter.emit(event, args?.[0])
-        return this;
-    };
-
-    // для выходящий соединений отправляю
-    public on(event: any, callback: (...args: any[]) => void){
-        // console.log("|--->")
-        this._emitter.on(event, callback)
-        return this
-    };
-
 
     public static getDefinition(): BlockDefinition {
         return BLOCK_DEFINITION;

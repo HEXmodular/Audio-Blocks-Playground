@@ -2,19 +2,16 @@ import * as Tone from 'tone';
 import {
 } from '@interfaces/lyria';
 
-import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
-import { createParameterDefinitions } from '../../constants/constants';
+import { BlockDefinition, BlockInstance, NativeBlock, WithEmitter } from '@interfaces/block';
+import { createParameterDefinitions } from '@constants/constants';
 import { LiveMusicService, DEFAULT_MUSIC_GENERATION_CONFIG, type LiveMusicServiceCallbacks, PlaybackState, type WeightedPrompt, type LiveMusicGenerationConfig } from '@services/LiveMusicService';
-import { getTransport, ToneAudioBuffer, ToneAudioNode } from 'tone';
-import { Emitter } from 'tone';
+import { getTransport, Signal, ToneAudioBuffer, ToneAudioNode } from 'tone';
 import { Scale } from '@google/genai';
-
 
 const LYRIA_SCALE_OPTIONS = Object.entries(Scale).map(([label, value]) => ({
   label: label.replace(/_/g, ' ').replace('SHARP', '#').replace('FLAT', 'b'),
   value: value,
 }));
-
 
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'lyria-realtime-master-v1',
@@ -22,44 +19,51 @@ const BLOCK_DEFINITION: BlockDefinition = {
   category: 'ai',
   description: 'Generates music in real-time using Lyria. Audio output is handled by the integrated LiveMusicService.',
   inputs: [
-    { id: 'scale_cv_in', name: 'Scale CV', type: 'any', description: 'Modulates Lyria Scale (expects string matching GenAIScale value)' },
-    { id: 'brightness_cv_in', name: 'Brightness CV', type: 'number', description: 'Modulates Lyria Brightness (0-1)' },
-    { id: 'density_cv_in', name: 'Density CV', type: 'number', description: 'Modulates Lyria Density (0-1)' },
-    { id: 'seed_cv_in', name: 'Seed CV', type: 'number', description: 'Modulates Lyria Seed (integer)' },
-    { id: 'temperature_cv_in', name: 'Temperature CV', type: 'number', description: 'Modulates Lyria Temperature (e.g., 0.1-2.0)' },
-    { id: 'guidance_cv_in', name: 'Guidance CV', type: 'number', description: 'Modulates Lyria Guidance Scale (e.g., 1-20)' },
-    { id: 'top_k_cv_in', name: 'TopK CV', type: 'number', description: 'Modulates Lyria TopK (integer > 0)' },
-    { id: 'bpm_cv_in', name: 'BPM CV', type: 'number', description: 'Modulates Lyria BPM (e.g. 60-180)' },
-    { id: 'play_gate_in', name: 'Play Gate', type: 'gate', description: 'Gate for session.play() (high) / session.pause() (low)' },
-    { id: 'stop_trigger_in', name: 'Stop Trigger', type: 'trigger', description: 'Trigger for session.stop() and reset' },
-    { id: 'reconnect_trigger_in', name: 'Reconnect Trigger', type: 'trigger', description: 'Trigger to reconnect the Lyria session' },
-    { id: 'mute_bass_gate_in', name: 'Mute Bass Gate', type: 'gate', description: 'Gate to mute bass track' },
-    { id: 'mute_drums_gate_in', name: 'Mute Drums Gate', type: 'gate', description: 'Gate to mute drums track' },
-    { id: 'only_bass_drums_gate_in', name: 'Only Bass & Drums Gate', type: 'gate', description: 'Gate to solo bass & drums' },
-    { id: 'prompts_in', name: 'Prompts In', type: 'any', description: 'Array of Lyria WeightedPrompt objects [{text: string, weight: number}]' },
+    { id: 'scale', name: 'Scale', type: 'any', description: 'Modulates Lyria Scale (expects string matching GenAIScale value)' },
+    { id: 'brightness', name: 'Brightness', type: 'audio', description: 'Modulates Lyria Brightness (0-1)' },
+    { id: 'density', name: 'Density', type: 'number', description: 'Modulates Lyria Density (0-1)' },
+    { id: 'seed', name: 'Seed', type: 'number', description: 'Modulates Lyria Seed (integer)' },
+    { id: 'temperature', name: 'Temperature', type: 'number', description: 'Modulates Lyria Temperature (e.g., 0.1-2.0)' },
+    { id: 'guidance', name: 'Guidance', type: 'number', description: 'Modulates Lyria Guidance Scale (e.g., 1-20)' },
+    { id: 'top_k', name: 'TopK', type: 'number', description: 'Modulates Lyria TopK (integer > 0)' },
+    { id: 'bpm', name: 'BPM', type: 'number', description: 'Modulates Lyria BPM (e.g. 60-180)' },
+    { id: 'play_gate', name: 'Play Gate', type: 'gate', description: 'Gate for session.play() (high) / session.pause() (low)' },
+    { id: 'stop_trigger', name: 'Stop Trigger', type: 'trigger', description: 'Trigger for session.stop() and reset' },
+    { id: 'reconnect_trigger', name: 'Reconnect Trigger', type: 'trigger', description: 'Trigger to reconnect the Lyria session' },
+    { id: 'mute_bass_gate', name: 'Mute Bass Gate', type: 'gate', description: 'Gate to mute bass track' },
+    { id: 'mute_drums_gate', name: 'Mute Drums Gate', type: 'gate', description: 'Gate to mute drums track' },
+    { id: 'only_bass_drums_gate', name: 'Only Bass & Drums Gate', type: 'gate', description: 'Gate to solo bass & drums' },
+    { id: 'prompts', name: 'Prompts In', type: 'string', description: 'Array of Lyria WeightedPrompt objects [{text: string, weight: number}]' },
   ],
   outputs: [
     { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Generated audio from Lyria LiveMusicService.' }
   ],
   parameters: createParameterDefinitions([
     { id: 'initial_prompt_text', name: 'Initial Prompt Text', type: 'text_input', defaultValue: 'cinematic lofi hip hop', description: 'Default text prompt for Lyria session.' },
-    { id: 'scale', name: 'Scale', type: 'select', options: LYRIA_SCALE_OPTIONS, defaultValue: Scale.SCALE_UNSPECIFIED, description: 'Lyria Scale. Overridden by CV if connected.' },
-    { id: 'brightness', name: 'Brightness', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Brightness (0-1). Overridden by CV.' },
-    { id: 'density', name: 'Density', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Density (0-1). Overridden by CV.' },
-    { id: 'seed', name: 'Seed', type: 'number_input', defaultValue: 0, description: 'Lyria Seed (0 for random date-based). Overridden by CV.' },
-    { id: 'temperature', name: 'Temperature', type: 'slider', toneParam: { minValue: 0.1, maxValue: 2 }, step: 0.01, defaultValue: 1.1, description: 'Lyria Temperature. Overridden by CV.' },
-    { id: 'guidance_scale', name: 'Guidance Scale', type: 'slider', toneParam: { minValue: 1, maxValue: 20 }, step: 0.1, defaultValue: 7.0, description: 'Lyria Guidance Scale. Overridden by CV.' },
-    { id: 'top_k', name: 'Top K', type: 'number_input', toneParam: { minValue: 1, maxValue: 100 }, step: 1, defaultValue: 40, description: 'Lyria Top K. Overridden by CV.' },
-    { id: 'bpm', name: 'BPM', type: 'number_input', toneParam: { minValue: 30, maxValue: 240 }, step: 1, defaultValue: 120, description: 'Lyria BPM. Overridden by CV.' },
+    { id: 'scale', name: 'Scale', type: 'select', options: LYRIA_SCALE_OPTIONS, defaultValue: Scale.SCALE_UNSPECIFIED, description: 'Lyria Scale. Overridden by if connected.' },
+    { id: 'brightness', name: 'Brightness', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Brightness (0-1). Overridden by.' },
+    { id: 'density', name: 'Density', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'Lyria Density (0-1). Overridden by.' },
+    { id: 'seed', name: 'Seed', type: 'number_input', defaultValue: 0, description: 'Lyria Seed (0 for random date-based). Overridden by.' },
+    { id: 'temperature', name: 'Temperature', type: 'slider', toneParam: { minValue: 0.1, maxValue: 2 }, step: 0.01, defaultValue: 1.1, description: 'Lyria Temperature. Overridden by.' },
+    { id: 'guidance_scale', name: 'Guidance Scale', type: 'slider', toneParam: { minValue: 1, maxValue: 20 }, step: 0.1, defaultValue: 7.0, description: 'Lyria Guidance Scale. Overridden by.' },
+    { id: 'top_k', name: 'Top K', type: 'number_input', toneParam: { minValue: 1, maxValue: 100 }, step: 1, defaultValue: 40, description: 'Lyria Top K. Overridden by.' },
+    { id: 'bpm', name: 'BPM', type: 'number_input', toneParam: { minValue: 30, maxValue: 240 }, step: 1, defaultValue: 120, description: 'Lyria BPM. Overridden by.' },
   ]),
 };
 
-export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emitter {
+export class LyriaMasterBlock extends WithEmitter implements Partial<ToneAudioNode>, NativeBlock {
 
   name = BLOCK_DEFINITION.name;
   input = new Tone.Gain(1); // PianoGenie doesn't process audio through Tone.js standard signal chain
-  output  = new Tone.Player(); // Output is via emitter
+  output = new Tone.Player(); // Output is via emitter
   player = this.output;
+
+  brightness = new Signal({
+    value: 0.5,
+    units: 'number',
+    minValue: 0,
+    maxValue: 1,
+  });
 
   private liveMusicService: LiveMusicService | null = null;
   private prevParams: Record<string, any> = {};
@@ -80,6 +84,48 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
   ) {
     super();
     this.initialize();
+
+    // this.brightness.
+
+    this._emitter.on('play_gate', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Play gate received.", payload);
+      payload && this.handlePlaybackControl({ play_gate: payload });
+    })
+
+    this._emitter.on('stop_trigger', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Stop trigger received.", payload);
+      payload && this.handlePlaybackControl({ stop_trigger: payload });
+    })
+
+    this._emitter.on('reconnect_trigger', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Reconnect trigger received.", payload);
+      payload && this.handlePlaybackControl({ reconnect_trigger: payload });
+    })
+
+    this._emitter.on('mute_bass_gate', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Mute bass gate received.", payload);
+      payload && this.handleTrackMuting({ mute_bass_gate: payload });
+    })
+
+    this._emitter.on('mute_drums_gate', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Mute drums gate received.", payload);
+      payload && this.handleTrackMuting({ mute_drums_gate: payload });
+    })
+
+    this._emitter.on('only_bass_drums_gate', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Only bass & drums gate received.", payload);
+      payload && this.handleTrackMuting({ only_bass_drums_gate: payload });
+    })
+
+    this._emitter.on('prompts', (payload) => {
+      // console.log("👩‍🦳 [LyriaMasterBlock] Prompts received.", payload);
+      try {
+        payload && this.handlePromptChanges(new Map(), { prompts:  JSON.parse(payload) });
+      } catch (error) {
+        console.error("👩‍🦳 [LyriaMasterBlock] Error handling prompts:", error);
+      }
+    })
+
   }
 
   initialize() {
@@ -96,7 +142,7 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
         this.isPlayingAudio = this.liveMusicService?.getPlaybackState() === PlaybackState.PLAYING;
       },
       onFilteredPrompt: (promptInfo: { text: string; filteredReason: string }) => {
-        console.log(`👩‍🦳 [LyriaMasterBlock] Filtered prompt: "${promptInfo.text}", Reason: ${promptInfo.filteredReason}`);
+        console.warn(`👩‍🦳 [LyriaMasterBlock] Filtered prompt: "${promptInfo.text}", Reason: ${promptInfo.filteredReason}`);
       },
       onSetupComplete: () => {
         console.log('👩‍🦳 [LyriaMasterBlock] LiveMusicService setup complete and ready.');
@@ -112,7 +158,6 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       },
       onAudioBufferProcessed: (buffer: ToneAudioBuffer) => {
         this.addToQueue(buffer);
-
       }
     };
 
@@ -224,14 +269,14 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
 
     const paramIds: (keyof LiveMusicGenerationConfig)[] = ['scale', 'brightness', 'density', 'seed', 'temperature', 'guidance', 'topK', 'bpm'];
     const paramToCvInputMap: Record<string, string> = {
-      scale: 'scale_cv_in',
-      brightness: 'brightness_cv_in',
-      density: 'density_cv_in',
-      seed: 'seed_cv_in',
-      temperature: 'temperature_cv_in',
-      guidance: 'guidance_cv_in',
-      topK: 'top_k_cv_in',
-      bpm: 'bpm_cv_in',
+      scale: 'scale',
+      brightness: 'brightness',
+      density: 'density',
+      seed: 'seed',
+      temperature: 'temperature',
+      guidance: 'guidance',
+      topK: 'top_k',
+      bpm: 'bpm',
     };
     const internalParamNameMap: Record<string, string> = {
       guidance: 'guidance_scale',
@@ -319,7 +364,7 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
   ): void {
     if (!this.liveMusicService) return;
 
-    const promptsInput = currentInputs?.prompts_in;
+    const promptsInput = currentInputs?.prompts;
     const initialPromptText = currentParams.get('initial_prompt_text') as string | undefined;
     const initialPromptWeight = currentParams.get('initial_prompt_weight') as number | undefined ?? 1.0;
 
@@ -334,7 +379,7 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
     }
 
     if (JSON.stringify(effectivePrompts) !== JSON.stringify(this.prevEffectivePrompts)) {
-      console.log(`👩‍🦳 [LyriaMasterBlock] Prompts changed. Sending update to LiveMusicService. Prompts: ${JSON.stringify(effectivePrompts)}`);
+      // console.log(`👩‍🦳 [LyriaMasterBlock] Prompts changed. Sending update to LiveMusicService. Prompts: ${JSON.stringify(effectivePrompts)}`);
       this.liveMusicService.setWeightedPrompts(effectivePrompts);
       this.prevEffectivePrompts = JSON.parse(JSON.stringify(effectivePrompts));
     }
@@ -345,12 +390,12 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
   ): void {
     if (!this.liveMusicService) return;
 
-    const playGate = !!currentInputs?.play_gate_in;
-    const stopTrigger = !!currentInputs?.stop_trigger_in;
-    const reconnectTrigger = !!currentInputs?.reconnect_trigger_in;
+    const playGate = !!currentInputs?.play_gate;
+    const stopTrigger = !!currentInputs?.stop_trigger;
+    const reconnectTrigger = !!currentInputs?.reconnect_trigger;
 
-    const prevStopTrigger = !!this.prevInputs?.stop_trigger_in;
-    const prevReconnectTrigger = !!this.prevInputs?.reconnect_trigger_in;
+    const prevStopTrigger = !!this.prevInputs?.stop_trigger;
+    const prevReconnectTrigger = !!this.prevInputs?.reconnect_trigger;
 
     const currentServiceState = this.liveMusicService.getPlaybackState();
     if (stopTrigger && !prevStopTrigger) {
@@ -398,13 +443,13 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
   ): void {
     if (!this.liveMusicService) return;
 
-    const muteBassGate = !!currentInputs?.mute_bass_gate_in;
-    const muteDrumsGate = !!currentInputs?.mute_drums_gate_in;
-    const onlyBassDrumsGate = !!currentInputs?.only_bass_drums_gate_in;
+    const muteBassGate = !!currentInputs?.mute_bass_gate;
+    const muteDrumsGate = !!currentInputs?.mute_drums_gate;
+    const onlyBassDrumsGate = !!currentInputs?.only_bass_drums_gate;
 
-    const prevMuteBassGate = !!this.prevInputs?.mute_bass_gate_in;
-    const prevMuteDrumsGate = !!this.prevInputs?.mute_drums_gate_in;
-    const prevOnlyBassDrumsGate = !!this.prevInputs?.only_bass_drums_gate_in;
+    const prevMuteBassGate = !!this.prevInputs?.mute_bass_gate;
+    const prevMuteDrumsGate = !!this.prevInputs?.mute_drums_gate;
+    const prevOnlyBassDrumsGate = !!this.prevInputs?.only_bass_drums_gate;
 
     let trackMuteConfigChanged = false;
     if (muteBassGate !== prevMuteBassGate ||
@@ -423,10 +468,6 @@ export class LyriaMasterBlock extends ToneAudioNode implements NativeBlock, Emit
       this.liveMusicService.setMusicGenerationConfig(newMuteConfig);
     }
   }
-
- 
-
-  
 
   destroy() {
     // this.stopScheduler(true);

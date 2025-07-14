@@ -1,4 +1,4 @@
-import * as Tone from 'tone';
+import { Emitter, OutputNode, Param, ToneAudioNode } from 'tone';
 
 export enum BlockView {
     UI = 'UI',
@@ -20,8 +20,8 @@ export interface BlockParameter {
     currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
-    toneParam?: Partial<Tone.Param>; // для хранения значений типа минимума максимума
-    emitters?: { [inputId: string]: Tone.Emitter };
+    toneParam?: Partial<Param>; // для хранения значений типа минимума максимума
+    emitters?: { [inputId: string]: Emitter };
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
     // isFrequency?: boolean;
@@ -66,14 +66,14 @@ export interface BlockDefinition {
 
 export interface BlockInstance {
     instanceId: string;
-    instance: Tone.ToneAudioNode & NativeBlock | null | undefined; // The actual audio node instance
+    instance: ToneAudioNode & NativeBlock | null | undefined; // The actual audio node instance
     // definitionId: string; 
     definition: BlockDefinition;
     name: string;
     position: { x: number; y: number };
     logs: string[];
     parameters: BlockParameter[];
-    emitters?: Tone.Emitter[];
+    // emitters?: Tone.Emitter[];
 
     // lastRunOutputs: Record<string, any>; 
     // modificationPrompts: string[]; 
@@ -92,12 +92,30 @@ export interface CompactRendererProps {
 }
 
 export interface NativeBlock {
-    input?: Tone.ToneAudioNode;
-    output?: Tone.ToneAudioNode | Tone.OutputNode;
-    gateSubscriptions?: Tone.Emitter<string>[];
-    emitter?: Tone.Emitter;
+    input?: ToneAudioNode;
+    output?: ToneAudioNode | OutputNode;
+    // gateSubscriptions?: Emitter<string>[];
+    // emitter?: Emitter;
     // constructor: (options?: any) => void;
     updateFromBlockInstance: (instance: BlockInstance) => void;
-    getEmitter?: (outputId: string) => Tone.Emitter | undefined
-    setSubscription?: (subscription: { [inputId: string]: Tone.Emitter }) => void;
+    // getEmitter?: (outputId: string) => Tone.Emitter | undefined
+    // setSubscription?: (subscription: { [inputId: string]: Tone.Emitter }) => void;
+}
+export class WithEmitter {
+    protected _emitter = new Emitter();
+
+    // для входящих соединений
+    public emit(event: any, ...args: any[]) {
+        // console.log("--->|")
+        this._emitter.emit(event, args?.[0])
+        return this;
+    };
+
+    // для выходящий соединений отправляю
+    public on(event: any, callback: (...args: any[]) => void) {
+        // console.log("|--->")
+        this._emitter.on(event, callback)
+        return this
+    };
+
 }
