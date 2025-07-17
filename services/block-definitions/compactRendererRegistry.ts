@@ -7,6 +7,7 @@ import GainCompactRenderer from '@blocks/native-blocks/renderers/GainCompactRend
 import ManualGateRenderer from '@blocks/native-blocks/renderers/ManualGateRenderer';
 import StepSequencerRenderer from '@blocks/native-blocks/renderers/StepSequencerRenderer';
 import DataSequencerRenderer from '@blocks/native-blocks/renderers/DataSequencerRenderer';
+import ChaosBlockRenderer from '@blocks/8bit/renders/ChaosBlockRenderer';
 // Import DefaultCompactRenderer if you decide to register it, though current plan uses it as a direct fallback.
 // import DefaultCompactRenderer from '@components/block-renderers/DefaultCompactRenderer';
 
@@ -21,6 +22,7 @@ export const compactRendererRegistry: CompactRendererRegistry = {
   'manual-gate': ManualGateRenderer,
   'step-sequencer': StepSequencerRenderer,
   'data-sequencer': DataSequencerRenderer,
+  'chaos-v1': ChaosBlockRenderer,
   // If you wanted to register the default, it might be:
   // 'default': DefaultCompactRenderer,
 };
