@@ -18,7 +18,8 @@
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.11",
     "tone": "^15.1.22",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "webmidi": "^3.1.12"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.0",

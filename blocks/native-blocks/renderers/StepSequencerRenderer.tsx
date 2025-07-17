@@ -1,7 +1,7 @@
 import React from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
 import BlockStateManager from '@state/BlockStateManager';
-import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
+import { RenderParameterControl, renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import { getDraw, getTransport } from 'tone';
 
 const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
@@ -45,12 +45,12 @@ const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, 
       title={`${blockDefinition.name}: ${blockInstance.name} - Sequence`}
     >
       <div className="text-xs text-sky-300 font-mono break-all">
-        {renderParameterControl({
-          param: sequenceParam,
-          blockInstance,
-          blockDefinition,
-          handleParameterChange,
-        })}
+        <RenderParameterControl
+          param={sequenceParam}
+          blockInstance={blockInstance}
+          blockDefinition={blockDefinition}
+          handleParameterChange={handleParameterChange}
+        />
       </div>
       {/* Placeholder for actual UI controls */}
     </div>

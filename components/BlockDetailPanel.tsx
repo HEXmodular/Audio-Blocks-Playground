@@ -11,7 +11,7 @@ import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
 import { OscilloscopeNativeBlock } from '@blocks/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
-import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
+import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
 import  ConnectionState  from '@services/ConnectionState';
 // import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
 
@@ -230,21 +230,23 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
         )}
         {oscilloscopeUI}
         {lyriaControlsUI}
+        {/* {console.log("blockDefinition", blockDefinition.parameters)} */}
         {blockDefinition.parameters.map(paramDef => {
            const instanceParam = blockInstance.parameters.find(pInst => pInst.id === paramDef.id);
            if (!instanceParam) return <div key={paramDef.id} className="p-1 text-xs text-red-400">Control Error: Param '{paramDef.name}' data missing.</div>;
            return(
             <div key={paramDef.id}>
               <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.name}</label>
-              {renderParameterControl({
-                param: instanceParam,
-                blockInstance,
-                blockDefinition,
-                handleParameterChange,
-                numberInputTextValues,
-                handleNumberInputTextChange,
-                processNumberInput
-              })}
+              <RenderParameterControl 
+                key={paramDef.id}
+                param={instanceParam}
+                blockInstance={blockInstance}
+                blockDefinition={blockDefinition}
+                handleParameterChange={handleParameterChange}
+                numberInputTextValues={numberInputTextValues}
+                handleNumberInputTextChange={handleNumberInputTextChange}
+                processNumberInput={processNumberInput}
+              />
             </div>
           );
         })}

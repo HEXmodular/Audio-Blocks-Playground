@@ -111,69 +111,76 @@ export class BlockStateManager {
 
 
   private _loadDefinitions(): BlockDefinition[] {
-    let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
-    const definitionsById = new Map<string, BlockDefinition>(mergedDefinitions.map(def => [def.id, def]));
+    // let mergedDefinitions: BlockDefinition[] = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
+    const mergedDefinitions = INITIAL_DEFINITIONS_FROM_CODE;
 
-    try {
-      const savedDefinitionsJson = localStorage.getItem('audioBlocks_definitions');
-      if (savedDefinitionsJson) {
-        const savedDefinitions: BlockDefinition[] = JSON.parse(savedDefinitionsJson);
-        for (const savedDef of savedDefinitions) {
-          const processedSavedDef: BlockDefinition = {
-            ...savedDef,
-            parameters: savedDef.parameters?.map((p: any) => {
-              let typedDefaultValue = p.defaultValue;
-              if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
-                const parsedDefault = parseFloat(p.defaultValue as string);
-                typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
-              } else if (p.type === 'toggle') {
-                typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
-              } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
-                typedDefaultValue = p.options[0].value;
-              } else if (p.type === 'step_sequencer_ui') {
-                if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
-                  typedDefaultValue = p.defaultValue;
-                }  
-              }
-              const paramDef: BlockParameter = {
-                ...p,
-                defaultValue: typedDefaultValue
-              };
-              return paramDef;
-            }),
-            // isAiGenerated: savedDef.isAiGenerated === undefined ? !CORE_DEFINITION_IDS_SET.has(savedDef.id) : savedDef.isAiGenerated,
-          };
-          definitionsById.set(processedSavedDef.id, processedSavedDef);
-        }
-        mergedDefinitions = Array.from(definitionsById.values());
-      }
-    } catch (error) {
-      console.error(`[👨🏿‍💼 BlockStateManager]: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
-      mergedDefinitions = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
-      mergedDefinitions = mergedDefinitions.map(def => ({
-        ...def,
-        parameters: def.parameters?.map((p: any) => {
-          let typedDefaultValue = p.defaultValue;
-          if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
-            const parsedDefault = parseFloat(p.defaultValue as string);
-            typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
-          } else if (p.type === 'toggle') {
-            typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
-          } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
-            typedDefaultValue = p.options[0].value;
-          } else if (p.type === 'step_sequencer_ui') {
-            if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
-              typedDefaultValue = p.defaultValue;
-            } else {
-              const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
-              typedDefaultValue = Array(numSteps).fill(false);
-            }
-          }
-          return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameter;
-        }),
-        isAiGenerated: false,
-      }));
-    }
+    // !!!!
+    // хранение дефинишинов для блоков из кода не имеет смысла, т.к. они не изменяются
+    // плюс JSON.parse JSON.stringify убивает функции, которые мне нужны для асинхронного получения данных для полей
+    // !!!!
+
+    // const definitionsById = new Map<string, BlockDefinition>(mergedDefinitions.map(def => [def.id, def]));
+
+    // try {
+    //   const savedDefinitionsJson = localStorage.getItem('audioBlocks_definitions');
+    //   if (savedDefinitionsJson) {
+    //     const savedDefinitions: BlockDefinition[] = JSON.parse(savedDefinitionsJson);
+    //     for (const savedDef of savedDefinitions) {
+    //       const processedSavedDef: BlockDefinition = {
+    //         ...savedDef,
+    //         parameters: savedDef.parameters?.map((p: any) => {
+    //           let typedDefaultValue = p.defaultValue;
+    //           if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
+    //             const parsedDefault = parseFloat(p.defaultValue as string);
+    //             typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
+    //           } else if (p.type === 'toggle') {
+    //             typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
+    //           } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
+    //             typedDefaultValue = p.options[0].value;
+    //           } else if (p.type === 'step_sequencer_ui') {
+    //             if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
+    //               typedDefaultValue = p.defaultValue;
+    //             }  
+    //           }
+    //           const paramDef: BlockParameter = {
+    //             ...p,
+    //             defaultValue: typedDefaultValue
+    //           };
+    //           return paramDef;
+    //         }),
+    //         // isAiGenerated: savedDef.isAiGenerated === undefined ? !CORE_DEFINITION_IDS_SET.has(savedDef.id) : savedDef.isAiGenerated,
+    //       };
+    //       definitionsById.set(processedSavedDef.id, processedSavedDef);
+    //     }
+    //     mergedDefinitions = Array.from(definitionsById.values());
+    //   }
+    // } catch (error) {
+    //   console.error(`[👨🏿‍💼 BlockStateManager]: Failed to load or merge block definitions from localStorage, using defaults only: ${(error as Error).message}`);
+    //   mergedDefinitions = JSON.parse(JSON.stringify(INITIAL_DEFINITIONS_FROM_CODE)); // UPDATED
+    //   mergedDefinitions = mergedDefinitions.map(def => ({
+    //     ...def,
+    //     parameters: def.parameters?.map((p: any) => {
+    //       let typedDefaultValue = p.defaultValue;
+    //       if (p.type === 'slider' || p.type === 'knob' || p.type === 'number_input') {
+    //         const parsedDefault = parseFloat(p.defaultValue as string);
+    //         typedDefaultValue = !isNaN(parsedDefault) ? parsedDefault : (p.min !== undefined && !isNaN(parseFloat(p.min as any)) ? parseFloat(p.min as any) : 0);
+    //       } else if (p.type === 'toggle') {
+    //         typedDefaultValue = typeof p.defaultValue === 'boolean' ? p.defaultValue : String(p.defaultValue).toLowerCase() === 'true';
+    //       } else if (p.type === 'select' && p.options && p.options.length > 0 && !p.options.find((opt: { value: any }) => opt.value === p.defaultValue)) {
+    //         typedDefaultValue = p.options[0].value;
+    //       } else if (p.type === 'step_sequencer_ui') {
+    //         if (Array.isArray(p.defaultValue) && p.defaultValue.every((val: any) => typeof val === 'boolean')) {
+    //           typedDefaultValue = p.defaultValue;
+    //         } else {
+    //           const numSteps = typeof p.steps === 'number' && p.steps > 0 ? p.steps : 4;
+    //           typedDefaultValue = Array(numSteps).fill(false);
+    //         }
+    //       }
+    //       return { ...p, defaultValue: typedDefaultValue, currentValue: undefined, steps: p.steps, isFrequency: p.isFrequency } as BlockParameter;
+    //     }),
+    //     isAiGenerated: false,
+    //   }));
+    // }
     // по какой-то причине то что отсюда уходит теряет compactRendererComponent
     // возможно и другие поля тоже
     return mergedDefinitions.map(def => {
@@ -366,7 +373,7 @@ export class BlockStateManager {
       name: instanceName,
       position: position || { x: 50 + Math.random() * 200, y: 50 + Math.random() * 100 },
       logs: [`Instance '${instanceName}' created.`],
-      parameters: deepCopyParametersAndEnsureTypes(definition.parameters),
+      parameters: definition.parameters//deepCopyParametersAndEnsureTypes(definition.parameters),
     };
 
     this._blockInstances = [...this._blockInstances, newInstance];

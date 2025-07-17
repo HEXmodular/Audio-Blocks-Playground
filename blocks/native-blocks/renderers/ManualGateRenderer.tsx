@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
-import { renderParameterControl } from '@components/controls/ParameterControlRenderer';
+import { RenderParameterControl, renderParameterControl } from '@components/controls/ParameterControlRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 
 
@@ -35,12 +35,12 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
       style={{ height: `${GAIN_PARAM_DISPLAY_HEIGHT}px` }}
       title={`${blockDefinition.name}: ${blockInstance.name} - Gate`}
     >
-      {renderParameterControl({
-        param: gateParam,
-        blockInstance,
-        blockDefinition,
-        handleParameterChange,
-      })}
+      <RenderParameterControl
+        param={gateParam}
+        blockInstance={blockInstance}
+        blockDefinition={blockDefinition}
+        handleParameterChange={handleParameterChange}
+      />
     </div>
   );
 };

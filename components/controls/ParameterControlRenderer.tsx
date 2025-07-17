@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/block';
 import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
@@ -12,7 +12,7 @@ export interface RenderParameterControlProps {
   processNumberInput?: (paramId: string) => void;
 }
 
-export const renderParameterControl = (props: RenderParameterControlProps): React.JSX.Element | null => {
+export const RenderParameterControl = (props: RenderParameterControlProps): Promise<React.JSX.Element | null> => {
   const {
     param,
     blockInstance,
@@ -22,6 +22,22 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
     handleNumberInputTextChange,
     processNumberInput
   } = props;
+
+  const [options, setOptions] = useState<Array<{ value: string | number; label: string }>>(param?.options || []);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      const options = param?.getOptionsAsync ? await param?.getOptionsAsync() : param?.options;
+      // console.log("👩‍🦳 [RenderParameterControl] options", param);
+      setOptions(options || []);
+    };
+    fetchOptions();
+  }, [param.getOptionsAsync]);
+
+  // const options = useMemo(() => {
+  //   return param?.getOptionsAsync ? await param?.getOptionsAsync() : param?.options;
+  // }, [param]);
+
 
   const commonProps = "w-full p-1.5 bg-gray-700 border border-gray-600 rounded-md focus:ring-1 focus:ring-sky-500 focus:border-sky-500 text-sm";
   const paramDef = blockDefinition.parameters.find(pDef => pDef.id === param.id);
@@ -56,15 +72,21 @@ export const renderParameterControl = (props: RenderParameterControlProps): Reac
         </label>
       );
     case 'select':
-      return (
-        <select
-          id={`${blockInstance.instanceId}-${param.id}-panel-control`}
+      
+        return (
+          <select
+            id={`${blockInstance.instanceId}-${param.id}-panel-control`}
           value={param.currentValue} onChange={(e) => handleParameterChange(param.id, e.target.value)}
           className={commonProps} aria-label={`${param.name} select`}
         >
-          {param.options?.map(opt => <option key={String(opt.value)} value={opt.value}>{opt.label}</option>)}
+          {
+            // param.options?.map(opt => <option key={String(opt.value)} value={opt.value}>{opt.label}</option>)
+            options.map(opt => <option key={String(opt.value)} value={opt.value}>{opt.label}</option>)
+          }
         </select>
-      );
+      
+    );
+
     case 'number_input':
       return (
         <input
