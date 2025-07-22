@@ -29,11 +29,21 @@ const BLOCK_DEFINITION: BlockDefinition = {
       toneParam: { minValue: 0, maxValue: 1 }, step: 0.01,
       defaultValue: 0.5, description: 'Lambda parameter.'
     },
+    // {
+    //   id: 'speed', name: 'Speed', type: 'slider',
+    //   toneParam: { minValue: 1, maxValue: 60 }, step: 1,
+    //   defaultValue: 10, description: 'Generations per second.'
+    // },
     {
-      id: 'speed', name: 'Speed', type: 'slider',
-      toneParam: { minValue: 1, maxValue: 60 }, step: 1,
-      defaultValue: 10, description: 'Generations per second.'
-    }
+      id: 'isIsotropic', name: 'Isotropic', type: 'toggle',
+      defaultValue: false,
+      description: 'Isotropic (symmetric) rule.'
+    },
+    {
+      id: 'seed', name: 'Seed', type: 'number_input',
+      defaultValue: 0,
+      description: 'Seed for the rule.'
+    },
   ]),
   compactRendererId: 'chaos-v1'
 };
@@ -44,8 +54,8 @@ export class ChaosBlock implements NativeBlock {
   private intervalId: any;
   output = new Signal(0); // This is a native AudioWorkletNode, managed by this ToneAudioNode
   private shiftIndex = 0;
-  private speed = 1;
-  private locked = false;
+  // private speed = 1;
+  // private locked = false;
 
   // Automata state
   private states = 2//4;
@@ -94,37 +104,46 @@ export class ChaosBlock implements NativeBlock {
       return;
     }
 
-    if (this.locked) {
-      const parameters = instance.parameters;
-      const speedParam = parameters.find(p => p.id === 'speed');
-      this.speed = Number(speedParam?.currentValue) || 1;
-      console.log("start", parameters);
+    // if (this.locked) {
+    //   const parameters = instance.parameters;
+    //   const speedParam = parameters.find(p => p.id === 'speed');
+    //   this.speed = Number(speedParam?.currentValue) || 1;
+    //   console.log("start", parameters);
 
+    //   return;
+    // }
+
+    // Check if there are any changes to process
+    if (!instance.lastChanges) {
       return;
     }
 
-    const parameters = instance.parameters;
+    // const parameters = instance.parameters;
+    const changedParameters = instance.lastChanges.parameters;
 
-    const statesParam = parameters.find(p => p.id === 'states');
-    const neighborsParam = parameters.find(p => p.id === 'neighbors');
-    const lambdaParam = parameters.find(p => p.id === 'lambda');
-    const speedParam = parameters.find(p => p.id === 'speed');
-    this.speed = Number(speedParam?.currentValue) || 1;
+    // Only process parameters that have actually changed
+    if (changedParameters) {
+      const statesParam = changedParameters.find(p => p.id === 'states');
+      const neighborsParam = changedParameters.find(p => p.id === 'neighbors');
+      const lambdaParam = changedParameters.find(p => p.id === 'lambda');
+      // const speedParam = changedParameters.find(p => p.id === 'speed');
+      const isIsotropicParam = changedParameters.find(p => p.id === 'isIsotropic');
+      const seedParam = changedParameters.find(p => p.id === 'seed');
 
-    if (statesParam) this.states = Number(statesParam.currentValue);
-    if (neighborsParam) this.neighbors = Number(neighborsParam.currentValue);
-    if (lambdaParam) this.setRulesUsed(Number(lambdaParam.currentValue) * this.lambdaPath.length);
+      if (statesParam) this.states = Number(statesParam.currentValue);
+      if (neighborsParam) this.neighbors = Number(neighborsParam.currentValue);
+      if (lambdaParam) this.setRulesUsed(Number(lambdaParam.currentValue) * this.lambdaPath.length);
+      if (isIsotropicParam) this.isIsotropic = isIsotropicParam.currentValue === 'true';
+      if (seedParam !== undefined) this.newRuleSetData(Number(seedParam.currentValue));
 
-    if (!this.locked && speedParam?.currentValue !== undefined) {
-      
-      this.locked = true;
-      this.stop();
-      // this.start(Number(speedParam.currentValue));
-      this.start();
+      // Only regenerate world data if parameters that affect it have changed
+      if (statesParam || neighborsParam || lambdaParam || isIsotropicParam || seedParam) {
+        // this.newRuleSetData(this.seed);
+        this.newWorldData();
+        this.stop();
+        this.start();
+      }
     }
-
-    this.newRuleSetData();
-    this.newWorldData(3); // Default world type
   }
 
   private start(speed?: number) {
@@ -162,7 +181,7 @@ export class ChaosBlock implements NativeBlock {
     // TODO это все нужно вынести в ворклет
     // и регулировку числа бит
     // и сдвига с внешним управлением
-    this.shiftIndex =  0;
+    this.shiftIndex = 0;
     const bitLength = 2;
     const binaryString = this.currentWorld.slice(this.shiftIndex, this.shiftIndex + bitLength).join('');
     const byteValue = parseInt(binaryString, this.states);
@@ -188,6 +207,24 @@ export class ChaosBlock implements NativeBlock {
     return this.currentWorld[n];
   }
 
+  // CREATE NEW RULE SET
+
+  //   function doNewRules() {
+  //     states  = Number(document.getElementById("states").value);
+  //     neighbors  = Number(document.getElementById("neighbors").value);
+  //     isIsotropic = document.getElementById("isotropic").checked;
+  //     if (palette.length != states) {
+  //         palette = DEFAULT_PALETTE;
+  //     }
+  //     newRuleSetData();
+  //     doNewWorld();
+  //     lambdaSlider.setStep(0,1/lambdaPath.length);
+  //     document.getElementById("info").innerHTML = ruleInfo;
+  //     document.getElementById("rulesused").value = "" + (rulesUsed+1);
+  //     lambdaSlider.setValue(0, rulesUsed/lambdaPath.length);
+  // }
+
+  // нужно перезагружать каждый раз при изменении параметров правил
   private newRuleSetData(seed?: number) {
     const ruleSeed = seed || Math.floor(Math.pow(2, 32) * Math.random());
     // Simple seedable random number generator
@@ -232,16 +269,14 @@ export class ChaosBlock implements NativeBlock {
     this.setRulesUsed(0.33 * lambdaCt);
   }
 
-  private newWorldData(type: number, seed?: number) {
-    // const worldSeed = seed || Math.floor(Math.pow(2, 32) * Math.random());
-    // let seedState = worldSeed;
-    // this.random = () => {
-    //   let x = Math.sin(seedState++) * 10000;
-    //   return x - Math.floor(x);
-    // }
+  // Create New World Using:
+  // кнопка не нужна, перезапуск по изменении seed
+  // для генерации начальных данных первой строки
+  private newWorldData() {
     this.generationNumber = 0;
     this.currentWorld = window.Uint8Array ? new Uint8Array(this.worldSize) : new Array(this.worldSize);
 
+    // заполнение мира 50 на 50
     for (let i = 0; i < this.worldSize; i++) {
       this.currentWorld[i] = (this.random() < 0.5) ? 0 : this.randInt(1, this.states - 1);
     }

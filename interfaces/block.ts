@@ -12,7 +12,7 @@ export enum BlockView {
 export interface BlockParameter {
     id: string;
     name: string;
-    type: 'slider' | 'knob' | 'toggle' | 'select' | 'number_input' | 'text_input' | 'step_sequencer_ui' | 'text_inputs';
+    type: 'slider' | 'knob' | 'toggle' | 'select' | 'number_input' | 'text_input' | 'step_sequencer_ui' | 'text_inputs' | 'button';
     options?: Array<{ value: string | number; label: string }>; // сейчас используется для передачи значений для select
     getOptionsAsync?: () => Promise<Array<{ value: string | number; label: string }>>;
     storage?: any;
@@ -83,6 +83,7 @@ export interface BlockInstance {
     // audioWorkletNodeId?: string; 
     children?: string[];
     parentId?: string;
+    lastChanges?: Partial<BlockInstance>;
 }
 
 //   export type ValueType = 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'gate' | 'any' | 'object' | 'array';

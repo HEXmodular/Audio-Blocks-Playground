@@ -397,11 +397,31 @@ export class BlockStateManager {
     if (!originalBlock) return;
 
     let updatedBlock: BlockInstance;
+    let changes: Partial<BlockInstance> = {};
+
+    delete originalBlock.lastChanges;
+    
+    // для передачи в рендер только изменений, чтобы только на них на них реагировать
     if (typeof updates === 'function') {
       updatedBlock = updates(originalBlock);
+      // Calculate changes by comparing original and updated block
+      Object.keys(updatedBlock).forEach(key => {
+        const typedKey = key as keyof BlockInstance;
+        if (updatedBlock[typedKey] !== originalBlock[typedKey]) {
+          (changes as any)[typedKey] = updatedBlock[typedKey];
+        }
+      });
     } else {
       updatedBlock = { ...originalBlock, ...updates };
+      changes = updates;
     }
+    
+    // Create new field to store the changes and remove old data
+    updatedBlock = { 
+      ...originalBlock, 
+      ...changes,
+      lastChanges: changes
+    };
 
     // Handle parentId changes
     if (originalBlock.parentId !== updatedBlock.parentId) {
