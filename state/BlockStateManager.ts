@@ -293,10 +293,9 @@ export class BlockStateManager {
     if (!this._initializationDone) return;
     try {
       // instance это ссылка на объект, который не нужно сохранять в localStorage, поэтому мы удаляем его из каждого экземпляра
-      const blockInstances = [...this._blockInstances].map(instance => ({ ...instance, instance: null }))
+      const blockInstances = [...this._blockInstances].map(instance => ({ ...instance, instance: null, lastChanges: null}))
       localStorage.setItem('audioBlocks_instances', JSON.stringify(blockInstances));
     } catch (error) {
-      debugger
       console.error(`[👨🏿‍💼 BlockStateManager]: Failed to save block instances to localStorage: ${(error as Error).message}`);
     }
   }

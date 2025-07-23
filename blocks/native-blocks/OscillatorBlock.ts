@@ -10,7 +10,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   category: 'oscillator',
   inputs: [
     { id: 'frequency', name: 'Frequency CV', type: 'audio', description: 'Modulates Oscillator frequency.' },
-    { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Modulates Oscillator frequency.' },
+    { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Frequency in Tone.js format. For example: F#4, 440.' },
     { id: 'volume', name: 'Gain CV', type: 'audio', description: 'Modulates output gain.' },
     { id: 'detune', name: 'Detune CV', type: 'audio', description: 'Modulates Oscillator detune.' }
   ],

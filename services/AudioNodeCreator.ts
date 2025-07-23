@@ -34,6 +34,7 @@ import { ContainerBlock } from '@/blocks/native-blocks/ContainerBlock';
 import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
 import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
 import { ChaosBlock } from '@/blocks/8bit/ChaosBlock';
+import { NeuralArpeggiatorBlock } from '@/blocks/magenta/NeuralArpeggiatorBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -49,6 +50,7 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
 
     // ai
     [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],
+    [NeuralArpeggiatorBlock.getDefinition().id, NeuralArpeggiatorBlock as any],
     [LyriaMasterBlock.getDefinition().id, LyriaMasterBlock as any],
    
     // effects
