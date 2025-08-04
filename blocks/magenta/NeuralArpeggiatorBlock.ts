@@ -134,6 +134,11 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
     const generateNext = () => {
       if (!running) return;
       // if (generatedSequence.length < thisPatternLength) {
+      
+      // на вход может приходить: 
+      // Part (без аккорда)
+      // аккорд текстом  (если его нет, нужно определить из Part)
+
       this.rnn.continueSequence(seedSeq, 20, this.temperature, [chord])
         .then(genSeq => {
           if (!genSeq.notes) {
@@ -193,15 +198,15 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       this.currentSeed = this.currentSeed.filter(n => n.note !== note);
     }
 
-    if (this.stopCurrentSequenceGenerator) {
-      this.stopCurrentSequenceGenerator();
-      this.stopCurrentSequenceGenerator = null;
-    }
-    if (this.currentSeed.length) {
-      this.stopCurrentSequenceGenerator = this.startSequenceGenerator(
-        [...this.currentSeed]
-      );
-    }
+    // if (this.stopCurrentSequenceGenerator) {
+    //   this.stopCurrentSequenceGenerator();
+    //   this.stopCurrentSequenceGenerator = null;
+    // }
+    // if (this.currentSeed.length) {
+    //   this.stopCurrentSequenceGenerator = this.startSequenceGenerator(
+    //     [...this.currentSeed]
+    //   );
+    // }
   }
 
   private detectChord(notes: { note: number }[]) {
