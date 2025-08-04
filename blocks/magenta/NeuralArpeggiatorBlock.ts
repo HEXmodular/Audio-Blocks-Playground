@@ -1,17 +1,20 @@
 
-import { Emitter, Signal } from 'tone';
+import { Emitter, Midi, Part, Signal } from 'tone';
 import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '@constants/constants';
 import { MusicRNN } from '@magenta/music/es6/music_rnn';
 
 import * as Tonal from 'tonal';
 
+// "C4", "4n"
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'neural-arpeggiator-v1',
   name: 'Neural Arpeggiator',
   description: 'Generates a musical sequence based on a seed chord.',
   category: 'ai',
   inputs: [
+    { id: 'chord', name: 'Chord', type: 'string', description: 'Chord. For example: Cm, F#m7.' },
+    // { id: 'duration', name: 'Duration', type: 'string', description: 'Duration in Tone.js format. For example: 4n, 8n.' },
     { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Frequency in Tone.js format. For example: F#4, 440.' },
   ],
   outputs: [
@@ -36,6 +39,8 @@ const BLOCK_DEFINITION: BlockDefinition = {
   ]),
 };
 
+
+
 export class NeuralArpeggiatorBlock implements NativeBlock {
   readonly name: string = BLOCK_DEFINITION.name;
   private _emitter = new Emitter();
@@ -43,6 +48,8 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
 
   private rnn: MusicRNN;
   private currentSeed: { note: number, time: number }[] = [];
+  private humanKeyAdds: { note: number, time?: number }[] = [];
+  private humanKeyRemovals: { note: number, time?: number }[] = [];
   private stopCurrentSequenceGenerator: (() => void) | null = null;
   private currentPlayFn: ((time: number) => void) | null = null;
   private tick = 0;
@@ -55,6 +62,15 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       'https://storage.googleapis.com/download.magenta.tensorflow.org/tfjs_checkpoints/music_rnn/chord_pitches_improv'
     );
     this.initialize();
+
+    this._emitter.on('frequency_string', (data) => {
+      // TODO вход должен быть вместе с длительностью ноты, чтобы понимать когда удалять
+      this.humanKeyAdds.push({ note: Midi(data).toMidi() });
+      this.updateChord({
+        add: this.humanKeyAdds.map(n => n.note),
+        remove: this.humanKeyRemovals.map(n => n.note)
+      });
+    });
   }
 
   private async initialize() {
@@ -111,38 +127,62 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       chords[0] ||
       Tonal.Note.pc(Tonal.Note.fromMidi(seed[0].note)) + 'M';
     const seedSeq = this.buildNoteSequence(seed);
-    let generatedSequence = this.seqToTickArray(seedSeq);
-    const playIntervalTime = 0.125; // 8n
-    const generationIntervalTime = playIntervalTime / 2;
+    // let generatedSequence = this.seqToTickArray(seedSeq);
+    // const playIntervalTime = 0.125; // 8n
+    // const generationIntervalTime = playIntervalTime / 2;
 
     const generateNext = () => {
       if (!running) return;
-      if (generatedSequence.length < thisPatternLength) {
-        this.rnn.continueSequence(seedSeq, 20, this.temperature, [chord]).then(genSeq => {
-          generatedSequence = generatedSequence.concat(this.seqToTickArray(genSeq));
-          setTimeout(generateNext, generationIntervalTime * 1000);
+      // if (generatedSequence.length < thisPatternLength) {
+      this.rnn.continueSequence(seedSeq, 20, this.temperature, [chord])
+        .then(genSeq => {
+          if (!genSeq.notes) {
+            return;
+          }
+          // TransportTime, ("4:3:2") will also provide tempo and time signature relative times in the form BARS:QUARTERS:SIXTEENTHS
+          //   const part = new Tone.Part(((time, note) => {
+          //     // the notes given as the second element in the array
+          //     // will be passed in as the second argument
+          //     synth.triggerAttackRelease(note, "8n", time);
+          // }), [[0, "C2"], ["0:2", "C3"], ["0:3:2", "G2"]]).start(0);
+          const stepsPerQuarter = genSeq?.quantizationInfo?.stepsPerQuarter || 1;
+
+          const generatedSequence = genSeq.notes
+            .filter(n => typeof n.quantizedStartStep === 'number')
+            .map(n => ({
+              time: { "4n": n.quantizedStartStep / stepsPerQuarter },
+              note: n
+            }));
+
+          const part = new Part(((time: number, note) => {
+            // тут нужно тригерить ноту или отправлять парт в аутпут
+          }), generatedSequence).start(0);
+
+
+          // generatedSequence = generatedSequence.concat(this.seqToTickArray(genSeq));
+          // setTimeout(generateNext, generationIntervalTime * 1000);
         });
-      }
+      // }
     };
 
-    this.tick = 0;
-    this.currentPlayFn = (time) => {
-      const tickInSeq = this.tick % thisPatternLength;
-      if (tickInSeq < generatedSequence.length) {
-        const note = generatedSequence[tickInSeq];
-        if (note) {
-          this.output.value = note;
-        }
-      }
-      this.tick++;
-    };
+    // this.tick = 0;
+    // this.currentPlayFn = (time) => {
+    //   const tickInSeq = this.tick % thisPatternLength;
+    //   if (tickInSeq < generatedSequence.length) {
+    //     const note = generatedSequence[tickInSeq];
+    //     if (note) {
+    //       this.output.value = note;
+    //     }
+    //   }
+    //   this.tick++;
+    // };
 
-    setTimeout(generateNext, 0);
+    // setTimeout(generateNext, 0);
 
-    return () => {
-      running = false;
-      this.currentPlayFn = null;
-    };
+    // return () => {
+    //   running = false;
+    //   this.currentPlayFn = null;
+    // };
   }
 
   private updateChord({ add = [], remove = [] }: { add?: number[], remove?: number[] }) {
@@ -197,15 +237,15 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
     };
   }
 
-  private seqToTickArray(seq: mm.INoteSequence) {
-    return seq.notes.flatMap(n =>
-      [n.pitch].concat(
-        this.pulsePattern
-          ? []
-          : Array(n.quantizedEndStep - n.quantizedStartStep - 1).fill(null)
-      )
-    );
-  }
+  // private seqToTickArray(seq: mm.INoteSequence) {
+  //   return seq.notes.flatMap(n =>
+  //     [n.pitch].concat(
+  //       this.pulsePattern
+  //         ? []
+  //         : Array(n.quantizedEndStep - n.quantizedStartStep - 1).fill(null)
+  //     )
+  //   );
+  // }
 
   private generateDummySequence() {
     console.log(this.buildNoteSequence([{ note: 60 }]))
