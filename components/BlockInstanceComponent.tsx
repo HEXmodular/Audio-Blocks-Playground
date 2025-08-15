@@ -94,6 +94,19 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     onSelect(blockInstance.instanceId);
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
+      return;
+    }
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragStart({
+      x: e.touches[0].clientX - blockInstance.position.x,
+      y: e.touches[0].clientY - blockInstance.position.y,
+    });
+    onSelect(blockInstance.instanceId);
+  };
+
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       const newX = e.clientX - dragStart.x;
@@ -112,7 +125,25 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     }
   }, [isDragging, dragStart, blockInstance.instanceId, updateBlockInstance]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (isDragging && e.touches.length > 0) {
+      const newX = e.touches[0].clientX - dragStart.x;
+      const newY = e.touches[0].clientY - dragStart.y;
+
+      const snappedX = Math.round(newX / GRID_STEP) * GRID_STEP;
+      const snappedY = Math.round(newY / GRID_STEP) * GRID_STEP;
+
+      debounce(() => {
+        updateBlockInstance(blockInstance.instanceId, {
+          position: { x: snappedX, y: snappedY },
+        });
+      }, 50)(); // Debounce to reduce updates
+
+      setPosition({ x: snappedX, y: snappedY });
+    }
+  }, [isDragging, dragStart, blockInstance.instanceId, updateBlockInstance]);
+
+  const handleInteractionEnd = useCallback(() => {
     if (isDragging) {
       const { x: dropX, y: dropY } = position; // Current position of the dragged block
 
@@ -158,16 +189,13 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
     }
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handleMouseMove, handleTouchMove]);
 
   // Resize handlers
   const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -177,6 +205,18 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     resizeStartRef.current = {
       x: e.clientX,
       y: e.clientY,
+      width: size.width,
+      height: size.height,
+    };
+  };
+
+  const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
       width: size.width,
       height: size.height,
     };
@@ -209,25 +249,56 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     }
   }, [isResizing, blockInstance.instanceId, updateBlockInstance]);
 
+  const handleResizeTouchMove = useCallback((e: TouchEvent) => {
+    if (isResizing && e.touches.length > 0) {
+      const dx = e.touches[0].clientX - resizeStartRef.current.x;
+      const dy = e.touches[0].clientY - resizeStartRef.current.y;
+
+      let newWidth = resizeStartRef.current.width + dx;
+      let newHeight = resizeStartRef.current.height + dy;
+
+      // Snap to grid
+      newWidth = Math.round(newWidth / GRID_STEP) * GRID_STEP;
+      newHeight = Math.round(newHeight / GRID_STEP) * GRID_STEP;
+
+      // Enforce minimum size
+      newWidth = Math.max(newWidth, COMPACT_BLOCK_WIDTH); // Min width
+      newHeight = Math.max(newHeight, calculateBlockHeight(true)); // Min height based on content
+
+      debounce(() => {
+        updateBlockInstance(blockInstance.instanceId, {
+          width: newWidth,
+          height: newHeight,
+        });
+      }, 50)();
+
+      setSize({ width: newWidth, height: newHeight });
+    }
+  }, [isResizing, blockInstance.instanceId, updateBlockInstance]);
+
   // Effect for resizing
   useEffect(() => {
     if (isResizing) {
       document.addEventListener('mousemove', handleResizeMouseMove);
-      document.addEventListener('mouseup', handleMouseUp); // Reuse mouseup from drag
-    } else {
-      document.removeEventListener('mousemove', handleResizeMouseMove);
-      // mouseup listener is managed by the drag effect, ensure it's also removed if only resizing was active
-      if (!isDragging) {
-        document.removeEventListener('mouseup', handleMouseUp);
-      }
+      document.addEventListener('touchmove', handleResizeTouchMove, { passive: false });
     }
     return () => {
       document.removeEventListener('mousemove', handleResizeMouseMove);
-      if (!isDragging) { // Only remove if not also dragging
-        document.removeEventListener('mouseup', handleMouseUp);
-      }
+      document.removeEventListener('touchmove', handleResizeTouchMove);
     };
-  }, [isResizing, handleResizeMouseMove, handleMouseUp, isDragging]);
+  }, [isResizing, handleResizeMouseMove, handleResizeTouchMove]);
+
+  // Effect for ending interaction
+  useEffect(() => {
+    if (isDragging || isResizing) {
+      document.addEventListener('mouseup', handleInteractionEnd);
+      document.addEventListener('touchend', handleInteractionEnd);
+    }
+    return () => {
+      document.removeEventListener('mouseup', handleInteractionEnd);
+      document.removeEventListener('touchend', handleInteractionEnd);
+    }
+  }, [isDragging, isResizing, handleInteractionEnd]);
 
 
   if (!blockDefinition && blockInstance) {
@@ -251,16 +322,6 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       </div>
     );
   }
-
-  // const firstNumericalParamDef = blockDefinition.parameters.find(
-  //   p => p.type === 'slider' || p.type === 'knob' || p.type === 'number_input'
-  // );
-  // const firstNumericalParamInstance = firstNumericalParamDef
-  //   ? blockInstance.parameters.find(p => p.id === firstNumericalParamDef.id)
-  //   : undefined;
-
-  // const blockHeight = calculateBlockHeight(true); // Now using size.height
-  // const blockHeight = size.height; // Use dynamic height
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
@@ -290,6 +351,11 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     return;
   }
 
+  const handlePortInteractionStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>, port: BlockPort, isOutput: boolean) => {
+    e.stopPropagation();
+    onStartConnectionDrag(blockInstance.instanceId, port, isOutput, e.currentTarget as HTMLDivElement);
+  };
+
   return (
     <div
       style={{
@@ -297,12 +363,10 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         width: `${size.width}px`,
         minHeight: `${size.height}px`, // Use height from state
       }}
-      // className={`absolute bg-gray-800 rounded-lg shadow-xl flex flex-col border-2 group
-      //             ${isSelected ? 'border-sky-400 ring-2 ring-sky-400 ring-opacity-50' : 'border-gray-700 hover:border-gray-600'} 
-      //             transition-all duration-150 cursor-grab active:cursor-grabbing`}
       className={`block-instance-container ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
       
-                  onMouseDown={handleMouseDown}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onClickCapture={(e) => {
         if (!(e.target as HTMLElement).closest('.js-interactive-element') && !(e.target as HTMLElement).closest('[data-port-id]')) {
           onSelect(blockInstance.instanceId);
@@ -313,41 +377,24 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     >
       {/* Header */}
       <div
-        // className="flex items-center justify-between px-2.5 py-1 border-b border-gray-700/70"
         style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px`}}
       >
         <h3
           id={`${blockInstance.instanceId}-compact-name`}
-          // className="text-xs font-semibold text-gray-100 truncate"
           className="block-instance-name"
           title={blockInstance.name}
         >
           {blockInstance.name}
         </h3>
-        {/* <div className="flex items-center space-x-1 js-interactive-element"> */}
           {blockInstance.error && (
             <span title={`Error: ${blockInstance.error}`}>
               <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
             </span>
           )}
-          {/* delete */}
-          {/* <button
-            onClick={(e) => {
-              e.stopPropagation();
-              BlockStateManager.deleteBlockInstance(blockInstance.instanceId);
-            }}
-            title="Delete Block"
-            aria-label={`Delete block ${blockInstance.name}`}
-            className="p-0.5 text-gray-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-          >
-            <TrashIcon className="w-3.5 h-3.5" />
-          </button> */}
-        {/* </div> */}
       </div>
 
       {/* Body: Custom or Default Compact Renderer */}
       <div
-        // className="flex-grow flex flex-col justify-center relative"
         style={{ height: `calc(100% - ${COMPACT_BLOCK_HEADER_HEIGHT}px)`, position: 'relative' }} // Ensure body fills available space
       >
         {CompactRendererComponent(blockDefinition.compactRendererId)}
@@ -368,13 +415,11 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Resize Handle */}
       <div
-        // className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100 js-interactive-element"
         className="resize-handle"
-        // style={{ background: 'rgba(255,255,255,0.2)', borderTopLeftRadius: '4px' }}
         onMouseDown={handleResizeMouseDown}
+        onTouchStart={handleResizeTouchStart}
         title="Resize Block"
       >
-        {/* <ArrowsPointingOutIcon className="w-3 h-3 text-gray-400 absolute bottom-0.5 right-0.5" /> */}
       </div>
 
 
@@ -401,10 +446,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
               transform: 'translateX(0%)',
             }}
             title={`Input: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              onStartConnectionDrag(blockInstance.instanceId, port, false, e.currentTarget as HTMLDivElement);
-            }}
+            onMouseDown={(e) => handlePortInteractionStart(e, port, false)}
+            onTouchStart={(e) => handlePortInteractionStart(e, port, false)}
           />
         );
       })}
@@ -432,10 +475,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
               transform: 'translateX(0%)',
             }}
             title={`Output: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              onStartConnectionDrag(blockInstance.instanceId, port, true, e.currentTarget as HTMLDivElement);
-            }}
+            onMouseDown={(e) => handlePortInteractionStart(e, port, true)}
+            onTouchStart={(e) => handlePortInteractionStart(e, port, true)}
           />
         );
       })}
