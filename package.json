@@ -24,6 +24,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.28.0",
     "@babel/preset-typescript": "^7.27.1",
+    "@playwright/test": "^1.54.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.31",
     "@types/react": "^19.1.8",
