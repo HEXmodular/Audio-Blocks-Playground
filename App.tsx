@@ -91,7 +91,6 @@ const App: React.FC = () => {
         <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">
           <ConnectionsRenderer
             svgRef={svgRef as React.RefObject<SVGSVGElement>}
-            panOffset={panOffset}
           />
           <defs>
             <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform={`translate(${panOffset.x % 20},${panOffset.y % 20})`}>

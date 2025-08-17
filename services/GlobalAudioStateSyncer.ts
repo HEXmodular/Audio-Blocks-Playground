@@ -16,7 +16,7 @@ export interface GlobalAudioState {
   availableOutputDevices: AudioDevice[];
   selectedSinkId: string | null;
   audioContextState: AudioContextState | null;
-  isWorkletSystemReady: boolean;
+  // isWorkletSystemReady: boolean;
 }
 
 // кандидат на удаление
@@ -32,6 +32,7 @@ export class GlobalAudioStateSyncer {
       availableOutputDevices: [...this.audioEngineService.availableOutputDevices],
       selectedSinkId: this.audioEngineService.selectedSinkId,
       audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
+      // isWorkletSystemReady: false,
       // isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
 
@@ -41,10 +42,11 @@ export class GlobalAudioStateSyncer {
   private handleAudioEngineChange = () => {
     const newEngineState = this.audioEngineService.audioEngineState; // Get the comprehensive state
     const newGlobalState: GlobalAudioState = {
-      isAudioGloballyEnabled: newEngineState.isAudioGloballyEnabled,
+      isAudioGloballyEnabled: this.audioEngineService.isAudioGloballyEnabled,
       availableOutputDevices: [...newEngineState.availableOutputDevices],
       selectedSinkId: newEngineState.selectedSinkId,
       audioContextState: Tone.getContext()?.state || null, // Use Tone.getContext()
+      // isWorkletSystemReady: false,
       // isWorkletSystemReady: this.audioEngineService.audioWorkletManager.isAudioWorkletSystemReady,
     };
       this.currentState = newGlobalState;

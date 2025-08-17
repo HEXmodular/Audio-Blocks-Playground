@@ -4,9 +4,7 @@ import type { BlockInstance, BlockPort } from '@interfaces/block';
 import { BlockView } from '@interfaces/block';
 import type { Connection } from '@interfaces/connection';
 import CodeLogToggle from '@components/CodeLogToggle';
-import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
-import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
 // import { OscilloscopeNativeBlock } from '@blocks/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
@@ -63,7 +61,6 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [numberInputTextValues, setNumberInputTextValues] = useState<Record<string, string>>({});
-  const prevInstanceIdRef = useRef<string | null>(null);
 
   const blockDefinition = blockInstance ? blockInstance.definition : null;
 
@@ -305,7 +302,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
         <div>
           <h4 className="font-semibold text-gray-400 mb-1">Modification Prompts:</h4>
           {blockInstance.modificationPrompts.length === 0 && <p className="text-gray-500 italic">No modification prompts recorded.</p>}
-          {blockInstance.modificationPrompts.map((prompt, index) => (
+          {blockInstance.modificationPrompts.map((prompt: string, index: number) => (
             <p key={index} className="mb-1.5 p-2 bg-gray-800/60 rounded text-gray-400 whitespace-pre-wrap break-words leading-relaxed">{index + 1}. {prompt}</p>
           ))}
         </div>

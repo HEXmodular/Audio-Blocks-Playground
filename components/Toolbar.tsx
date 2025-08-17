@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
-import React, { useMemo, useCallback, useState, useEffect } from 'react'; 
-import { PlusIcon, PlayIcon, StopIcon, BeakerIcon } from '@icons/icons';
+import React, { useCallback, useState, useEffect } from 'react'; 
+import { PlusIcon, PlayIcon, StopIcon } from '@icons/icons';
  import AudioEngineService from '@services/AudioEngineService';
 import AddBlockModal from '@components/AddBlockModal'; 
 // import { BlockDefinition } from '@interfaces/common'; // Import BlockDefinition
@@ -28,17 +28,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   useEffect(() => {
     const handleBpmChange = () => setBpm(Tone.getTransport().bpm.value);
-    Tone.getTransport().on("change:bpm", handleBpmChange);
+    Tone.getTransport().on("change:bpm" as any, handleBpmChange);
 
     const handleTransportTimeSignatureChange = () => {
       const ts = Tone.getTransport().timeSignature;
       setTimeSignature(Array.isArray(ts) ? [ts[0], ts[1]] : [ts, 4]);
     };
-    Tone.getTransport().on("change:timeSignature", handleTransportTimeSignatureChange);
+    Tone.getTransport().on("change:timeSignature" as any, handleTransportTimeSignatureChange);
 
     return () => {
-      Tone.getTransport().off("change:bpm", handleBpmChange);
-      Tone.getTransport().off("change:timeSignature", handleTransportTimeSignatureChange);
+      Tone.getTransport().off("change:bpm" as any, handleBpmChange);
+      Tone.getTransport().off("change:timeSignature" as any, handleTransportTimeSignatureChange);
     };
   }, []);
 

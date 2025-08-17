@@ -13,7 +13,6 @@ import { Connection } from '@interfaces/connection';
 const getPortElementCenterForConnectionLine = (
     portElement: Element | null,
     svgRef: React.RefObject<SVGSVGElement>,
-    panOffset: { x: number, y: number }
 ): { x: number; y: number } => {
     if (!portElement) return { x: 0, y: 0 };
     const rect = portElement.getBoundingClientRect();
@@ -27,12 +26,10 @@ const getPortElementCenterForConnectionLine = (
 
 interface ConnectionsRendererProps {
     svgRef: React.RefObject<SVGSVGElement>;
-    panOffset: { x: number, y: number };
 }
 
 const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     svgRef,
-    panOffset,
 }) => {
     const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
     const [, setForceUpdateKey] = useState<number>(0);
@@ -59,7 +56,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     };
 
     return (
-        <g style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}>
+        <g>
             {connections.map(conn => {
                 const fromInstance = blockInstances.find(b => b?.instanceId === conn.fromInstanceId);
                 const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
@@ -94,15 +91,15 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
                     }
                 }
 
-                const startPos = getPortElementCenterForConnectionLine(outputPortElem, svgRef, panOffset);
-                const endPos = getPortElementCenterForConnectionLine(inputPortElem, svgRef, panOffset);
+                const startPos = getPortElementCenterForConnectionLine(outputPortElem, svgRef);
+                const endPos = getPortElementCenterForConnectionLine(inputPortElem, svgRef);
                 const portColor = getBlockPortBgColor(outputPortDef.type).replace('bg-', 'stroke-');
 
                 return (
                     <line
                         key={conn.id}
-                        x1={startPos.x - panOffset.x} y1={startPos.y - panOffset.y}
-                        x2={endPos.x - panOffset.x} y2={endPos.y - panOffset.y}
+                        x1={startPos.x} y1={startPos.y}
+                        x2={endPos.x} y2={endPos.y}
                         className={`connection-line ${portColor} opacity-70 hover:opacity-100`}
                         strokeWidth="3"
                         onDoubleClick={() => onUpdateConnections(prev => prev.filter(c => c.id !== conn.id))}
@@ -113,8 +110,8 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
             })}
             {pendingConnection && (
                 <line
-                    x1={pendingConnection.startX - panOffset.x} y1={pendingConnection.startY - panOffset.y}
-                    x2={pendingConnection.currentX - panOffset.x} y2={pendingConnection.currentY - panOffset.y}
+                    x1={pendingConnection.startX} y1={pendingConnection.startY}
+                    x2={pendingConnection.currentX} y2={pendingConnection.currentY}
                     className={`connection-line stroke-dashed ${getBlockPortBgColor(pendingConnection.fromPort.type).replace('bg-', 'stroke-')}`}
                     strokeWidth="2.5"
                 />

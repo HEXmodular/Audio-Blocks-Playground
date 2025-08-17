@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, memo, useRef, useMemo } from 'react';
 import { BlockInstance, BlockPort } from '@interfaces/block';
-import { TrashIcon, ExclamationTriangleIcon } from '@icons/icons';
+import { ExclamationTriangleIcon } from '@icons/icons';
 import DefaultCompactRenderer from './block-renderers/DefaultCompactRenderer';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
@@ -149,7 +149,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       const allInstances = BlockStateManager.getBlockInstances();
       let newParentId: string | undefined | null = null;
-      let newParentInstance: BlockInstance;
+      let newParentInstance: BlockInstance | null = null;
 
       for (const potentialParentInstance of allInstances) {
         if (
@@ -177,7 +177,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       // Update parentId if it has changed or if it was set and now needs to be cleared
       if (newParentId && newParentInstance && newParentId !== blockInstance.parentId) {
         updateBlockInstance(blockInstance.instanceId, { parentId: newParentId || undefined });
-        updateBlockInstance(newParentId, { children: [...newParentInstance.children, blockInstance.instanceId] });
+        updateBlockInstance(newParentId, { children: [...(newParentInstance.children || []), blockInstance.instanceId] });
       }
     }
 
@@ -242,7 +242,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         updateBlockInstance(blockInstance.instanceId, {
           width: newWidth,
           height: newHeight,
-        });
+        } as Partial<BlockInstance>);
       }, 50)();
 
       setSize({ width: newWidth, height: newHeight });
@@ -269,7 +269,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         updateBlockInstance(blockInstance.instanceId, {
           width: newWidth,
           height: newHeight,
-        });
+        } as Partial<BlockInstance>);
       }, 50)();
 
       setSize({ width: newWidth, height: newHeight });

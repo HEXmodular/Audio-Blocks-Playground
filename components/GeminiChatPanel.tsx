@@ -73,7 +73,7 @@ const GeminiChatPanel = forwardRef<GeminiChatPanelRef, GeminiChatPanelProps>(({
         }
         addMessage('system', `Modifying logic for block: ${selectedBlockInstance.name}...`);
         const newLogicCode = await modifyLogicCodeWithPrompt(
-          definition.logicCode, 
+          definition.logicCode || '', 
           userPromptText,
           { 
             inputs: definition.inputs, 

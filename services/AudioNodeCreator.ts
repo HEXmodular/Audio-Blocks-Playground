@@ -118,9 +118,9 @@ class AudioNodeCreator {
     }
 
     // генерирует тонну говна
-    private addLog(instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info') {
-        // BlockStateManager.addLogToBlockInstance(instanceId, message);
-    }
+    // private addLog(/*instanceId: string, message: string, _type: 'info' | 'warn' | 'error' = 'info'*/) {
+    //     // BlockStateManager.addLogToBlockInstance(instanceId, message);
+    // }
 
     public async processAudioNodeSetupAndTeardown(
     ) {
@@ -141,11 +141,11 @@ class AudioNodeCreator {
                         instance: instanceRef,
                         // internalState: { ...currentInst.internalState, needsAudioNodeSetup: false, loggedAudioSystemNotActive: false }
                     }));
-                    this.addLog(instance.instanceId, "Native node setup successful.");
+                    // this.addLog(instance.instanceId, "Native node setup successful.");
                     console.log(instance.instanceId, "Native node setup successful.");
                 } else {
                     debugger
-                    this.addLog(instance.instanceId, "Native node setup failed.", "error");
+                    // this.addLog(instance.instanceId, "Native node setup failed.", "error");
                     console.error(instance.instanceId, "Native node setup failed.", "error");
                     // this.updateInstance(instance.instanceId, { error: "Native node setup failed." });
                 }

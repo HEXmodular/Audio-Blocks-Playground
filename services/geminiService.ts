@@ -200,13 +200,14 @@ async function fixLogicCodeFromTestFailures(
     if (!ai) throw new Error("Gemini API key not configured.");
 
     const failureDetails = testFailures.map(f => `Test: ${f.testName}\nError: ${f.error}`).join('\n\n');
+    // min: p.min, max: p.max,
     const contextString = `
 Original user request: "${originalUserPrompt}"
 Block Name: ${blockDefinitionContext.name}
 Description: ${blockDefinitionContext.description || 'N/A'}
-Inputs: ${JSON.stringify(blockDefinitionContext.inputs?.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description, audioParamTarget: i.audioParamTarget })))}
-Outputs: ${JSON.stringify(blockDefinitionContext.outputs?.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description})))}
-Parameters: ${JSON.stringify(blockDefinitionContext.parameters?.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue, min: p.min, max: p.max, step: p.step, options: p.options, description: p.description})))}
+Inputs: ${JSON.stringify(blockDefinitionContext.inputs?.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description || '', audioParamTarget: i.audioParamTarget })))}
+Outputs: ${JSON.stringify(blockDefinitionContext.outputs?.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description || ''})))}
+Parameters: ${JSON.stringify(blockDefinitionContext.parameters?.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue,  step: p.step, options: p.options, description: p.description || ''})))}
 
 Failing logicCode:
 \`\`\`javascript
@@ -266,9 +267,9 @@ export async function fixLogicCodeTestsFromFailures(
 Original user request for the block: "${originalUserPrompt}"
 Block Name: ${blockDefinitionContext.name}
 Description: ${blockDefinitionContext.description || 'N/A'}
-Inputs: ${JSON.stringify(blockDefinitionContext.inputs?.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description, audioParamTarget: i.audioParamTarget })))}
-Outputs: ${JSON.stringify(blockDefinitionContext.outputs?.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description})))}
-Parameters: ${JSON.stringify(blockDefinitionContext.parameters?.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue, min: p.min, max: p.max, step: p.step, options: p.options, description: p.description})))}
+Inputs: ${JSON.stringify(blockDefinitionContext.inputs?.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description || '', audioParamTarget: i.audioParamTarget })))}
+Outputs: ${JSON.stringify(blockDefinitionContext.outputs?.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description || ''})))}
+Parameters: ${JSON.stringify(blockDefinitionContext.parameters?.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue, step: p.step, options: p.options, description: p.description || ''})))}
 
 The logicCode the tests are for:
 \`\`\`javascript
@@ -395,7 +396,7 @@ export async function generateBlockDefinitionWithTesting(
 
   let currentDefinition = { ...initialDefinitionJson, initialPrompt: userPrompt } as BlockDefinition;
   
-  if (currentDefinition.logicCodeTests && currentDefinition.logicCodeTests.trim() !== "") {
+  if (currentDefinition.logicCode && currentDefinition.logicCodeTests && currentDefinition.logicCodeTests.trim() !== "") {
     addSystemMessage("Generated definition includes tests. Running tests...");
     let logicCodeFixCycles = 0;
     let testsPassed = false;
@@ -538,9 +539,9 @@ export async function modifyLogicCodeWithPrompt(
 Context for the code modification:
 Block Name: ${blockContext.name}
 Description: ${blockContext.description || 'N/A'}
-Inputs: ${JSON.stringify(blockContext.inputs.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description, audioParamTarget: i.audioParamTarget})))}
-Outputs: ${JSON.stringify(blockContext.outputs.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description})))}
-Parameters: ${JSON.stringify(blockContext.parameters.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue, min: p.min, max: p.max, step: p.step, options: p.options, description: p.description})))}
+Inputs: ${JSON.stringify(blockContext.inputs.map(i => ({id: i.id, name: i.name, type: i.type, description: i.description || '', audioParamTarget: i.audioParamTarget})))}
+Outputs: ${JSON.stringify(blockContext.outputs.map(o => ({id: o.id, name: o.name, type: o.type, description: o.description || ''})))}
+Parameters: ${JSON.stringify(blockContext.parameters.map(p => ({id: p.id, name: p.name, type: p.type, defaultValue: p.defaultValue, min: p.min, max: p.max, step: p.step, options: p.options, description: p.description || ''})))}
 `;
   }
 

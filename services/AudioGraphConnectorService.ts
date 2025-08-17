@@ -91,7 +91,7 @@ class AudioGraphConnectorService {
         || outputPortDef.type === 'number'
       ) {
         // const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
-        fromInstance.instance?.on?.(conn.fromOutputId, (data) => {
+        fromInstance.instance?.on?.(conn.fromOutputId, (data: any) => {
           toInstance.instance?.emit(conn.toInputId, data)
         })
         return;

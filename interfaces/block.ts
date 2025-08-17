@@ -16,8 +16,8 @@ export interface BlockParameter {
     options?: Array<{ value: string | number; label: string }>; // сейчас используется для передачи значений для select
     getOptionsAsync?: () => Promise<Array<{ value: string | number; label: string }>>;
     storage?: any;
-    // min?: number; 
-    // max?: number; 
+    min?: number; 
+    max?: number; 
     currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
@@ -25,7 +25,7 @@ export interface BlockParameter {
     emitters?: { [inputId: string]: Emitter };
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
-    // isFrequency?: boolean;
+    isFrequency?: boolean;
 }
 
 // export type BlockParameter = BlockParameterBase;
@@ -35,7 +35,7 @@ export interface BlockPort {
     name: string;
     type: 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'any' | 'gate';
     description?: string;
-    // audioParamTarget?: string;  // выяснить
+    audioParamTarget?: string;  // выяснить
 }
 
 
@@ -68,16 +68,18 @@ export interface BlockDefinition {
 export interface BlockInstance {
     instanceId: string;
     instance: ToneAudioNode & NativeBlock | null | undefined; // The actual audio node instance
-    // definitionId: string; 
+    definitionId: string; 
     definition: BlockDefinition;
     name: string;
     position: { x: number; y: number };
     logs: string[];
     parameters: BlockParameter[];
     // emitters?: Tone.Emitter[];
-
-    // lastRunOutputs: Record<string, any>; 
-    // modificationPrompts: string[]; 
+    width?: number;
+    height?: number;
+    internalState?: any;
+    lastRunOutputs?: Record<string, any>; 
+    modificationPrompts?: string[]; 
     // isRunning?: boolean; 
     error?: string | null;
     // audioWorkletNodeId?: string; 

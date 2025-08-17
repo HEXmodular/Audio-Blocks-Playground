@@ -83,8 +83,8 @@ export class ByteBeatPlayer extends Tone.ToneAudioNode<ByteBeatNodeOptions> impl
 
   // Method to send the formula string to the AudioWorklet
   public setFormula(formula: string): this {
-    if (this.output && this.output.port) {
-      this.output.port.postMessage({ formula });
+    if (this.workletNode && this.workletNode.port) {
+      this.workletNode.port.postMessage({ formula });
       console.log(`[ByteBeatPlayer] Sent formula to worklet: ${formula}`);
     } else {
       console.warn("[ByteBeatPlayer] Output node or port not available to set formula.");

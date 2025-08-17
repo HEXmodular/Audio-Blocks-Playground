@@ -5,7 +5,7 @@
  * During import, it carefully restores the application state: it clears existing managed audio nodes, sets up block definitions (prioritizing core definitions and adding imported AI-generated ones), recreates block instances with appropriate initial states, re-establishes connections, and applies global settings.
  * This manager is crucial for allowing users to save, share, and load their complex audio project configurations.
  */
-import { BlockDefinition, BlockInstance } from '@interfaces/block';
+import { BlockInstance } from '@interfaces/block';
 // import { Connection } from '@interfaces/connection';
 import BlockStateManager from '@state/BlockStateManager'; // Import default instance
 import AudioEngineService from '@services/AudioEngineService'; // Import default instance

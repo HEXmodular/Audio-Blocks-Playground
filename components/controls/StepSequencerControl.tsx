@@ -1,16 +1,16 @@
-// components/controls/StepSequencerControl.tsx
 import React from 'react';
+import { BlockParameter } from '@interfaces/block';
 
 interface StepSequencerControlProps {
   stepsArray: boolean[] | string[];
-  // blockInstance: BlockInstance;
+  param: BlockParameter;
   currentStepIndex: number;
   onChange: (paramId: string, newValue: boolean[]) => void;
 }
 
 export const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
   stepsArray,
-  // blockInstance,
+  param,
   currentStepIndex,
   onChange,
 }) => {
@@ -60,10 +60,10 @@ export const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
           type="button"
           title={stepTitle}
           onClick={() => {
-            const newSteps = [...stepsArray];
+            const newSteps = [...stepsArray].map(s => !!s);
             newSteps[index] = !newSteps[index];
             // TODO для изменения в отображении
-            onChange(parameter.id, newSteps);
+            onChange(param.id, newSteps);
           }}
           className={`w-7 h-7 rounded border-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-400
                      
@@ -83,7 +83,7 @@ export const StepSequencerControl: React.FC<StepSequencerControlProps> = ({
           // const isPatternStepActive = stepsArray[index] === true;
           const isSequencerPlayingStep = index === currentStepIndex;
           console.log(step)
-          return renderStepButton(index, isSequencerPlayingStep, step);
+          return renderStepButton(index, isSequencerPlayingStep, String(step));
         })}
       </div>
     </div>

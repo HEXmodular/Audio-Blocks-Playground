@@ -8,7 +8,7 @@
 // Fix: Import LiveMusicGenerationConfig instead of MusicGenerationConfig
 // Import LiveMusicGenerationConfig and other necessary types from @google/genai
 // Fix: Import GenAIScale as a value
-import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig } from '@google/genai';
+import { GoogleGenAI, type LiveMusicSession, type LiveMusicServerMessage, type WeightedPrompt, type LiveMusicGenerationConfig, Scale } from '@google/genai';
 import { PlaybackState } from '@interfaces/lyria'; // Import PlaybackState ENUM
 import { decode, decodeAudioData } from '@utils/utils';
 import { getCurrentDateAsSeed } from '@utils/dateUtils'; // Import the new utility
@@ -529,7 +529,7 @@ export class LiveMusicService {
 
   private stopInternally(shouldStopSession: boolean) {
     console.log(`[LiveMusicService stopInternally] Called. shouldStopSession: ${shouldStopSession}, Current state: ${this.currentPlaybackState}, IsReconnecting: ${this.isReconnecting}`);
-    const wasPlayingOrLoading = this.currentPlaybackState === PlaybackState.PLAYING || this.currentPlaybackState === PlaybackState.LOADING;
+    // const wasPlayingOrLoading = this.currentPlaybackState === PlaybackState.PLAYING || this.currentPlaybackState === PlaybackState.LOADING;
 
     if (shouldStopSession && this.session) {
         try {

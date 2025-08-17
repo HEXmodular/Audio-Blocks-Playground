@@ -32,6 +32,7 @@ class ConnectionDragHandler implements IConnectionDragHandler {
 
   public pendingConnection: PendingConnection | null = null;
   public draggedOverPort: { instanceId: string; portId: string } | null = null;
+  public onStateChange: () => void = () => {};
 
   private svgRef!: RefObject<SVGSVGElement>;
   // private blockInstances!: BlockInstance[];

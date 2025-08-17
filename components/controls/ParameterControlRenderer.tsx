@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/block';
-import { RULE_110_BLOCK_DEFINITION, RULE_110_OSCILLATOR_BLOCK_DEFINITION } from '@constants/automata';
 
 export interface RenderParameterControlProps {
   param: BlockParameter;
@@ -12,7 +11,7 @@ export interface RenderParameterControlProps {
   processNumberInput?: (paramId: string) => void;
 }
 
-export const RenderParameterControl = (props: RenderParameterControlProps): Promise<React.JSX.Element | null> => {
+export const RenderParameterControl = (props: RenderParameterControlProps): React.JSX.Element | null => {
   const {
     param,
     blockInstance,
@@ -92,16 +91,16 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Prom
         <input
           id={`${blockInstance.instanceId}-${param.id}-panel-control`}
           type="text"
-          value={numberInputTextValues[param.id] ?? String(param.currentValue)}
-          onChange={(e) => handleNumberInputTextChange(param.id, e.target.value)}
-          onBlur={() => processNumberInput(param.id)}
+          value={numberInputTextValues?.[param.id] ?? String(param.currentValue)}
+          onChange={(e) => handleNumberInputTextChange?.(param.id, e.target.value)}
+          onBlur={() => processNumberInput?.(param.id)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              processNumberInput(param.id);
+              processNumberInput?.(param.id);
               (e.target as HTMLInputElement).blur();
             } else if (e.key === 'Escape') {
               // Revert text to current valid numeric value on Escape
-              handleNumberInputTextChange(param.id, String(param.currentValue));
+              handleNumberInputTextChange?.(param.id, String(param.currentValue));
               (e.target as HTMLInputElement).blur();
             }
           }}
