@@ -19,3 +19,6 @@
 [ ] интерфейс для ввода/вывода аудио
 [ ] интерфейс для ввода/вывода миди
 [ ] автоматизации чисто чтобы туда сюда их не гонять
+
+https://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-file
+
