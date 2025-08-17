@@ -55,13 +55,13 @@ export interface BlockDefinition {
     outputs: BlockPort[];
     parameters: BlockParameter[]; // для загрузки и сохранения описаний и значений параметров
     // для возвращения к жизни Gemini
-    // logicCode?: string; // Made optional
-    // initialPrompt?: string; // Already optional, but good to confirm
-    // runsAtAudioRate?: boolean; 
-    // audioWorkletProcessorName?: string; 
-    // audioWorkletCode?: string; 
-    // logicCodeTests?: string; 
-    // isAiGenerated?: boolean;
+    logicCode?: string; // Made optional
+    initialPrompt?: string; // Already optional, but good to confirm
+    runsAtAudioRate?: boolean; 
+    audioWorkletProcessorName?: string; 
+    audioWorkletCode?: string; 
+    logicCodeTests?: string; 
+    isAiGenerated?: boolean;
     compactRendererId?: string;
 }
 
@@ -121,3 +121,21 @@ export class WithEmitter {
     };
 
 }
+
+// export interface ManagedNativeNodeInfo {
+//     node: AudioNode | null;
+//     nodeForInputConnections: AudioNode | null;
+//     nodeForOutputConnections: AudioNode | null;
+//     mainProcessingNode: AudioNode | null;
+//     paramTargetsForCv: Map<string, AudioParam>;
+//     definition: BlockDefinition;
+//     instanceId: string;
+//     allpassInternalNodes?: any; // Should be more specific if possible
+// }
+
+// export interface ManagedWorkletNodeInfo {
+//     node: AudioWorkletNode | null;
+//     inputGainNode: GainNode | null;
+//     definition: BlockDefinition;
+//     instanceId: string;
+// }

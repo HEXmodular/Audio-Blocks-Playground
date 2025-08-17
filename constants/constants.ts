@@ -2,7 +2,7 @@ import { BlockParameter } from '@interfaces/block';
 
 // Helper to correctly type and initialize parameter definitions for BlockDefinition objects.
 export const createParameterDefinitions = (
-  params: Array<Omit<BlockParameter, 'currentValue' | 'defaultValue'> & { defaultValue: any, steps?: number, isFrequency?: boolean }>
+  params: Array<Partial<BlockParameter> & { defaultValue: any }>
 ): BlockParameter[] => {
   return params.map(pDefProto => {
     let typedDefaultValue = pDefProto.defaultValue;

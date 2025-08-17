@@ -7,7 +7,7 @@ export interface GeminiRequest {
   blockDefinitionContext?: Partial<BlockDefinition>; 
 }
 
-// export type AudioContextState = "suspended" | "running" | "closed";
+export type AudioContextState = "suspended" | "running" | "closed";
 
 export interface AudioDevice extends MediaDeviceInfo {
   deviceId: string;

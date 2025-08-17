@@ -1,4 +1,4 @@
-import { PlaybackState } from '@interfaces/common';
+import { PlaybackState } from '@interfaces';
 // Unused type imports Scale, WeightedPrompt, RealGoogleGenAIType removed
 import type { LiveMusicService as LiveMusicServiceType, LiveMusicServiceCallbacks, LiveMusicGenerationConfig, DEFAULT_MUSIC_GENERATION_CONFIG as RealDefaultConfig } from '@services/LiveMusicService';
 import type { LiveMusicSession, LiveMusicServerMessage } from '@google/genai';

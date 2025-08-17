@@ -1,5 +1,5 @@
 import { AudioContextService, InitAudioResult } from '@services/AudioContextService';
-import { AudioContextState } from '@interfaces/common';
+import { AudioContextState } from '@interfaces';
 
 // Define a type for our extended AudioContext mock
 interface MockAudioContext extends AudioContext {

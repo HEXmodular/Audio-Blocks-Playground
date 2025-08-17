@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CompactRendererProps } from '@interfaces/common';
+import type { CompactRendererProps } from '@interfaces';
 
 const GAIN_PARAM_DISPLAY_HEIGHT = 20; // Consistent height
 

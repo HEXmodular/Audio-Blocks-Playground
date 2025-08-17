@@ -1,6 +1,6 @@
 import { GlobalAudioStateSyncer, GlobalAudioState } from '@services/GlobalAudioStateSyncer';
 import { AudioEngineService } from '@services/AudioEngineService';
-import { AudioDevice, AudioContextState } from '@interfaces/common';
+import { AudioDevice, AudioContextState } from '@interfaces';
 
 jest.mock('@services/AudioEngineService');
 

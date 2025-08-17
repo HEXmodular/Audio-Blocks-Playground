@@ -1,5 +1,5 @@
 import { BlockStateManager, InstanceUpdatePayload } from '@state/BlockStateManager';
-import { BlockDefinition, BlockInstance } from '@interfaces/common'; // Added BlockInstance
+import { BlockDefinition, BlockInstance } from '@interfaces';
 // import { AUDIO_OUTPUT_BLOCK_DEFINITION } from '@constants/constants'; // CORE_BLOCK_DEFINITIONS_ARRAY removed for mocking - Removed
 // import { AudioEngineService } from '../../services/AudioEngineService'; // No longer needed for getAudioOutputDefinition
 import { AudioOutputBlock } from '@services/native-blocks/AudioOutputBlock'; // Added

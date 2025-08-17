@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CompactRendererProps } from '@interfaces/common';
+import type { CompactRendererProps } from '@interfaces';
 
 // Assuming PARAM_DISPLAY_HEIGHT from BlockInstanceComponent is 20px.
 // We'll use this value for consistency in height.

@@ -8,7 +8,7 @@ import OscilloscopeDisplay from '@components/OscilloscopeDisplay';
 import { TrashIcon, ExclamationTriangleIcon, LinkIcon, PlayIcon } from '@icons/icons';
 import { NUMBER_TO_CONSTANT_AUDIO_BLOCK_DEFINITION } from '@constants/constants';
 import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
-import { OscilloscopeNativeBlock } from '@blocks/native-blocks/OscilloscopeNativeBlock';
+// import { OscilloscopeNativeBlock } from '@blocks/native-blocks/OscilloscopeNativeBlock';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
 import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
@@ -180,25 +180,25 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
         return outputValue !== undefined && !isDefaultOutputValue(outputValue, outPort.type);
       });
 
-    let oscilloscopeUI = null;
-    if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
-      // Assuming nativeNodeManager is a property on AudioEngineServiceInstance, or accessed differently
-      // const analyserNode = AudioNodeCreator.getAnalyserNodeForInstance(blockInstance.instanceId); // Changed from NativeNodeManager
-      console.log("BlockDetailPanel: AnalyserNode for OscilloscopeNativeBlock", analyserNode);
-      const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
-      const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
+    // let oscilloscopeUI = null;
+    // if (blockDefinition.id === OscilloscopeNativeBlock.getDefinition().id) {
+    //   // Assuming nativeNodeManager is a property on AudioEngineServiceInstance, or accessed differently
+    //   // const analyserNode = AudioNodeCreator.getAnalyserNodeForInstance(blockInstance.instanceId); // Changed from NativeNodeManager
+    //   console.log("BlockDetailPanel: AnalyserNode for OscilloscopeNativeBlock", analyserNode);
+    //   const fftSizeParam = blockInstance.parameters.find(p => p.id === 'fftSize');
+    //   const fftSizeValue = fftSizeParam ? Number(fftSizeParam.currentValue) : 2048;
 
-      // if (analyserNode) {
-      //   oscilloscopeUI = (
-      //     <div className="my-3 p-2 bg-gray-700/30 rounded-md">
-      //       <h4 className="text-xs font-medium text-gray-400 mb-1.5">Waveform</h4>
-      //       <OscilloscopeDisplay analyserNode={analyserNode} fftSize={fftSizeValue} width={350} height={120}/>
-      //     </div>
-      //   );
-      // } else {
-      //   oscilloscopeUI = <p className="text-xs text-amber-400 my-2">Oscilloscope AnalyserNode not available. Is audio running?</p>;
-      // }
-    }
+    //   // if (analyserNode) {
+    //   //   oscilloscopeUI = (
+    //   //     <div className="my-3 p-2 bg-gray-700/30 rounded-md">
+    //   //       <h4 className="text-xs font-medium text-gray-400 mb-1.5">Waveform</h4>
+    //   //       <OscilloscopeDisplay analyserNode={analyserNode} fftSize={fftSizeValue} width={350} height={120}/>
+    //   //     </div>
+    //   //   );
+    //   // } else {
+    //   //   oscilloscopeUI = <p className="text-xs text-amber-400 my-2">Oscilloscope AnalyserNode not available. Is audio running?</p>;
+    //   // }
+    // }
     
     let lyriaControlsUI = null;
     if (blockDefinition.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
@@ -228,7 +228,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
             <pre className="p-2 pt-0 whitespace-pre-wrap break-all bg-red-900/30 rounded-b-md">{blockInstance.error}</pre>
           </details>
         )}
-        {oscilloscopeUI}
+        {/* {oscilloscopeUI} */}
         {lyriaControlsUI}
         {/* {console.log("blockDefinition", blockDefinition.parameters)} */}
         {blockDefinition.parameters.map(paramDef => {
