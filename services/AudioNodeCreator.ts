@@ -13,6 +13,8 @@ import { PitchShiftBlock } from '@blocks/effects/PitchShiftBlock';
 import { PianoGenieBlock } from '@blocks/magenta/PianoGenieBlock';
 import { StepSequencerBlock } from '@blocks/native-blocks/sequencers/StepSequencerBlock';
 import { DataSequencerBlock } from '@blocks/native-blocks/sequencers/DataSequencerBlock';
+import { TrackerBlock } from '@/blocks/native-blocks/sequencers/TrackerBlock';
+
 import { AutoFilterBlock } from '@blocks/effects/AutoFilter';
 import { AutoPannerBlock } from '@blocks/effects/AutoPanner';
 import { AutoWahBlock } from '@blocks/effects/AutoWah';
@@ -36,6 +38,7 @@ import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
 import { ChaosBlock } from '@/blocks/8bit/ChaosBlock';
 import { NeuralArpeggiatorBlock } from '@/blocks/magenta/NeuralArpeggiatorBlock';
 
+
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
     [ManualGateBlock.getDefinition().id, ManualGateBlock as any],
@@ -45,8 +48,10 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [ByteBeatPlayer.getDefinition().id, ByteBeatPlayer as any],
     [ChaosBlock.getDefinition().id, ChaosBlock as any],
 
+    // sequencers
     [StepSequencerBlock.getDefinition().id, StepSequencerBlock as any],
     [DataSequencerBlock.getDefinition().id, DataSequencerBlock as any],
+    [TrackerBlock.getDefinition().id, TrackerBlock as any],
 
     // ai
     [PianoGenieBlock.getDefinition().id, PianoGenieBlock as any],

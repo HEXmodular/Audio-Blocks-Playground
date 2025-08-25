@@ -9,6 +9,7 @@ import StepSequencerRenderer from '@blocks/native-blocks/renderers/StepSequencer
 import DataSequencerRenderer from '@blocks/native-blocks/renderers/DataSequencerRenderer';
 import ChaosBlockRenderer from '@blocks/8bit/renders/ChaosBlockRenderer';
 import NeuralArpeggiatorRenderer from '@blocks/magenta/renderers/NeuralArpeggiatorRenderer';
+import TrackerRenderer from '@/blocks/native-blocks/renderers/TrackerRenderer';
 // Import DefaultCompactRenderer if you decide to register it, though current plan uses it as a direct fallback.
 // import DefaultCompactRenderer from '@components/block-renderers/DefaultCompactRenderer';
 
@@ -25,6 +26,7 @@ export const compactRendererRegistry: CompactRendererRegistry = {
   'data-sequencer': DataSequencerRenderer,
   'chaos-v1': ChaosBlockRenderer,
   'neural-arpeggiator-v1': NeuralArpeggiatorRenderer,
+  'tracker': TrackerRenderer,
   // If you wanted to register the default, it might be:
   // 'default': DefaultCompactRenderer,
 };

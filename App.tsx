@@ -105,15 +105,16 @@ const App: React.FC = () => {
           style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}
         >
           {appBlockInstances.filter(instance => instance).map(instance => (
-              <BlockInstanceComponent
-                key={instance.instanceId}
-                blockInstance={instance}
-                isSelected={instance.instanceId === selectedInstanceId}
-                onSelect={(id: string | null) => {
-                  BlockStateManager.setSelectedBlockInstanceId(id)
-                  setSelectedInstanceId(id);
-                }}
-              />
+            <BlockInstanceComponent
+              key={instance.instanceId}
+              blockInstance={instance}
+              isSelected={instance.instanceId == selectedInstanceId}
+              onSelect={(id: string | null) => {
+                if (selectedInstanceId === id) return;
+                BlockStateManager.setSelectedBlockInstanceId(id)
+                setSelectedInstanceId(id);
+              }}
+            />
           ))}
         </div>
       </main>

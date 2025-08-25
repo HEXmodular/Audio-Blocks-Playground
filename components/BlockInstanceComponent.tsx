@@ -55,6 +55,12 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   parentInstanceId,
   // draggedOverPort,
 }) => {
+  console.log('Rendering BlockInstanceComponent:', {
+    blockInstance,
+    isSelected,
+    onSelect,
+    parentInstanceId,
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
@@ -84,14 +90,16 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
       return;
     }
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - blockInstance.position.x,
-      y: e.clientY - blockInstance.position.y,
-    });
-    onSelect(blockInstance.instanceId);
+
+    if (e.clientX - blockInstance.position.x !== 0 && e.clientY - blockInstance.position.y !== 0) {
+      if (!isDragging) setIsDragging(true);
+      setDragStart({
+        x: e.clientX - blockInstance.position.x,
+        y: e.clientY - blockInstance.position.y,
+      });
+    }
+    if (!isSelected) onSelect(blockInstance.instanceId);
+
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -364,7 +372,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         minHeight: `${size.height}px`, // Use height from state
       }}
       className={`block-instance-container ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
-      
+
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       onClickCapture={(e) => {
@@ -377,7 +385,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     >
       {/* Header */}
       <div
-        style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px`}}
+        style={{ height: `${COMPACT_BLOCK_HEADER_HEIGHT}px` }}
       >
         <h3
           id={`${blockInstance.instanceId}-compact-name`}
@@ -386,11 +394,11 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         >
           {blockInstance.name}
         </h3>
-          {blockInstance.error && (
-            <span title={`Error: ${blockInstance.error}`}>
-              <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-            </span>
-          )}
+        {blockInstance.error && (
+          <span title={`Error: ${blockInstance.error}`}>
+            <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+          </span>
+        )}
       </div>
 
       {/* Body: Custom or Default Compact Renderer */}
@@ -406,7 +414,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
                 blockInstance={child}
                 parentInstanceId={blockInstance.instanceId}
                 isSelected={false} // Child blocks are not selectable directly for now
-                onSelect={() => {}} // Child blocks are not selectable directly for now
+                onSelect={() => { }} // Child blocks are not selectable directly for now
               />
             ))}
           </div>
@@ -495,12 +503,11 @@ export default memo(BlockInstanceComponent, (prevProps, nextProps) => {
   if (prevProps.isSelected !== nextProps.isSelected) return false;
   if (ConnectionDragHandler.draggedOverPort?.instanceId === prev.instanceId || ConnectionDragHandler.draggedOverPort?.instanceId === next.instanceId) return false;
 
-
   // Deep comparison for position, width, height, and parameters can be costly.
   // Consider specific checks if performance issues arise.
   const positionChanged = prev.position.x !== next.position.x || prev.position.y !== next.position.y;
   const sizeChanged = (prev.width || COMPACT_BLOCK_WIDTH) !== (next.width || COMPACT_BLOCK_WIDTH) ||
-                      (prev.height || calculateBlockHeight(true)) !== (next.height || calculateBlockHeight(true));
+    (prev.height || calculateBlockHeight(true)) !== (next.height || calculateBlockHeight(true));
   const parametersChanged = JSON.stringify(prev.parameters) !== JSON.stringify(next.parameters); // Basic check
 
   if (positionChanged || sizeChanged || parametersChanged) return false;

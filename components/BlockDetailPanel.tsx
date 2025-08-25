@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import type { BlockInstance, BlockPort } from '@interfaces/block';
 import { BlockView } from '@interfaces/block';
 import type { Connection } from '@interfaces/connection';
@@ -35,8 +35,12 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   const blockInstances = BlockStateManager.getBlockInstances();
   const connections = ConnectionState.getConnections();
   const [blockInstance, setBlockInstance] = useState<BlockInstance | null>(null);
+
   useEffect(() => {
     console.log("BlockDetailPanel: useEffect for selectedInstanceId change", selectedInstanceId);
+    // if (selectedInstanceId === BlockStateManager.getSelectedBlockInstanceId()) {
+    //   return; // No change in selectedInstanceId
+    // }
     if (BlockStateManager.getSelectedBlockInstanceId()) {
       const instance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
       setBlockInstance(instance);
@@ -463,4 +467,30 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
   );
 };
 
-export default BlockDetailPanel;
+export default BlockDetailPanel
+
+// export default memo(BlockDetailPanel, (prevProps, nextProps) => {
+//   // Compare relevant props to prevent unnecessary re-renders
+//   const prev = prevProps.blockInstance;
+//   const next = nextProps.blockInstance;
+
+//   if (prev.instanceId !== next.instanceId) return false;
+//   if (prev.definitionId !== next.definitionId) return false;
+//   if (prevProps.isSelected !== nextProps.isSelected) return false;
+//   if (ConnectionDragHandler.draggedOverPort?.instanceId === prev.instanceId || ConnectionDragHandler.draggedOverPort?.instanceId === next.instanceId) return false;
+
+
+//   // Deep comparison for position, width, height, and parameters can be costly.
+//   // Consider specific checks if performance issues arise.
+//   const positionChanged = prev.position.x !== next.position.x || prev.position.y !== next.position.y;
+//   const sizeChanged = (prev.width || COMPACT_BLOCK_WIDTH) !== (next.width || COMPACT_BLOCK_WIDTH) ||
+//                       (prev.height || calculateBlockHeight(true)) !== (next.height || calculateBlockHeight(true));
+//   const parametersChanged = JSON.stringify(prev.parameters) !== JSON.stringify(next.parameters); // Basic check
+
+//   if (positionChanged || sizeChanged || parametersChanged) return false;
+
+//   if (BlockStateManager.getSelectedBlockInstanceId())
+//   return true; // Props are equal, don't re-render
+// });
+
+// BlockStateManager.getSelectedBlockInstanceId()

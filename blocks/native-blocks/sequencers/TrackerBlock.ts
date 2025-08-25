@@ -1,0 +1,184 @@
+import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@interfaces/block';
+import { Emitter, ToneAudioNode, getTransport, Time } from 'tone';
+import BlockStateManager from '@state/BlockStateManager';
+
+const DEFAULT_ROWS = 8;
+const DEFAULT_COLS = 4;
+const DEFAULT_DATA = Array.from({ length: DEFAULT_ROWS }, () => Array.from({ length: DEFAULT_COLS }, () => '..'));
+
+const BLOCK_DEFINITION: BlockDefinition = {
+    id: 'native-tracker-v1',
+    name: 'Tracker',
+    category: 'data',
+    description: 'A simple tracker-style sequencer.',
+    inputs: [
+        { id: 'next', name: 'Next', type: 'trigger' },
+        { id: 'reset', name: 'Reset', type: 'trigger' },
+    ],
+    outputs: [
+        { id: 'note_out', name: 'Note Out', type: 'string' },
+        { id: 'on_step', name: 'On Step', type: 'trigger' },
+    ],
+    parameters: [
+        {
+            id: 'rows',
+            name: 'Rows',
+            type: 'number_input',
+            defaultValue: DEFAULT_ROWS,
+            min: 1,
+            max: 64,
+        },
+        {
+            id: 'cols',
+            name: 'Cols',
+            type: 'number_input',
+            defaultValue: DEFAULT_COLS,
+            min: 1,
+            max: 16,
+        },
+        {
+            id: 'data',
+            name: 'Data',
+            type: 'text_input', // Not directly editable, uses custom renderer
+            defaultValue: DEFAULT_DATA,
+        },
+        {
+            id: 'loop',
+            name: 'Loop',
+            type: 'toggle',
+            defaultValue: false,
+        },
+        {
+            id: 'loopPeriod',
+            name: 'Loop Period',
+            type: 'text_input',
+            defaultValue: '8n',
+        },
+    ],
+    compactRendererId: 'tracker',
+};
+
+interface TrackerInternalState {
+    activeRow: number;
+}
+
+export class TrackerBlock extends ToneAudioNode implements NativeBlock {
+    readonly name: string = TrackerBlock.getDefinition().name;
+    readonly input: undefined;
+    readonly output: undefined;
+    private _emitter = new Emitter();
+
+    private _activeRow: number = 0;
+    private _data: string[][] = DEFAULT_DATA;
+    private _rows: number = DEFAULT_ROWS;
+    private _cols: number = DEFAULT_COLS;
+    private _loop: boolean = false;
+    private _loopPeriod: string = '8n';
+    private _transportEventId?: number;
+    private _instanceId?: string;
+
+    public static getDefinition(): BlockDefinition {
+        return BLOCK_DEFINITION;
+    }
+
+    constructor() {
+        super();
+        this._emitter.on('next', () => this.handleTriggerIn());
+        this._emitter.on('reset', () => this.handleResetIn());
+    }
+
+    public emit(event: any, ...args: any[]) {
+        this._emitter.emit(event, args?.[0]);
+        return this;
+    }
+
+    public on(event: any, callback: (...args: any[]) => void) {
+        this._emitter.on(event, callback);
+        return this;
+    }
+
+    public updateFromBlockInstance(instance: BlockInstance): void {
+        this._instanceId = instance.instanceId;
+        this.updateParameters(instance.parameters);
+        const state = instance.internalState as TrackerInternalState | undefined;
+        if (state) {
+            this._activeRow = state.activeRow;
+        }
+    }
+
+    private updateParameters(parameters: BlockParameter[]): void {
+        const dataParam = parameters.find(p => p.id === 'data');
+        if (dataParam) {
+            this._data = dataParam.currentValue;
+        }
+
+        const rowsParam = parameters.find(p => p.id === 'rows');
+        if (rowsParam) {
+            this._rows = rowsParam.currentValue;
+        }
+
+        const colsParam = parameters.find(p => p.id === 'cols');
+        if (colsParam) {
+            this._cols = colsParam.currentValue;
+        }
+        
+        const loopParam = parameters.find(p => p.id === 'loop');
+        if (loopParam) {
+            this._loop = Boolean(loopParam.currentValue);
+        }
+
+        const loopPeriodParam = parameters.find(p => p.id === 'loopPeriod');
+        if (loopPeriodParam?.currentValue !== this._loopPeriod || this._transportEventId === undefined) {
+            this._loopPeriod = String(loopPeriodParam?.currentValue);
+            const transport = getTransport();
+            if (this._transportEventId !== undefined) {
+                transport.clear(this._transportEventId);
+            }
+            if (this._loop) {
+                this._transportEventId = transport.scheduleRepeat(time => {
+                    this.handleTriggerIn(time);
+                }, this._loopPeriod);
+            }
+        }
+    }
+
+    public handleResetIn(time?: number): void {
+        this._activeRow = 0;
+        this.updateStateInBlockManager(time);
+    }
+
+    public handleTriggerIn(time?: number): void {
+        this._activeRow = (this._activeRow + 1) % this._rows;
+
+        const currentRowData = this._data[this._activeRow];
+        if (currentRowData) {
+            currentRowData.forEach((note, colIndex) => {
+                if (note && note !== '..') {
+                    // Assuming one note output for simplicity for now
+                    // In a real scenario, you might have multiple outputs or a different data structure
+                    if (colIndex === 0) { 
+                        this._emitter.emit('note_out', note);
+                    }
+                }
+            });
+        }
+        
+        this._emitter.emit('on_step', true);
+        this.updateStateInBlockManager(time);
+    }
+
+    private updateStateInBlockManager(time?: number) {
+        if (this._instanceId) {
+            const internalState: TrackerInternalState = { activeRow: this._activeRow };
+            BlockStateManager.updateBlockInstance(this._instanceId, { internalState }, time);
+        }
+    }
+
+    public dispose(): void {
+        super.dispose();
+        if (this._transportEventId !== undefined) {
+            getTransport().clear(this._transportEventId);
+        }
+        this._emitter.dispose();
+    }
+}

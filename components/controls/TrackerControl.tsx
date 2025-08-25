@@ -16,7 +16,6 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
   activeRow,
 }) => {
   const [grid, setGrid] = useState<string[][]>([]);
-
   useEffect(() => {
     const newGrid = Array.from({ length: rows }, (_, r) =>
       Array.from({ length: cols }, (_, c) => {
@@ -42,7 +41,7 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
       }
       return row;
     });
-    setGrid(newGrid);
+    // setGrid(newGrid);
     if (onDataChange) {
       onDataChange(newGrid);
     }
