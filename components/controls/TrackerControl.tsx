@@ -1,0 +1,108 @@
+import React, { useState, useEffect } from 'react';
+
+interface TrackerControlProps {
+  rows: number;
+  cols: number;
+  initialData?: string[][];
+  onDataChange?: (data: string[][]) => void;
+  activeRow?: number;
+}
+
+const TrackerControl: React.FC<TrackerControlProps> = ({
+  rows,
+  cols,
+  initialData,
+  onDataChange,
+  activeRow,
+}) => {
+  const [grid, setGrid] = useState<string[][]>([]);
+
+  useEffect(() => {
+    const newGrid = Array.from({ length: rows }, (_, r) =>
+      Array.from({ length: cols }, (_, c) => {
+        return initialData?.[r]?.[c] || '..';
+      })
+    );
+    setGrid(newGrid);
+  }, [rows, cols, initialData]);
+
+  const handleNoteChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    rowIndex: number,
+    colIndex: number
+  ) => {
+    const newGrid = grid.map((row, rIdx) => {
+      if (rIdx === rowIndex) {
+        return row.map((cell, cIdx) => {
+          if (cIdx === colIndex) {
+            return e.target.value;
+          }
+          return cell;
+        });
+      }
+      return row;
+    });
+    setGrid(newGrid);
+    if (onDataChange) {
+      onDataChange(newGrid);
+    }
+  };
+
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: {
+      fontFamily: 'monospace',
+      display: 'inline-block',
+      border: '1px solid #ccc',
+      padding: '10px',
+    },
+    table: {
+      borderCollapse: 'collapse',
+    },
+    cell: {
+      border: '1px solid #eee',
+      padding: '0',
+    },
+    activeCell: {
+      backgroundColor: '#d3e3ff',
+    },
+    input: {
+      width: '50px',
+      height: '25px',
+      textAlign: 'center',
+      border: 'none',
+      background: 'transparent',
+      fontFamily: 'monospace',
+    },
+  };
+
+  return (
+    <div style={styles.container}>
+      <table style={styles.table}>
+        <tbody>
+          {grid.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, colIndex) => (
+                <td
+                  key={colIndex}
+                  style={{
+                    ...styles.cell,
+                    ...(rowIndex === activeRow ? styles.activeCell : {}),
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={cell}
+                    onChange={(e) => handleNoteChange(e, rowIndex, colIndex)}
+                    style={styles.input}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default TrackerControl;
