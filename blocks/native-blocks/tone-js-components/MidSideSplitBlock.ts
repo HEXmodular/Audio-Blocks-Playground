@@ -1,23 +1,23 @@
-import { Split } from 'tone';
+import { MidSideSplit } from 'tone';
 import { NativeBlock, BlockDefinition, BlockInstance } from '@interfaces/block';
 
 const BLOCK_DEFINITION: BlockDefinition = {
-  id: 'tone-split-v1',
-  name: 'Split',
-  description: 'Splits a stereo audio signal into two separate mono signals (left and right channels).',
+  id: 'tone-mid-side-split-v1',
+  name: 'Mid Side Split',
+  description: 'Splits a stereo audio signal into two separate mono signals (mid and side channels).',
   category: 'i/o',
   inputs: [
     { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'The stereo audio signal to split.' }
   ],
   outputs: [
-    { id: 'left', name: 'Left Channel', type: 'audio', description: 'The left channel of the audio signal.' },
-    { id: 'right', name: 'Right Channel', type: 'audio', description: 'The right channel of the audio signal.' }
+    { id: 'mid', name: 'Mid Channel', type: 'audio', description: 'The mid channel of the audio signal.' },
+    { id: 'side', name: 'Side Channel', type: 'audio', description: 'The side channel of the audio signal.' }
   ],
   parameters: [],
 };
 
 // TODO протестировать
-export class SplitBlock extends Split implements NativeBlock {
+export class MidSideSplitBlock extends MidSideSplit implements NativeBlock {
   readonly name: string = BLOCK_DEFINITION.name;
 
   constructor() {

@@ -16,6 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   parameters: [],
 };
 
+// TODO протестировать
 export class MergeBlock extends Merge implements NativeBlock {
   readonly name: string = BLOCK_DEFINITION.name;
 
