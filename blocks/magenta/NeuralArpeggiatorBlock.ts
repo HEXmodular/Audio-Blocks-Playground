@@ -7,6 +7,13 @@ import { MusicRNN } from '@magenta/music/es6/music_rnn';
 import * as Tonal from 'tonal';
 
 // "C4", "4n"
+
+// генерация происходит по одной ноте за раз, для генерации следующей предыдущую сгенерированную нужно добавить
+// сгенерировать ноты на выход и по одной в соответствующее время выдавать в output_note
+// партию менять после изменения аккорда
+// партию менять после измеения ноты
+
+
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'neural-arpeggiator-v1',
   name: 'Neural Arpeggiator',
@@ -15,10 +22,16 @@ const BLOCK_DEFINITION: BlockDefinition = {
   inputs: [
     { id: 'chord', name: 'Chord', type: 'string', description: 'Chord. For example: Cm, F#m7.' },
     // { id: 'duration', name: 'Duration', type: 'string', description: 'Duration in Tone.js format. For example: 4n, 8n.' },
-    { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Frequency in Tone.js format. For example: F#4, 440.' },
+    // { id: 'frequency_string', name: 'Frequency String', type: 'string', description: 'Frequency in Tone.js format. For example: F#4, 440.' },
+    { id: 'note', name: 'Note', type: 'note', description: 'Note in internal note format.' },
+
+    { id: 'part', name: 'Sequence', type: 'part', description: 'Sequence from sources like tracker, sequencer, etc. ' },
+
   ],
   outputs: [
-    { id: 'output', name: 'Output', type: 'audio', description: 'The generated signal.' }
+    { id: 'output_part', name: 'Output', type: 'part', description: 'The generated arpeggio part.' },
+    { id: 'output_note', name: 'Output', type: 'note', description: 'The freshly generated note from arpeggio part.' }
+
   ],
   parameters: createParameterDefinitions([
     {
@@ -139,6 +152,7 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       // Part (без аккорда)
       // аккорд текстом  (если его нет, нужно определить из Part)
 
+      // выдает только одну ноту за раз
       this.rnn.continueSequence(seedSeq, 20, this.temperature, [chord])
         .then(genSeq => {
           if (!genSeq.notes) {
@@ -190,35 +204,35 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
     // };
   }
 
-  private updateChord({ add = [], remove = [] }: { add?: number[], remove?: number[] }) {
-    for (const note of add) {
-      this.currentSeed.push({ note, time: Date.now() });
-    }
-    for (const note of remove) {
-      this.currentSeed = this.currentSeed.filter(n => n.note !== note);
-    }
+  // private updateChord({ add = [], remove = [] }: { add?: number[], remove?: number[] }) {
+  //   for (const note of add) {
+  //     this.currentSeed.push({ note, time: Date.now() });
+  //   }
+  //   for (const note of remove) {
+  //     this.currentSeed = this.currentSeed.filter(n => n.note !== note);
+  //   }
 
-    // if (this.stopCurrentSequenceGenerator) {
-    //   this.stopCurrentSequenceGenerator();
-    //   this.stopCurrentSequenceGenerator = null;
-    // }
-    // if (this.currentSeed.length) {
-    //   this.stopCurrentSequenceGenerator = this.startSequenceGenerator(
-    //     [...this.currentSeed]
-    //   );
-    // }
-  }
+  //   // if (this.stopCurrentSequenceGenerator) {
+  //   //   this.stopCurrentSequenceGenerator();
+  //   //   this.stopCurrentSequenceGenerator = null;
+  //   // }
+  //   // if (this.currentSeed.length) {
+  //   //   this.stopCurrentSequenceGenerator = this.startSequenceGenerator(
+  //   //     [...this.currentSeed]
+  //   //   );
+  //   // }
+  // }
 
-  private detectChord(notes: { note: number }[]) {
-    const pcs = notes.map(n => Tonal.Note.pc(Tonal.Note.fromMidi(n.note))).sort();
-    return Tonal.PcSet.modes(pcs)
-      .map((mode, i) => {
-        const tonic = Tonal.Note.name(pcs[i]);
-        const names = Tonal.Dictionary.chord.names(mode);
-        return names.length ? tonic + names[0] : null;
-      })
-      .filter(x => x);
-  }
+  // private detectChord(notes: { note: number }[]) {
+  //   const pcs = notes.map(n => Tonal.Note.pc(Tonal.Note.fromMidi(n.note))).sort();
+  //   return Tonal.PcSet.modes(pcs)
+  //     .map((mode, i) => {
+  //       const tonic = Tonal.Note.name(pcs[i]);
+  //       const names = Tonal.Dictionary.chord.names(mode);
+  //       return names.length ? tonic + names[0] : null;
+  //     })
+  //     .filter(x => x);
+  // }
 
   private buildNoteSequence(seed: { note: number }[]) {
     let step = 0;
@@ -270,6 +284,7 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
     if (this.stopCurrentSequenceGenerator) {
       this.stopCurrentSequenceGenerator();
     }
+    this.rnn.dispose();
     this._emitter.dispose();
   }
 }

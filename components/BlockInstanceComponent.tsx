@@ -55,12 +55,6 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   parentInstanceId,
   // draggedOverPort,
 }) => {
-  console.log('Rendering BlockInstanceComponent:', {
-    blockInstance,
-    isSelected,
-    onSelect,
-    parentInstanceId,
-  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
@@ -106,7 +100,6 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     if ((e.target as HTMLElement).closest('.js-interactive-element') || (e.target as HTMLElement).closest('[data-port-id]')) {
       return;
     }
-    e.stopPropagation();
     setIsDragging(true);
     setDragStart({
       x: e.touches[0].clientX - blockInstance.position.x,

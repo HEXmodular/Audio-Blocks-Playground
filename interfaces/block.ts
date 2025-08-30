@@ -33,7 +33,7 @@ export interface BlockParameter {
 export interface BlockPort {
     id: string;
     name: string;
-    type: 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'any' | 'gate';
+    type: 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'gate' | 'note'| 'part' | 'any';
     description?: string;
     audioParamTarget?: string;  // выяснить
 }
