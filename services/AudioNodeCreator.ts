@@ -4,6 +4,7 @@ import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
+import { RecorderBlock } from '@blocks/native-blocks/tone-js-components/RecorderBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
@@ -77,6 +78,9 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [StereoWidenerBlock.getDefinition().id, StereoWidenerBlock as any],
     [TremoloBlock.getDefinition().id, TremoloBlock as any],
     [VibratoBlock.getDefinition().id, VibratoBlock as any],
+
+    // tone-js-components
+    [RecorderBlock.getDefinition().id, RecorderBlock as any],
 
     // containers
     [ContainerBlock.getDefinition().id, ContainerBlock as any],
