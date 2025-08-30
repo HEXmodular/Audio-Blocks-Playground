@@ -5,6 +5,7 @@ import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
 import { RecorderBlock } from '@blocks/native-blocks/tone-js-components/RecorderBlock';
+import { SplitBlock } from '@blocks/native-blocks/tone-js-components/SplitBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
 import { ByteBeatPlayer } from '@blocks/8bit/ByteBeatPlayer';
 import { ManualGateBlock } from '@blocks/native-blocks/ManualGateBlock';
@@ -38,6 +39,7 @@ import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
 import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
 import { ChaosBlock } from '@/blocks/8bit/ChaosBlock';
 import { NeuralArpeggiatorBlock } from '@/blocks/magenta/NeuralArpeggiatorBlock';
+import { MergeBlock } from '@/blocks/native-blocks/tone-js-components/MergeBlock';
 
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
@@ -81,6 +83,8 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
 
     // tone-js-components
     [RecorderBlock.getDefinition().id, RecorderBlock as any],
+    [SplitBlock.getDefinition().id, SplitBlock as any],
+    [MergeBlock.getDefinition().id, MergeBlock as any],
 
     // containers
     [ContainerBlock.getDefinition().id, ContainerBlock as any],
