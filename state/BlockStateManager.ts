@@ -69,6 +69,18 @@ export class BlockStateManager {
   private _debouncedSaveDefinitions: () => void;
   private _selectedBlockInstanceId: string | null = null; // Added selected instance ID state
 
+  // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
+  private _onInstanceChange(instance: BlockInstance): void {
+    // console.log("[BlockStateManager] _onInstancesChange", instances);
+      if (!instance.instance) {
+        // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+        return;
+      }
+      instance.instance.updateFromBlockInstance(instance);
+      console.log('[BlockStateManager] _onInstanceChange', instance);
+    PubSubService.publish('insctance-changed', [instance]);
+  }
+
   private _onInstancesChange(instances: BlockInstance[]): void {
     // console.log("[BlockStateManager] _onInstancesChange", instances);
     instances.forEach(instance => {
@@ -446,8 +458,8 @@ export class BlockStateManager {
       b?.instanceId === instanceId ? updatedBlock : b
     );
 
-    // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
-    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
+    if (this._onInstanceChange) this._onInstanceChange(updatedBlock);
     this._saveInstancesToLocalStorage();
   }
 

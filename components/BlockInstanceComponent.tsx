@@ -57,7 +57,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [position, setPosition] = useState({ x: blockInstance.position.x, y: blockInstance.position.y });
+  const [position, setPosition] = useState({ x: blockInstance?.position?.x, y: blockInstance?.position?.y });
   const [size, setSize] = useState({
     width: blockInstance.width || COMPACT_BLOCK_WIDTH,
     height: blockInstance.height || calculateBlockHeight(true)
@@ -73,7 +73,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const { updateBlockInstance } = BlockStateManager;
 
   const childInstances = useMemo(() => {
-    if (blockDefinition.category === 'container' && blockInstance.children) {
+    if (blockDefinition?.category === 'container' && blockInstance.children) {
       const allInstances = BlockStateManager.getBlockInstances();//getBlockInstances();
       return allInstances.filter(inst => blockInstance.children!.includes(inst.instanceId));
     }
@@ -502,8 +502,10 @@ export default memo(BlockInstanceComponent, (prevProps, nextProps) => {
   const sizeChanged = (prev.width || COMPACT_BLOCK_WIDTH) !== (next.width || COMPACT_BLOCK_WIDTH) ||
     (prev.height || calculateBlockHeight(true)) !== (next.height || calculateBlockHeight(true));
   const parametersChanged = JSON.stringify(prev.parameters) !== JSON.stringify(next.parameters); // Basic check
+  const internalStateChanged = JSON.stringify(prev.internalState) !== JSON.stringify(next.internalState); // Basic check
 
-  if (positionChanged || sizeChanged || parametersChanged) return false;
+
+  if (positionChanged || sizeChanged || parametersChanged || internalStateChanged) return false;
 
 
   return true; // Props are equal, don't re-render

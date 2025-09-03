@@ -31,8 +31,3 @@ export const compactRendererRegistry: CompactRendererRegistry = {
   // 'default': DefaultCompactRenderer,
 };
 
-// Function to get a renderer, could be useful
-export const getCompactRendererById = (id: string | undefined): React.FC<CompactRendererProps> | undefined => {
-  if (!id) return undefined;
-  return compactRendererRegistry[id];
-};

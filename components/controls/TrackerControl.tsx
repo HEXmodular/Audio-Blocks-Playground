@@ -76,30 +76,26 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
 
   return (
     <div style={styles.container}>
-      <table style={styles.table}>
-        <tbody>
-          {grid.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, colIndex) => (
-                <td
-                  key={colIndex}
-                  style={{
-                    ...styles.cell,
-                    ...(rowIndex === activeRow ? styles.activeCell : {}),
-                  }}
-                >
-                  <input
-                    type="text"
-                    value={cell}
-                    onChange={(e) => handleNoteChange(e, rowIndex, colIndex)}
-                    style={styles.input}
-                  />
-                </td>
-              ))}
-            </tr>
+      {grid.map((row, rowIndex) => (
+        <>
+          {row.map((cell, colIndex) => (
+            <div
+              key={colIndex}
+              style={{
+                ...styles.cell,
+                ...(rowIndex === activeRow ? styles.activeCell : {}),
+              }}
+            >
+              <input
+                type="text"
+                value={cell}
+                onChange={(e) => handleNoteChange(e, rowIndex, colIndex)}
+                style={styles.input}
+              />
+            </div>
           ))}
-        </tbody>
-      </table>
+        </>
+      ))}
     </div>
   );
 };

@@ -22,7 +22,16 @@ const App: React.FC = () => {
     setAppBlockInstances(BlockStateManager.getBlockInstances());
   }, [BlockStateManager.getBlockInstances()]);
 
-  PubSubService.subscribe('insctance-changed', (instances: BlockInstance[]) => {
+  // механизм для обновления только одного блока
+  PubSubService.subscribe('insctance-changed', (instance: BlockInstance) => {
+    if (instance === undefined) {
+      debugger
+      return;
+    }
+    setAppBlockInstances([...appBlockInstances, instance]);
+  });
+
+  PubSubService.subscribe('insctances-changed', (instances: BlockInstance[]) => {
     setAppBlockInstances(instances);
   });
 

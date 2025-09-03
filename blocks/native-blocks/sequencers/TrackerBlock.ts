@@ -148,6 +148,8 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     }
 
     public handleTriggerIn(time?: number): void {
+        // console.log('[TrackerBlock] handleTriggerIn');
+        // debugger;
         this._activeRow = (this._activeRow + 1) % this._rows;
 
         const currentRowData = this._data[this._activeRow];
@@ -170,7 +172,8 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     private updateStateInBlockManager(time?: number) {
         if (this._instanceId) {
             const internalState: TrackerInternalState = { activeRow: this._activeRow };
-            BlockStateManager.updateBlockInstance(this._instanceId, { internalState }, time);
+            // console.log('[TrackerBlock] updateStateInBlockManager', internalState);
+            BlockStateManager.updateBlockInstance(this._instanceId, { internalState });
         }
     }
 

@@ -45,11 +45,13 @@ export class ManualGateBlock extends ToneAudioNode implements NativeBlock { // I
   public updateFromBlockInstance(instance: BlockInstance): void {
     const parameters = instance.parameters || [];
     const gateActiveParam = parameters.find(p => p.id === 'gate_active');
-    if (gateActiveParam) {
+    // console.log("gateActiveParam", gateActiveParam);
+    if (typeof gateActiveParam?.currentValue !== 'undefined') {
       const newGateValue = !!gateActiveParam.currentValue;
-      const prevGateValue = false//instance.
-      // console.log("emmited", this._emitter);
-      // this._emitter.emit("gate_out", newGateValue);
+      // const prevGateValue = false//instance.
+      // console.log("emmited", newGateValue);
+      // this._gate_active = newGateValue;
+      this._emitter.emit("gate_out", newGateValue);
     }
   }
 

@@ -275,7 +275,7 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       ['Cm']
     ).then(noteSeq => {
       console.log(noteSeq)
-      debugger
+      // debugger
     });
     return seq;
   }
