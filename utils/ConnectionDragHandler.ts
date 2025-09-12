@@ -133,6 +133,7 @@ class ConnectionDragHandler implements IConnectionDragHandler {
           else if (sourcePortType === 'number' && targetPortType === 'string') typesCompatible = true;
           else if (sourcePortType === 'string' && targetPortType === 'string') typesCompatible = true;
           else if (sourcePortType === 'boolean' && targetPortType === 'boolean') typesCompatible = true;
+          else if (sourcePortType === 'note' && targetPortType === 'note') typesCompatible = true;
           else if (sourcePortType === 'any' || targetPortType === 'any') typesCompatible = true;
 
           const toInstance = BlockStateManager.getBlockInstances().find((i) => i.instanceId === targetInstanceId);

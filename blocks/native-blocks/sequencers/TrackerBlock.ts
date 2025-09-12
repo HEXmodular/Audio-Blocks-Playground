@@ -3,7 +3,7 @@ import { Emitter, ToneAudioNode, getTransport, Time } from 'tone';
 import BlockStateManager from '@state/BlockStateManager';
 
 const DEFAULT_ROWS = 8;
-const DEFAULT_COLS = 4;
+const DEFAULT_COLS = 1;
 const DEFAULT_DATA = Array.from({ length: DEFAULT_ROWS }, () => Array.from({ length: DEFAULT_COLS }, () => '..'));
 
 const BLOCK_DEFINITION: BlockDefinition = {
@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'reset', name: 'Reset', type: 'trigger' },
     ],
     outputs: [
-        { id: 'note_out', name: 'Note Out', type: 'string' },
+        { id: 'note_out', name: 'Note Out', type: 'note' },
         { id: 'on_step', name: 'On Step', type: 'trigger' },
     ],
     parameters: [
@@ -39,7 +39,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         {
             id: 'data',
             name: 'Data',
-            type: 'text_input', // Not directly editable, uses custom renderer
+            type: 'internal', // Not directly editable, uses custom renderer
             defaultValue: DEFAULT_DATA,
         },
         {
@@ -121,7 +121,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         if (colsParam) {
             this._cols = colsParam.currentValue;
         }
-        
+
         const loopParam = parameters.find(p => p.id === 'loop');
         if (loopParam) {
             this._loop = Boolean(loopParam.currentValue);
@@ -148,23 +148,22 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     }
 
     public handleTriggerIn(time?: number): void {
-        // console.log('[TrackerBlock] handleTriggerIn');
         // debugger;
         this._activeRow = (this._activeRow + 1) % this._rows;
-
         const currentRowData = this._data[this._activeRow];
         if (currentRowData) {
             currentRowData.forEach((note, colIndex) => {
                 if (note && note !== '..') {
+                    const noteData = { note, duration: '8n', time: time };
                     // Assuming one note output for simplicity for now
                     // In a real scenario, you might have multiple outputs or a different data structure
-                    if (colIndex === 0) { 
-                        this._emitter.emit('note_out', note);
+                    if (colIndex === 0) {
+                        this._emitter.emit('note_out', noteData);
                     }
                 }
             });
         }
-        
+
         this._emitter.emit('on_step', true);
         this.updateStateInBlockManager(time);
     }

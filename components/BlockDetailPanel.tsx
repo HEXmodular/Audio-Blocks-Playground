@@ -235,6 +235,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
         {blockDefinition.parameters.map(paramDef => {
            const instanceParam = blockInstance.parameters.find(pInst => pInst.id === paramDef.id);
            if (!instanceParam) return <div key={paramDef.id} className="p-1 text-xs text-red-400">Control Error: Param '{paramDef.name}' data missing.</div>;
+           if (paramDef.type === 'internal') return null;
            return(
             <div key={paramDef.id}>
               <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.name}</label>

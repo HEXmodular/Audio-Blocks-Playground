@@ -12,7 +12,7 @@ export enum BlockView {
 export interface BlockParameter {
     id: string;
     name: string;
-    type: 'slider' | 'knob' | 'toggle' | 'select' | 'number_input' | 'text_input' | 'step_sequencer_ui' | 'text_inputs' | 'button';
+    type: 'slider' | 'knob' | 'toggle' | 'select' | 'number_input' | 'text_input' | 'step_sequencer_ui' | 'text_inputs' | 'button' | 'internal';
     options?: Array<{ value: string | number; label: string }>; // сейчас используется для передачи значений для select
     getOptionsAsync?: () => Promise<Array<{ value: string | number; label: string }>>;
     storage?: any;
@@ -50,7 +50,7 @@ export interface BlockDefinition {
     id: string;
     name: string;
     description?: string;
-    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch' | 'effects' | 'container' | 'midi';
+    category: 'data' | 'audio' | 'control' | 'logic' | 'ai' | 'i/o' | 'filter' | 'oscillator' | '8-bit' | 'pitch' | 'effects' | 'container' | 'midi' | 'instrument';
     inputs: BlockPort[];
     outputs: BlockPort[];
     parameters: BlockParameter[]; // для загрузки и сохранения описаний и значений параметров

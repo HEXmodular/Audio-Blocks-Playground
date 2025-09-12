@@ -43,6 +43,8 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
   if (!paramDef) return <p className="text-xs text-red-400">Param definition not found for {param.id}</p>;
 
   switch (param.type) {
+    case 'internal':
+      return null;
     // case 'knob':
     case 'slider':
       return (
@@ -71,10 +73,10 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
         </label>
       );
     case 'select':
-      
-        return (
-          <select
-            id={`${blockInstance.instanceId}-${param.id}-panel-control`}
+
+      return (
+        <select
+          id={`${blockInstance.instanceId}-${param.id}-panel-control`}
           value={param.currentValue} onChange={(e) => handleParameterChange(param.id, e.target.value)}
           className={commonProps} aria-label={`${param.name} select`}
         >
@@ -83,8 +85,8 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
             options.map(opt => <option key={String(opt.value)} value={opt.value}>{opt.label}</option>)
           }
         </select>
-      
-    );
+
+      );
 
     case 'number_input':
       return (

@@ -77,7 +77,7 @@ export class BlockStateManager {
         return;
       }
       instance.instance.updateFromBlockInstance(instance);
-      console.log('[BlockStateManager] _onInstanceChange', instance);
+      // console.log('[BlockStateManager] _onInstanceChange', instance);
     PubSubService.publish('insctance-changed', [instance]);
   }
 
@@ -458,7 +458,7 @@ export class BlockStateManager {
       b?.instanceId === instanceId ? updatedBlock : b
     );
 
-    console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
+    // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
     if (this._onInstanceChange) this._onInstanceChange(updatedBlock);
     this._saveInstancesToLocalStorage();
   }

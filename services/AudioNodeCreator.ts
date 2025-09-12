@@ -40,6 +40,7 @@ import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
 import { ChaosBlock } from '@/blocks/8bit/ChaosBlock';
 import { NeuralArpeggiatorBlock } from '@/blocks/magenta/NeuralArpeggiatorBlock';
 import { MergeBlock } from '@/blocks/native-blocks/tone-js-components/MergeBlock';
+import { SynthBlock } from '@/blocks/native-blocks/tone-js-instruments/Synth';
 
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
@@ -85,6 +86,9 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     [RecorderBlock.getDefinition().id, RecorderBlock as any],
     [SplitBlock.getDefinition().id, SplitBlock as any],
     [MergeBlock.getDefinition().id, MergeBlock as any],
+
+    // tone-js-instruments
+    [SynthBlock.getDefinition().id, SynthBlock as any],
 
     // containers
     [ContainerBlock.getDefinition().id, ContainerBlock as any],

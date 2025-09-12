@@ -23,7 +23,7 @@ const TrackerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockD
 
   const rows = rowsParam?.currentValue as number || 8;
   const cols = colsParam?.currentValue as number || 2;
-  const initialData = dataParam?.currentValue as string[][];
+  const data = dataParam?.currentValue as string[][];
   const activeRow = activeRowParam?.currentValue as number || blockInstance.internalState?.activeRow || 0;
 
   return (
@@ -31,7 +31,7 @@ const TrackerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockD
       <TrackerControl
         rows={rows}
         cols={cols}
-        initialData={initialData}
+        data={data}
         onDataChange={handleDataChange}
         activeRow={activeRow}
       />

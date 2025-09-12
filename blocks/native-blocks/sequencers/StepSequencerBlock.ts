@@ -297,7 +297,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
             }, time || 0)
 
         }
-        this._emitter.emit('trigger'); // Emit void for trigger
+        this._emitter.emit('trigger_out'); // Emit void for trigger
     }
 
     // --- NativeBlock stubs ---

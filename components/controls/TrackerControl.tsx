@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface TrackerControlProps {
   rows: number;
   cols: number;
-  initialData?: string[][];
+  data?: string[][];
   onDataChange?: (data: string[][]) => void;
   activeRow?: number;
 }
@@ -11,7 +11,7 @@ interface TrackerControlProps {
 const TrackerControl: React.FC<TrackerControlProps> = ({
   rows,
   cols,
-  initialData,
+  data,
   onDataChange,
   activeRow,
 }) => {
@@ -19,11 +19,11 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
   useEffect(() => {
     const newGrid = Array.from({ length: rows }, (_, r) =>
       Array.from({ length: cols }, (_, c) => {
-        return initialData?.[r]?.[c] || '..';
+        return data?.[r]?.[c] || '..';
       })
     );
     setGrid(newGrid);
-  }, [rows, cols, initialData]);
+  }, [rows, cols, data]);
 
   const handleNoteChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -41,7 +41,7 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
       }
       return row;
     });
-    // setGrid(newGrid);
+    setGrid(newGrid);
     if (onDataChange) {
       onDataChange(newGrid);
     }

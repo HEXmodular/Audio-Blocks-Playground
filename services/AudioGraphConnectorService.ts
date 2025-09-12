@@ -89,6 +89,7 @@ class AudioGraphConnectorService {
         || outputPortDef.type === 'trigger'
         || outputPortDef.type === 'string'
         || outputPortDef.type === 'number'
+        || outputPortDef.type === 'note'
       ) {
         // const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
         fromInstance.instance?.on?.(conn.fromOutputId, (data: any) => {
