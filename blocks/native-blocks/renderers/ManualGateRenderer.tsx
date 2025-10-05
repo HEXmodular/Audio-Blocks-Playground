@@ -32,7 +32,6 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
   return (
     <div
       className="flex items-center justify-start px-1.5 py-0.5"
-      style={{ height: `${GAIN_PARAM_DISPLAY_HEIGHT}px` }}
       title={`${blockDefinition.name}: ${blockInstance.name} - Gate`}
     >
       <RenderParameterControl

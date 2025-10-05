@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/block';
 
+import './ParameterControlRenderer.css';
+
+
 export interface RenderParameterControlProps {
   param: BlockParameter;
   blockInstance: BlockInstance;
@@ -60,17 +63,15 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
       );
     case 'toggle':
       return (
-        <label className="flex items-center space-x-2 cursor-pointer h-8">
-          <input
-            id={`${blockInstance.instanceId}-${param.id}-panel-control`}
-            type="checkbox"
-            checked={!!param.currentValue}
-            onChange={(e) => handleParameterChange(param.id, e.target.checked)}
-            className="form-checkbox h-4 w-4 text-sky-500 bg-gray-700 border-gray-600 rounded focus:ring-sky-500"
+          <button
+            type="button"
+            onClick={() => handleParameterChange(param.id, !param.currentValue)}
+            className={`param-controls-toggle ${param.currentValue ? 'bg-green-500' : 'bg-red-500'} ${param.currentValue && 'active'} rounded border-2`}
+            aria-pressed={param.currentValue}
             aria-label={`${param.name} toggle`}
-          />
-          <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
-        </label>
+          >
+            <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
+          </button>
       );
     case 'select':
 
