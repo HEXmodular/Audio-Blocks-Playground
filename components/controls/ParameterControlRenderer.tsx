@@ -66,7 +66,10 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
           <button
             type="button"
             onClick={() => handleParameterChange(param.id, !param.currentValue)}
-            className={`param-controls-toggle ${param.currentValue ? 'bg-green-500' : 'bg-red-500'} ${param.currentValue && 'active'} rounded border-2`}
+            className={`param-controls-toggle 
+              ${param.currentValue ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500'} 
+              ${param.currentValue && 'active'} 
+              rounded border-2`}
             aria-pressed={param.currentValue}
             aria-label={`${param.name} toggle`}
           >
