@@ -36,6 +36,12 @@ const App: React.FC = () => {
   });
 
   const handlePanStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // click on main workspace area
+    // hide detail panel
+    if ((e.target as HTMLElement).closest('#main-workspace-area')) {
+      setSelectedInstanceId(null);
+      return;
+    }
     if ((e.target as HTMLElement).closest('[data-instance-id]')) {
       return;
     }
