@@ -529,14 +529,6 @@ export class BlockStateManager {
     }
   }
 
-  public setSelectedBlockInstanceId(instanceId: string | null): void {
-    this._selectedBlockInstanceId = instanceId;
-  }
-
-  public getSelectedBlockInstanceId(): string | null {
-    return this._selectedBlockInstanceId;
-  }
-
   public onBlockInstanceChaged(callback: (instances: BlockInstance[]) => void): void {
     // this._onInstancesChange = callback;
     // if (this._initializationDone) {

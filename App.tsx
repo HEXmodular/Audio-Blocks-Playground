@@ -11,7 +11,7 @@ import './App.css';
 
 const App: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(BlockStateManager.getSelectedBlockInstanceId());
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>();
   const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>(BlockStateManager.getBlockInstances());
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -120,7 +120,6 @@ const App: React.FC = () => {
               isSelected={instance.instanceId == selectedInstanceId}
               onSelect={(id: string | null) => {
                 if (selectedInstanceId === id) return;
-                BlockStateManager.setSelectedBlockInstanceId(id)
                 setSelectedInstanceId(id);
               }}
             />
@@ -128,7 +127,12 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {selectedInstanceId && <BlockDetailPanel />}
+      {selectedInstanceId && <BlockDetailPanel
+        selectedInstanceId={selectedInstanceId}
+        onClosePanel={() => {
+          setSelectedInstanceId(null);
+        }}
+      />}
     </div>
   );
 };

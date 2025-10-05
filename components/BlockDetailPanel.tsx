@@ -15,6 +15,8 @@ import  ConnectionState  from '@services/ConnectionState';
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
+  selectedInstanceId: string | null;
+  onClosePanel: () => void;
 }
 
 const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean => {
@@ -28,33 +30,14 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
   }
 };
 
-const BlockDetailPanel: React.FC<BlockDetailPanelProps> = () => {
+const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selectedInstanceId }) => {
  
-  // Directly get values from BlockStateManager on each render
-  const selectedInstanceId = BlockStateManager.getSelectedBlockInstanceId();
   const blockInstances = BlockStateManager.getBlockInstances();
   const connections = ConnectionState.getConnections();
-  const [blockInstance, setBlockInstance] = useState<BlockInstance | null>(null);
-
-  useEffect(() => {
-    console.log("BlockDetailPanel: useEffect for selectedInstanceId change", selectedInstanceId);
-    // if (selectedInstanceId === BlockStateManager.getSelectedBlockInstanceId()) {
-    //   return; // No change in selectedInstanceId
-    // }
-    if (BlockStateManager.getSelectedBlockInstanceId()) {
-      const instance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
-      setBlockInstance(instance);
-    } else {
-      setBlockInstance(null);
-    }
-  }, [BlockStateManager.getSelectedBlockInstanceId()])
+  const blockInstance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
 
   const updateBlockInstance = BlockStateManager.updateBlockInstance.bind(BlockStateManager);
   const ctxDeleteBlockInstance = BlockStateManager.deleteBlockInstance.bind(BlockStateManager);
-
-  const onClosePanel = () => {
-    BlockStateManager.setSelectedBlockInstanceId(null);
-  };
 
   const onUpdateConnections = (updater: (prev: Connection[]) => Connection[]) => {
     ConnectionState.updateConnections(updater);
@@ -494,4 +477,3 @@ export default BlockDetailPanel
 //   return true; // Props are equal, don't re-render
 // });
 
-// BlockStateManager.getSelectedBlockInstanceId()

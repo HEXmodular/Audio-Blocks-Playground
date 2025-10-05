@@ -120,7 +120,6 @@ class WorkspacePersistenceManager {
 
 
                 console.log("[System] Workspace imported successfully by WorkspacePersistenceManager.");
-                this.blockStateManager.setSelectedBlockInstanceId(null);
 
             } catch (err) {
                 console.error("Error importing workspace:", err);
