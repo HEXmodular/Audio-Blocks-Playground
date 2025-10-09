@@ -47,6 +47,31 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
     }
   };
 
+  const handleCopy = () => {
+    const gridString = JSON.stringify(grid);
+    navigator.clipboard.writeText(gridString);
+  };
+
+  const handlePaste = async () => {
+    const text = await navigator.clipboard.readText();
+    try {
+      const newGrid = JSON.parse(text);
+      if (
+        !Array.isArray(newGrid) ||
+        !newGrid.every((row) => Array.isArray(row))
+      ) {
+        return;
+      }
+      setGrid(newGrid);
+      if (onDataChange) {
+        onDataChange(newGrid);
+      }
+
+    } catch (error) {
+      console.error('Failed to parse clipboard data:', error);
+    }
+  };
+
   const styles: { [key: string]: React.CSSProperties } = {
     container: {
       fontFamily: 'monospace',
@@ -72,10 +97,23 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
       background: 'transparent',
       fontFamily: 'monospace',
     },
+    button: {
+      margin: '5px',
+      padding: '5px 10px',
+      fontFamily: 'monospace',
+    },
   };
 
   return (
     <div style={styles.container}>
+      <div>
+        <button onClick={handleCopy} style={styles.button}>
+          Copy
+        </button>
+        <button onClick={handlePaste} style={styles.button}>
+          Paste
+        </button>
+      </div>
       {grid.map((row, rowIndex) => (
         <>
           {row.map((cell, colIndex) => (
