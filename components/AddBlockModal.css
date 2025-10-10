@@ -5,4 +5,5 @@
 
 .block-title {
     /* margin-bottom: 5px; */
+    cursor: pointer;
 }
