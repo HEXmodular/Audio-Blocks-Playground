@@ -10,13 +10,14 @@ import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
 import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
 import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
-import  ConnectionState  from '@services/ConnectionState';
+import ConnectionState from '@services/ConnectionState';
 // import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
   selectedInstanceId: string | null;
   onClosePanel: () => void;
+  onDeleteBlockInstance: () => void;
 }
 
 const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean => {
@@ -30,8 +31,8 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
   }
 };
 
-const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selectedInstanceId }) => {
- 
+const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId, onClosePanel, onDeleteBlockInstance }) => {
+
   const blockInstances = BlockStateManager.getBlockInstances();
   const connections = ConnectionState.getConnections();
   const blockInstance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
@@ -54,21 +55,21 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
   const isSimplifiedNativeBlock = blockInstance && blockDefinition;
 
   const availableViewsForToggle = isSimplifiedNativeBlock
-      ? [BlockView.UI, BlockView.CONNECTIONS]
-      : [BlockView.UI, BlockView.CONNECTIONS, BlockView.CODE, BlockView.LOGS, BlockView.PROMPT, BlockView.TESTS];
+    ? [BlockView.UI, BlockView.CONNECTIONS]
+    : [BlockView.UI, BlockView.CONNECTIONS, BlockView.CODE, BlockView.LOGS, BlockView.PROMPT, BlockView.TESTS];
 
- 
+
   if (!blockInstance || !blockDefinition) {
     // If no block is selected (selectedInstanceId is null), don't render the panel at all or render a minimal version.
     // For this task, we'll not render it if selectedInstanceId is null, which will be handled in App.tsx
     // This return is for the case where an instance ID is selected, but the instance or definition is somehow missing.
     if (selectedInstanceId) {
-        return (
-            <div className="fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] bg-gray-800 border-l border-gray-700 shadow-xl flex flex-col p-4 z-20 text-gray-400 items-center justify-center">
-                <p className="text-center mb-2">Selected block data missing or invalid.</p>
-                <button onClick={onClosePanel} className="mt-4 text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded">Close Panel</button>
-            </div>
-        );
+      return (
+        <div className="fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] bg-gray-800 border-l border-gray-700 shadow-xl flex flex-col p-4 z-20 text-gray-400 items-center justify-center">
+          <p className="text-center mb-2">Selected block data missing or invalid.</p>
+          <button onClick={onClosePanel} className="mt-4 text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded">Close Panel</button>
+        </div>
+      );
     }
     return null; // Don't render anything if no block is selected
   }
@@ -77,19 +78,19 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
   const handleParameterChange = (paramId: string, value: any) => {
     if (!blockInstance) return;
     updateBlockInstance(blockInstance.instanceId, (prevInstance) => {
-        const updatedParams = prevInstance.parameters.map(p =>
-            p.id === paramId ? { ...p, currentValue: value } : p
-        );
-        const changedParamDef = blockDefinition.parameters.find(pDef => pDef.id === paramId);
-        if (changedParamDef && changedParamDef.type === 'number_input') {
-            setNumberInputTextValues(prevTextValues => ({
-                ...prevTextValues,
-                [paramId]: String(value)
-            }));
-        }
-        // для отображения изменения параметров контролов
-        setBlockInstance({ ...prevInstance, parameters: updatedParams });
-        return { ...prevInstance, parameters: updatedParams };
+      const updatedParams = prevInstance.parameters.map(p =>
+        p.id === paramId ? { ...p, currentValue: value } : p
+      );
+      const changedParamDef = blockDefinition.parameters.find(pDef => pDef.id === paramId);
+      if (changedParamDef && changedParamDef.type === 'number_input') {
+        setNumberInputTextValues(prevTextValues => ({
+          ...prevTextValues,
+          [paramId]: String(value)
+        }));
+      }
+      // для отображения изменения параметров контролов
+      setBlockInstance({ ...prevInstance, parameters: updatedParams });
+      return { ...prevInstance, parameters: updatedParams };
     });
   };
 
@@ -127,7 +128,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
     const textValue = numberInputTextValues[paramId];
     const paramDef = blockDefinition.parameters.find(p => p.id === paramId);
     const currentParam = blockInstance.parameters.find(p => p.id === paramId);
-    
+
     if (textValue === undefined || !paramDef || !currentParam) return;
 
     const isFrequencyParam = paramDef.isFrequency || paramDef.name.toLowerCase().includes('freq') || paramDef.id.toLowerCase().includes('freq');
@@ -137,7 +138,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
       let finalValue = parsedValue;
       if (paramDef?.toneParam?.minValue !== undefined) finalValue = Math.max(paramDef?.toneParam?.minValue, finalValue);
       if (paramDef?.toneParam?.maxValue !== undefined) finalValue = Math.min(paramDef?.toneParam?.maxValue, finalValue);
-      
+
       // Update the actual parameter's currentValue
       handleParameterChange(paramId, finalValue);
       // Ensure the text input also reflects the (potentially clamped) numeric value
@@ -183,7 +184,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
     //   //   oscilloscopeUI = <p className="text-xs text-amber-400 my-2">Oscilloscope AnalyserNode not available. Is audio running?</p>;
     //   // }
     // }
-    
+
     let lyriaControlsUI = null;
     if (blockDefinition.id === LyriaMasterBlock.getDefinition().id) { // Changed to use LyriaMasterBlock.getDefinition().id
       lyriaControlsUI = (
@@ -193,7 +194,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
             onClick={handleLyriaRestart}
             className="w-full bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center"
           >
-            <PlayIcon className="w-4 h-4 mr-1.5"/>
+            <PlayIcon className="w-4 h-4 mr-1.5" />
             Restart from Start
           </button>
         </div>
@@ -216,13 +217,13 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
         {lyriaControlsUI}
         {/* {console.log("blockDefinition", blockDefinition.parameters)} */}
         {blockDefinition.parameters.map(paramDef => {
-           const instanceParam = blockInstance.parameters.find(pInst => pInst.id === paramDef.id);
-           if (!instanceParam) return <div key={paramDef.id} className="p-1 text-xs text-red-400">Control Error: Param '{paramDef.name}' data missing.</div>;
-           if (paramDef.type === 'internal') return null;
-           return(
+          const instanceParam = blockInstance.parameters.find(pInst => pInst.id === paramDef.id);
+          if (!instanceParam) return <div key={paramDef.id} className="p-1 text-xs text-red-400">Control Error: Param '{paramDef.name}' data missing.</div>;
+          if (paramDef.type === 'internal') return null;
+          return (
             <div key={paramDef.id}>
               <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.name}</label>
-              <RenderParameterControl 
+              <RenderParameterControl
                 key={paramDef.id}
                 param={instanceParam}
                 blockInstance={blockInstance}
@@ -246,7 +247,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
                     <div key={outPort.id} className="flex justify-between items-center bg-gray-700/50 p-1.5 rounded">
                       <span className="text-gray-300">{outPort.name}:</span>
                       <span className="text-sky-300 font-mono bg-gray-900/50 px-1.5 py-0.5 rounded">
-                        {typeof outputValue === 'object' ? JSON.stringify(outputValue).substring(0,25) + (JSON.stringify(outputValue).length > 25 ? '...' : '') : String(outputValue).substring(0,25)}
+                        {typeof outputValue === 'object' ? JSON.stringify(outputValue).substring(0, 25) + (JSON.stringify(outputValue).length > 25 ? '...' : '') : String(outputValue).substring(0, 25)}
                       </span>
                     </div>
                   );
@@ -316,69 +317,69 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
   const renderConnectionsView = () => {
     const findConnectedBlockName = (instanceId: string) => blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
-        const instance = blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
-        if (!instance) return undefined;
-        const def = instance.definition; // Use context function
-        if (!def) return undefined;
-        return isOutput ? def.outputs.find(p => p.id === portId) : def.inputs.find(p => p.id === portId);
+      const instance = blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
+      if (!instance) return undefined;
+      const def = instance.definition; // Use context function
+      if (!def) return undefined;
+      return isOutput ? def.outputs.find(p => p.id === portId) : def.inputs.find(p => p.id === portId);
     };
 
     return (
       <div className="space-y-4 text-sm">
         <div>
-          <h4 className="font-semibold text-gray-300 mb-2 flex items-center"><LinkIcon className="w-4 h-4 mr-1.5 text-sky-400"/>Inputs:</h4>
+          <h4 className="font-semibold text-gray-300 mb-2 flex items-center"><LinkIcon className="w-4 h-4 mr-1.5 text-sky-400" />Inputs:</h4>
           {blockDefinition.inputs.length === 0 && <p className="text-xs text-gray-500 italic">No inputs defined for this block.</p>}
           {blockDefinition.inputs.map(port => {
             const incomingConnections = connections.filter(c => c.toInstanceId === blockInstance.instanceId && c.toInputId === port.id);
             return (
               <div key={port.id} className="p-2 bg-gray-700/50 rounded-md mb-1.5">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <span className="font-medium text-gray-200">{port.name}</span> <span className="text-xs text-gray-400">({port.type})</span>
-                    </div>
+                  <div>
+                    <span className="font-medium text-gray-200">{port.name}</span> <span className="text-xs text-gray-400">({port.type})</span>
+                  </div>
                 </div>
-                 {incomingConnections.length > 0 ? (incomingConnections.map(conn => {
-                    const sourcePortDef = getPortDefinitionFromList(conn.fromInstanceId, conn.fromOutputId, true);
-                    return (
-                        <div key={conn.id} className="flex items-center justify-between pl-3 mt-1">
-                            <p className="text-xs text-sky-400">← {findConnectedBlockName(conn.fromInstanceId)} ({sourcePortDef?.name || conn.fromOutputId})</p>
-                            <button
-                                onClick={() => handleDisconnect(conn.id)}
-                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded-md transition-colors"
-                                aria-label={`Disconnect ${port.name} from ${findConnectedBlockName(conn.fromInstanceId)}`}
-                            >Disconnect</button>
-                        </div>
-                    );
-                 })) : <p className="text-xs text-gray-500 italic pl-3 mt-1">Not connected</p>}
+                {incomingConnections.length > 0 ? (incomingConnections.map(conn => {
+                  const sourcePortDef = getPortDefinitionFromList(conn.fromInstanceId, conn.fromOutputId, true);
+                  return (
+                    <div key={conn.id} className="flex items-center justify-between pl-3 mt-1">
+                      <p className="text-xs text-sky-400">← {findConnectedBlockName(conn.fromInstanceId)} ({sourcePortDef?.name || conn.fromOutputId})</p>
+                      <button
+                        onClick={() => handleDisconnect(conn.id)}
+                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded-md transition-colors"
+                        aria-label={`Disconnect ${port.name} from ${findConnectedBlockName(conn.fromInstanceId)}`}
+                      >Disconnect</button>
+                    </div>
+                  );
+                })) : <p className="text-xs text-gray-500 italic pl-3 mt-1">Not connected</p>}
               </div>
             );
           })}
         </div>
         <div>
-          <h4 className="font-semibold text-gray-300 mb-2 flex items-center"><LinkIcon className="w-4 h-4 mr-1.5 text-sky-400 transform rotate-90"/>Outputs:</h4>
+          <h4 className="font-semibold text-gray-300 mb-2 flex items-center"><LinkIcon className="w-4 h-4 mr-1.5 text-sky-400 transform rotate-90" />Outputs:</h4>
           {blockDefinition.outputs.length === 0 && <p className="text-xs text-gray-500 italic">No outputs defined for this block.</p>}
           {blockDefinition.outputs.map(port => {
             const outgoingConnections = connections.filter(c => c.fromInstanceId === blockInstance.instanceId && c.fromOutputId === port.id);
             return (
-                <div key={port.id} className="p-2 bg-gray-700/50 rounded-md mb-1.5">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <span className="font-medium text-gray-200">{port.name}</span> <span className="text-xs text-gray-400">({port.type})</span>
-                        </div>
+              <div key={port.id} className="p-2 bg-gray-700/50 rounded-md mb-1.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium text-gray-200">{port.name}</span> <span className="text-xs text-gray-400">({port.type})</span>
+                  </div>
+                </div>
+                {outgoingConnections.length > 0 ? (outgoingConnections.map(conn => {
+                  const targetPortDef = getPortDefinitionFromList(conn.toInstanceId, conn.toInputId, false);
+                  return (
+                    <div key={conn.id} className="flex items-center justify-between pl-3 mt-1">
+                      <p className="text-xs text-sky-400">→ {findConnectedBlockName(conn.toInstanceId)} ({targetPortDef?.name || conn.toInputId})</p>
+                      <button
+                        onClick={() => handleDisconnect(conn.id)}
+                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded-md transition-colors"
+                        aria-label={`Disconnect ${port.name} from ${findConnectedBlockName(conn.toInstanceId)}`}
+                      >Disconnect</button>
                     </div>
-                    {outgoingConnections.length > 0 ? (outgoingConnections.map(conn => {
-                        const targetPortDef = getPortDefinitionFromList(conn.toInstanceId, conn.toInputId, false);
-                        return (
-                            <div key={conn.id} className="flex items-center justify-between pl-3 mt-1">
-                                <p className="text-xs text-sky-400">→ {findConnectedBlockName(conn.toInstanceId)} ({targetPortDef?.name || conn.toInputId})</p>
-                                <button
-                                    onClick={() => handleDisconnect(conn.id)}
-                                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded-md transition-colors"
-                                    aria-label={`Disconnect ${port.name} from ${findConnectedBlockName(conn.toInstanceId)}`}
-                                >Disconnect</button>
-                            </div>
-                        );
-                    })) : <p className="text-xs text-gray-500 italic pl-3 mt-1">Not connected</p>}
+                  );
+                })) : <p className="text-xs text-gray-500 italic pl-3 mt-1">Not connected</p>}
               </div>
             );
           })}
@@ -403,32 +404,32 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
     <div className="fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] bg-gray-800 border-l border-gray-700 shadow-xl flex flex-col z-20 text-gray-200" role="tabpanel" aria-labelledby="block-detail-tabs">
       <div className="p-3 border-b border-gray-700 space-y-2">
         <div className="flex justify-between items-start">
-            {isEditingName ? (
-                 <input
-                    ref={nameInputRef} type="text" value={editableName} onChange={handleNameChange}
-                    onBlur={handleNameBlur} onKeyDown={handleNameKeyDown}
-                    className="text-md font-semibold bg-gray-700 text-gray-100 border border-sky-500 rounded px-1.5 py-1 w-full focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    aria-label={`Edit name for block ${blockInstance.name}`}
-                 />
-            ) : (
-                <h2 onDoubleClick={handleNameDoubleClick} className="text-md font-semibold text-sky-400 truncate cursor-text flex-grow pr-2" title={`${blockInstance.name} (Double-click to rename)`}>
-                    {blockInstance.name}
-                </h2>
-            )}
-            <button
-              onClick={onClosePanel}
-              className="ml-2 text-gray-500 hover:text-white text-2xl leading-none p-1 -mr-1 -mt-1 rounded-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
-              aria-label="Close Detail Panel"
-            >&times;</button>
+          {isEditingName ? (
+            <input
+              ref={nameInputRef} type="text" value={editableName} onChange={handleNameChange}
+              onBlur={handleNameBlur} onKeyDown={handleNameKeyDown}
+              className="text-md font-semibold bg-gray-700 text-gray-100 border border-sky-500 rounded px-1.5 py-1 w-full focus:outline-none focus:ring-1 focus:ring-sky-500"
+              aria-label={`Edit name for block ${blockInstance.name}`}
+            />
+          ) : (
+            <h2 onDoubleClick={handleNameDoubleClick} className="text-md font-semibold text-sky-400 truncate cursor-text flex-grow pr-2" title={`${blockInstance.name} (Double-click to rename)`}>
+              {blockInstance.name}
+            </h2>
+          )}
+          <button
+            onClick={onClosePanel}
+            className="ml-2 text-gray-500 hover:text-white text-2xl leading-none p-1 -mr-1 -mt-1 rounded-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
+            aria-label="Close Detail Panel"
+          >&times;</button>
         </div>
         <p className="text-xs text-gray-500 italic leading-tight" title={blockDefinition.description || blockDefinition.name}>
           Type: {blockDefinition.name}
           {blockDefinition.description && <span className="line-clamp-2"> - {blockDefinition.description}</span>}
         </p>
         <div id="block-detail-tabs">
-         <CodeLogToggle 
-            currentView={currentViewInternal} 
-            onViewChange={setCurrentViewInternal} 
+          <CodeLogToggle
+            currentView={currentViewInternal}
+            onViewChange={setCurrentViewInternal}
             hasError={!!blockInstance.error}
             availableViews={availableViewsForToggle}
           />
@@ -441,10 +442,13 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ onClosePanel, selec
 
       <div className="p-3 border-t border-gray-700">
         <button
-            onClick={() => ctxDeleteBlockInstance(blockInstance.instanceId)} // Use context function
-            className="w-full bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
+          onClick={() => {
+            ctxDeleteBlockInstance(blockInstance.instanceId);
+            onDeleteBlockInstance();
+          }} // Use context function
+          className="w-full bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
         >
-            <TrashIcon className="w-4 h-4 mr-1.5" /> Delete Block
+          <TrashIcon className="w-4 h-4 mr-1.5" /> Delete Block
         </button>
       </div>
     </div>

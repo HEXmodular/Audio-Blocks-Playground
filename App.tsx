@@ -138,6 +138,9 @@ const App: React.FC = () => {
         onClosePanel={() => {
           setSelectedInstanceId(null);
         }}
+        onDeleteBlockInstance={() => {
+          setSelectedInstanceId(null);
+        }}
       />}
     </div>
   );
