@@ -3,46 +3,34 @@ import React, { useState, useEffect } from 'react';
 
 interface TrackerControlProps {
   rows: number;
-  cols: number;
-  data?: string[][];
-  onDataChange?: (data: string[][]) => void;
+  data?: string[];
+  onDataChange?: (data: string[]) => void;
   activeRow?: number;
 }
 
 const TrackerControl: React.FC<TrackerControlProps> = ({
   rows,
-  cols,
   data,
   onDataChange,
   activeRow,
 }) => {
-  const [grid, setGrid] = useState<string[][]>([]);
+  const [grid, setGrid] = useState<string[]>([]);
 
   useEffect(() => {
-    const newGrid = Array.from({ length: rows }, (_, r) =>
-      Array.from({ length: cols }, (_, c) => {
-        return data?.[r]?.[c] || '..';
-      })
-    );
+    const newGrid = Array.from({ length: rows }, (_, r) => data?.[r] || '..');
     setGrid(newGrid);
-  }, [rows, cols, data]);
+  }, [rows, data]);
 
   const handleNoteChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    rowIndex: number,
     colIndex: number
   ) => {
-    const newGrid = grid.map((row, rIdx) => {
-      if (rIdx === rowIndex) {
-        return row.map((cell, cIdx) => {
+    const newGrid = grid.map((cell, cIdx) => {
           if (cIdx === colIndex) {
             return e.target.value;
           }
           return cell;
         });
-      }
-      return row;
-    });
     setGrid(newGrid);
     if (onDataChange) {
       onDataChange(newGrid);
@@ -83,11 +71,10 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
 
   return (
     <div style={styles.container}>
-      {grid.map((row, rowIndex) => (
+      {grid.map((cell, rowIndex) => (
         <>
-          {row.map((cell, colIndex) => (
             <div
-              key={colIndex}
+              key={rowIndex}
               style={{
                 ...styles.cell,
                 ...(rowIndex === activeRow ? styles.activeCell : {}),
@@ -96,11 +83,10 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
               <input
                 type="text"
                 value={cell}
-                onChange={(e) => handleNoteChange(e, rowIndex, colIndex)}
+                onChange={(e) => handleNoteChange(e, rowIndex)}
                 style={styles.input}
               />
             </div>
-          ))}
         </>
       ))}
     </div>

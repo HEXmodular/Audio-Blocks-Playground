@@ -6,8 +6,7 @@ import { detect } from "@tonaljs/chord";
 import { MusicRNN } from '@magenta/music/es6/music_rnn';
 
 const DEFAULT_ROWS = 8;
-const DEFAULT_COLS = 1;
-const DEFAULT_DATA = Array.from({ length: DEFAULT_ROWS }, () => Array.from({ length: DEFAULT_COLS }, () => '..'));
+const DEFAULT_DATA = Array.from({ length: DEFAULT_ROWS }, () => '..');
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'native-tracker-v1',
@@ -30,14 +29,6 @@ const BLOCK_DEFINITION: BlockDefinition = {
             defaultValue: DEFAULT_ROWS,
             min: 1,
             max: 64,
-        },
-        {
-            id: 'cols',
-            name: 'Cols',
-            type: 'number_input',
-            defaultValue: DEFAULT_COLS,
-            min: 1,
-            max: 16,
         },
         {
             id: 'data',
@@ -72,10 +63,6 @@ const BLOCK_DEFINITION: BlockDefinition = {
     compactRendererId: 'tracker',
 };
 
-const rnn = new MusicRNN(
-    // 'https://storage.googleapis.com/download.magenta.tensorflow.org/tfjs_checkpoints/music_rnn/chord_pitches_improv'
-    'https://storage.googleapis.com/download.magenta.tensorflow.org/tfjs_checkpoints/music_rnn/basic_rnn'
-);
 
 interface TrackerInternalState {
     activeRow: number;
@@ -88,13 +75,17 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     private _emitter = new Emitter();
 
     private _activeRow: number = 0;
-    private _data: string[][] = DEFAULT_DATA;
+    private _data: string[] = DEFAULT_DATA;
     private _rows: number = DEFAULT_ROWS;
-    private _cols: number = DEFAULT_COLS;
     private _loop: boolean = false;
     private _loopPeriod: string = '8n';
     private _transportEventId?: number;
     private _instanceId?: string;
+
+    private _rnn = new MusicRNN(
+        // 'https://storage.googleapis.com/download.magenta.tensorflow.org/tfjs_checkpoints/music_rnn/chord_pitches_improv'
+        'https://storage.googleapis.com/download.magenta.tensorflow.org/tfjs_checkpoints/music_rnn/basic_rnn'
+    );
 
     public static getDefinition(): BlockDefinition {
         return BLOCK_DEFINITION;
@@ -104,7 +95,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         super();
         this._emitter.on('next', () => this.handleTriggerIn());
         this._emitter.on('reset', () => this.handleResetIn());
-        rnn?.initialize();
+        this._rnn?.initialize();
     }
 
     public emit(event: any, ...args: any[]) {
@@ -135,11 +126,6 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         const rowsParam = parameters.find(p => p.id === 'rows');
         if (rowsParam) {
             this._rows = rowsParam.currentValue;
-        }
-
-        const colsParam = parameters.find(p => p.id === 'cols');
-        if (colsParam) {
-            this._cols = colsParam.currentValue;
         }
 
         const loopParam = parameters.find(p => p.id === 'loop');
@@ -184,8 +170,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         try {
             const newGrid = JSON.parse(text);
             if (
-                !Array.isArray(newGrid) ||
-                !newGrid.every((row) => Array.isArray(row))
+                !Array.isArray(newGrid)
             ) {
                 return;
             }
@@ -197,18 +182,17 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
 
     private handleGenerate = async () => {
         let step = 1;
-        const notes = this._data
-            .flatMap((row, rowIndex) => row.map((cell, colIndex) => {
-                const dur = 1;
-                const note = {
-                    pitch: Tonal.Note.midi(cell),
-                    quantizedStartStep: step,
-                    quantizedEndStep: step + dur
-                };
-                step += dur;
-                return note;
-            }))
-            .filter(note => note.pitch !== null);
+        const notes = this._data.map((cell) => {
+            const dur = 1;
+            const note = {
+                pitch: Tonal.Note.midi(cell),
+                quantizedStartStep: step,
+                quantizedEndStep: step + dur
+            };
+            step += dur;
+            return note;
+        })
+            .filter(note => !!note.pitch);
 
         const seedSeq = {
             totalQuantizedSteps: notes[notes.length - 1].quantizedEndStep,
@@ -222,38 +206,14 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
 
         console.log(notes.map(n => Tonal.Note.pc(Tonal.Note.fromMidi(n.pitch))), chord)
 
-        const genSeq = await rnn.continueSequenceAndReturnProbabilities(seedSeq, 8, 0.5)
+        const genSeq = await this._rnn.continueSequenceAndReturnProbabilities(seedSeq, 8, 0.5)
 
         // if (!genSeq.notes) {
         //   return;
         // }
         console.log(genSeq);
         console.log(genSeq.probs.map(p => p.reduce((acc, curr) => acc > curr ? acc : curr, 0)));
-        // TransportTime, ("4:3:2") will also provide tempo and time signature relative times in the form BARS:QUARTERS:SIXTEENTHS
-        //   const part = new Tone.Part(((time, note) => {
-        //     // the notes given as the second element in the array
-        //     // will be passed in as the second argument
-        //     synth.triggerAttackRelease(note, "8n", time);
-        // }), [[0, "C2"], ["0:2", "C3"], ["0:3:2", "G2"]]).start(0);
-        // const stepsPerQuarter = genSeq?.quantizationInfo?.stepsPerQuarter || 1;
 
-        // const generatedSequence = genSeq.notes
-        //   .filter(n => typeof n.quantizedStartStep === 'number')
-        //   .map(n => ({
-        //     time: { "4n": n.quantizedStartStep / stepsPerQuarter },
-        //     note: n
-        //   }));
-
-        // const part = new Part(((time: number, note) => {
-        //   // тут нужно тригерить ноту или отправлять парт в аутпут
-        // }), generatedSequence).start(0);
-
-
-        // generatedSequence = generatedSequence.concat(this.seqToTickArray(genSeq));
-        // setTimeout(generateNext, generationIntervalTime * 1000);
-        // });
-        // }
-        // };
     };
 
     public handleResetIn(time?: number): void {
@@ -262,20 +222,11 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     }
 
     public handleTriggerIn(time?: number): void {
-        // debugger;
         this._activeRow = (this._activeRow + 1) % this._rows;
-        const currentRowData = this._data[this._activeRow];
-        if (currentRowData) {
-            currentRowData.forEach((note, colIndex) => {
-                if (note && note !== '..') {
-                    const noteData = { note, duration: '8n', time: time };
-                    // Assuming one note output for simplicity for now
-                    // In a real scenario, you might have multiple outputs or a different data structure
-                    if (colIndex === 0) {
-                        this._emitter.emit('note_out', noteData);
-                    }
-                }
-            });
+        const note = this._data[this._activeRow];
+        if (note && note !== '..') {
+            const noteData = { note, duration: '8n', time: time };
+            this._emitter.emit('note_out', noteData);
         }
 
         this._emitter.emit('on_step', true);
@@ -296,5 +247,6 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
             getTransport().clear(this._transportEventId);
         }
         this._emitter.dispose();
+        this._rnn?.dispose();
     }
 }
