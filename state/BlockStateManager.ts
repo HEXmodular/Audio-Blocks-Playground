@@ -14,6 +14,7 @@ const INITIAL_DEFINITIONS_FROM_CODE: BlockDefinition[] = [
 ];
 
 // --- Helper Functions (co-located with the class) ---
+// инициализирует текущие значения параметров из defaultValue при добавлении новых блоков
 export const deepCopyParametersAndEnsureTypes = (definitionParams: BlockParameter[]): BlockInstance['parameters'] => {
   return definitionParams?.map(paramDef => {
     // const typedDefaultValue = paramDef.defaultValue;
@@ -384,7 +385,7 @@ export class BlockStateManager {
       name: instanceName,
       position: position || { x: 50 + Math.random() * 200, y: 50 + Math.random() * 100 },
       logs: [`Instance '${instanceName}' created.`],
-      parameters: definition.parameters//deepCopyParametersAndEnsureTypes(definition.parameters),
+      parameters: deepCopyParametersAndEnsureTypes(definition.parameters), //definition.parameters причина выпила deepCopyParametersAndEnsureTypes неизвестна
     };
 
     this._blockInstances = [...this._blockInstances, newInstance];
