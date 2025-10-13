@@ -89,7 +89,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
         }));
       }
       // для отображения изменения параметров контролов
-      setBlockInstance({ ...prevInstance, parameters: updatedParams });
+      // setBlockInstance({ ...prevInstance, parameters: updatedParams });
       return { ...prevInstance, parameters: updatedParams };
     });
   };
