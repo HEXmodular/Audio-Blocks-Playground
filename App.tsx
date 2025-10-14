@@ -8,9 +8,11 @@ import { BlockInstance } from '@interfaces/block';
 import PubSubService from '@services/PubSubService';
 
 import './App.css';
+import AudioEngineService from './services/AudioEngineService';
 
 const App: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [engineStarted, setEngineStarted] = useState<boolean>(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>();
   const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>(BlockStateManager.getBlockInstances());
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -68,6 +70,11 @@ const App: React.FC = () => {
     setIsPanning(false);
   }, []);
 
+  const handleEngineStarted = useCallback(() => {
+    AudioEngineService.initialize(); 
+    setEngineStarted(true);
+  }, []);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handlePanMove(e);
     const handleMouseUp = () => handlePanEnd();
@@ -91,11 +98,19 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">
-      {globalError && (
+      {/* {globalError && (
         <div className="absolute top-0 left-0 right-0 bg-red-600 text-white p-2 text-center text-sm z-50">
           Global Error: {globalError} <button onClick={() => setGlobalError(null)}>&times;</button>
         </div>
+      )} */}
+
+      {!engineStarted && (
+        <div onClick={handleEngineStarted} className="engine-started">
+          <div className="engine-started-text" 
+          >Start Audio Engine</div>
+        </div>
       )}
+
       <Toolbar />
       <main
         className="flex-grow pt-14 relative"

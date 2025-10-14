@@ -129,7 +129,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
           } else {
             await Tone.start()
             Tone.getTransport().start();
-            AudioEngineService.initialize(); 
             // AudioEngineService.updateAudioGraphConnections(); // приводит к повторной установке соединений, и события в эммитерах задваиваются
             setToneTransportStatus(Tone.getTransport().state); // Update context state
             // await toneTransport.start();
