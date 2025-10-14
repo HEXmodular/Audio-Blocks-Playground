@@ -1,9 +1,10 @@
-import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@interfaces/block';
-import { Emitter, ToneAudioNode, getTransport, Time } from 'tone';
-import BlockStateManager from '@state/BlockStateManager';
 import * as Tonal from 'tonal';
 import { detect } from "@tonaljs/chord";
 import { MusicRNN } from '@magenta/music/es6/music_rnn';
+import { Emitter, ToneAudioNode, getTransport } from 'tone';
+
+import { BlockDefinition, BlockInstance, BlockParameter, NativeBlock } from '@interfaces/block';
+import BlockStateManager from '@state/BlockStateManager';
 
 const DEFAULT_ROWS = 8;
 const DEFAULT_DATA = Array.from({ length: DEFAULT_ROWS }, () => '..');
@@ -53,12 +54,14 @@ const BLOCK_DEFINITION: BlockDefinition = {
             name: 'Copy Pattern',
             label: '',
             type: 'button',
+            emitterId: 'copyPattern',
         },
         {
             id: 'pastePattern',
             name: 'Paste Pattern',
             label: '',
             type: 'button',
+            emitterId: 'pastePattern',
         },
 
     ],
@@ -97,6 +100,8 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         super();
         this._emitter.on('next', () => this.handleTriggerIn());
         this._emitter.on('reset', () => this.handleResetIn());
+        this._emitter.on('copyPattern', () => this.handleCopy());
+        this._emitter.on('pastePattern', () => this.handlePaste());
         this._rnn?.initialize();
     }
 
@@ -148,18 +153,6 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
                 }, this._loopPeriod);
             }
         }
-
-        const copyPatternParam = parameters.find(p => p.id === 'copyPattern');
-        if (copyPatternParam) {
-            console.log('copyPatternParam', copyPatternParam.currentValue);
-            this.handleCopy();
-        }
-
-        const pastePatternParam = parameters.find(p => p.id === 'pastePattern');
-        if (pastePatternParam) {
-            console.log('pastePatternParam', pastePatternParam.currentValue);
-            this.handlePaste();
-        }
     }
 
     private handleCopy = () => {
@@ -172,11 +165,12 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         try {
             const newGrid = JSON.parse(text);
             if (
-                !Array.isArray(newGrid)
+                !Array.isArray(newGrid) || !this._instanceId
             ) {
                 return;
             }
             this._data = newGrid;
+            BlockStateManager.updateBlockInstanceParameter(this._instanceId, 'data', newGrid);
         } catch (error) {
             console.error('Failed to parse clipboard data:', error);
         }

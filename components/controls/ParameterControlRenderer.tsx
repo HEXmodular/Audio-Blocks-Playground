@@ -8,7 +8,7 @@ export interface RenderParameterControlProps {
   param: BlockParameter;
   blockInstance: BlockInstance;
   blockDefinition: BlockDefinition;
-  handleParameterChange: (paramId: string, value: any) => void;
+  handleParameterChange: (paramId: string, value: any, emitterId?: string) => void;
   numberInputTextValues?: Record<string, string>;
   handleNumberInputTextChange?: (paramId: string, textValue: string) => void;
   processNumberInput?: (paramId: string) => void;
@@ -80,7 +80,7 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
         return (
             <button
               type="button"
-              onClick={() => handleParameterChange(param.id, "click")}
+              onClick={() => handleParameterChange(param.id, "click", param.emitterId)}
               className={`param-controls-toggle 
                 ${param.currentValue ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500'} 
                 ${param.currentValue && 'active'} 

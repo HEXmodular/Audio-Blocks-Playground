@@ -402,6 +402,15 @@ export class BlockStateManager {
     return newInstance;
   }
 
+  // для обновления одного параметра блока
+  public updateBlockInstanceParameter(instanceId: string, parameterId: string, value: any): void {
+    this._blockInstances = this._blockInstances.map(b =>
+      b?.instanceId === instanceId ? { ...b, parameters: b.parameters.map(p => p.id === parameterId ? { ...p, currentValue: value } : p) } : b
+    );
+    this._saveInstancesToLocalStorage();
+    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+  }
+
   // отправляет теперь только обновления, а не по каждому блоку
   public updateBlockInstance(instanceId: string, updates: Partial<BlockInstance> | ((prev: BlockInstance) => BlockInstance)): void {
     const originalBlock = this._blockInstances.find(b => b?.instanceId === instanceId);

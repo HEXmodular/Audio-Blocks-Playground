@@ -75,8 +75,16 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
   }
 
 
-  const handleParameterChange = (paramId: string, value: any) => {
+  const handleParameterChange = (paramId: string, value: any, emitterId?: string) => {
     if (!blockInstance) return;
+
+    // для блоков с не автоматизированными контролами, 
+    // например кнопки копирования и вставки данных в TrackerBlock
+    if (emitterId) {
+      blockInstance.instance?.emit?.(emitterId, value);
+      return;
+    }
+
     updateBlockInstance(blockInstance.instanceId, (prevInstance) => {
       const updatedParams = prevInstance.parameters.map(p =>
         p.id === paramId ? { ...p, currentValue: value } : p

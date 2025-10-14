@@ -22,7 +22,8 @@ export interface BlockParameter {
     defaultValue?: any; // чтобы были данные если загружается в первый раз
     description?: string;
     toneParam?: Partial<Param>; // для хранения значений типа минимума максимума
-    emitters?: { [inputId: string]: Emitter };
+    emitters?: { [inputId: string]: Emitter };  // TODO: зачем это?
+    emitterId?: string;     // для блоков с не автоматизированными контролами, например кнопки копирования и вставки данных в TrackerBlock
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
     isFrequency?: boolean;
@@ -105,6 +106,7 @@ export interface NativeBlock {
     updateFromBlockInstance: (instance: BlockInstance) => void;
     // getEmitter?: (outputId: string) => Tone.Emitter | undefined
     // setSubscription?: (subscription: { [inputId: string]: Tone.Emitter }) => void;
+    emit?: (event: any, ...args: any[]) => void;
 }
 export class WithEmitter {
     protected _emitter = new Emitter();
