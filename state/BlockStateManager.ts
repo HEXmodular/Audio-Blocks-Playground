@@ -68,7 +68,6 @@ export class BlockStateManager {
   private _initializationDone: boolean = false;
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
-  private _selectedBlockInstanceId: string | null = null; // Added selected instance ID state
 
   // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
   private _onInstanceChange(instance: BlockInstance): void {
@@ -460,7 +459,7 @@ export class BlockStateManager {
     );
 
     // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
-    if (this._onInstanceChange) this._onInstanceChange(updatedBlock);
+    if (this._onInstanceChange) this._onInstanceChange(updatedBlock);  
     this._saveInstancesToLocalStorage();
   }
 

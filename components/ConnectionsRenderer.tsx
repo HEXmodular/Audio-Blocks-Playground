@@ -7,7 +7,6 @@ import PubSubService from '@services/PubSubService';
 import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 
-import { BlockInstance } from '@interfaces/block';
 import { Connection } from '@interfaces/connection';
 
 const getPortElementCenterForConnectionLine = (
@@ -34,15 +33,11 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     const [retryAttemptsMap, setRetryAttemptsMap] = useState<Record<string, number>>({});
     const [, setForceUpdateKey] = useState<number>(0);
     const [pendingConnection, setPendingConnection] = useState(ConnectionDragHandler.pendingConnection)
-    const [blockInstances, setBlockInstances] = useState(BlockStateManager.getBlockInstances());
+    // const [blockInstances, setBlockInstances] = useState(BlockStateManager.getBlockInstances());
     const [connections, setConnections] = useState(ConnectionState.getConnections());
     
     PubSubService.subscribe('connections-changed', (connections: Connection[]) => {
         setConnections(connections);
-    })
-
-    PubSubService.subscribe('insctance-changed', (instances: BlockInstance[]) => {
-        setBlockInstances(instances);
     })
 
     const onUpdateConnections = ConnectionState.updateConnections;
@@ -58,6 +53,7 @@ const ConnectionsRenderer: React.FC<ConnectionsRendererProps> = ({
     return (
         <g>
             {connections.map(conn => {
+                const blockInstances = BlockStateManager.getBlockInstances();
                 const fromInstance = blockInstances.find(b => b?.instanceId === conn.fromInstanceId);
                 const toInstance = blockInstances.find(b => b?.instanceId === conn.toInstanceId);
                 if (!fromInstance || !toInstance) return null;
