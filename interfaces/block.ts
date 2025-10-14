@@ -16,7 +16,7 @@ export interface BlockParameter {
     options?: Array<{ value: string | number; label: string }>; // сейчас используется для передачи значений для select
     getOptionsAsync?: () => Promise<Array<{ value: string | number; label: string }>>;
     storage?: any;
-    min?: number; 
+    min?: number; // TODO: удалить
     max?: number; 
     currentValue?: any; // а это если какое-то значение уже было сохранено
     defaultValue?: any; // чтобы были данные если загружается в первый раз
@@ -26,6 +26,7 @@ export interface BlockParameter {
     step?: number; // минимальный шаг изменения значения для контрола
     // steps?: number; 
     isFrequency?: boolean;
+    label?: string;
 }
 
 // export type BlockParameter = BlockParameterBase;

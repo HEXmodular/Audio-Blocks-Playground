@@ -51,11 +51,13 @@ const BLOCK_DEFINITION: BlockDefinition = {
         {
             id: 'copyPattern',
             name: 'Copy Pattern',
+            label: '',
             type: 'button',
         },
         {
             id: 'pastePattern',
             name: 'Paste Pattern',
+            label: '',
             type: 'button',
         },
 

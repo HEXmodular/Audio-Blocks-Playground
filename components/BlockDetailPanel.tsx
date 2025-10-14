@@ -222,7 +222,9 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
           if (paramDef.type === 'internal') return null;
           return (
             <div key={paramDef.id}>
-              <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.name}</label>
+              {paramDef.label &&
+                <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.label || paramDef.name}</label>
+              }
               <RenderParameterControl
                 key={paramDef.id}
                 param={instanceParam}
