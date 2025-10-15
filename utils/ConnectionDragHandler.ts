@@ -125,10 +125,9 @@ class ConnectionDragHandler implements IConnectionDragHandler {
           let typesCompatible = false;
           if (sourcePortType === 'audio' && targetPortType === 'audio') typesCompatible = true;
           else if (
-            (sourcePortType === 'trigger' || sourcePortType === 'gate') &&
-            (targetPortType === 'trigger' || targetPortType === 'gate')
-          )
-            typesCompatible = true;
+            (['trigger', 'gate'].includes(sourcePortType)) &&
+            (['trigger', 'gate'].includes(targetPortType))
+          ) typesCompatible = true;
           else if (sourcePortType === 'number' && targetPortType === 'number') typesCompatible = true;
           else if (sourcePortType === 'number' && targetPortType === 'string') typesCompatible = true;
           else if (sourcePortType === 'string' && targetPortType === 'string') typesCompatible = true;

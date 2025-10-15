@@ -17,7 +17,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
     ],
     outputs: [
-        { id: 'output', name: 'Gate Output', type: 'number', description: 'Outputs the gate state of the current step.' },
+        { id: 'gate_change', name: 'Gate Output', type: 'gate', description: 'Outputs the gate state of the current step.' },
         { id: 'trigger_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
         // The 'sequence' output was typed as 'string', which is unusual for a boolean array.
         // If it's meant to be an event-based output of the current sequence array,
@@ -250,7 +250,6 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
     // or by the emitter handlers.
 
     public handleGateIn(isActive: boolean): void {
-        // console.log(`[StepSequencerBlock ${this._instance?.instanceId}] handleGateIn: ${isActive}`);
         if (this._isEnabled === isActive) return;
 
         this._isEnabled = isActive;
@@ -297,6 +296,9 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
             }, time || 0)
 
         }
+
+        this._emitter.emit('gate_change', this._sequence[this._currentStep] ?? false);
+
         this._emitter.emit('trigger_out'); // Emit void for trigger
     }
 

@@ -98,7 +98,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
 
     constructor() {
         super();
-        this._emitter.on('next', () => this.handleTriggerIn());
+        this._emitter.on('next', (payload) => {if (payload === true) this.handleTriggerIn()});
         this._emitter.on('reset', () => this.handleResetIn());
         this._emitter.on('copyPattern', () => this.handleCopy());
         this._emitter.on('pastePattern', () => this.handlePaste());
