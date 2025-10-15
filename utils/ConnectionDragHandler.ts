@@ -189,12 +189,23 @@ class ConnectionDragHandler implements IConnectionDragHandler {
             ? targetPortId
             : this.pendingConnection.fromPort.id,
         };
-        ConnectionState.updateConnections((prev) => {
-          const filtered = prev.filter(
-            (c) => !(c.toInstanceId === newConnection.toInstanceId && c.toInputId === newConnection.toInputId)
-          );
-          return [...filtered, newConnection];
-        });
+        
+        const toInstance = BlockStateManager.getBlockInstances().find(b => b.instanceId === newConnection.toInstanceId);
+        const toPort = toInstance?.definition.inputs.find(p => p.id === newConnection.toInputId);
+
+        const fromInstance = BlockStateManager.getBlockInstances().find(b => b.instanceId === newConnection.fromInstanceId);
+        const fromPort = fromInstance?.definition.outputs.find(p => p.id === newConnection.fromOutputId);
+
+        if (toPort?.type === 'audio' && fromPort?.type === 'audio') {
+          ConnectionState.updateConnections((prev) => [...prev, newConnection]);
+        } else {
+          ConnectionState.updateConnections((prev) => {
+            const filtered = prev.filter(
+              (c) => !(c.toInstanceId === newConnection.toInstanceId && c.toInputId === newConnection.toInputId)
+            );
+            return [...filtered, newConnection];
+          });
+        }
       }
       this.pendingConnection = null;
       this.draggedOverPort = null;
