@@ -107,7 +107,7 @@ const App: React.FC = () => {
       {!engineStarted && (
         <div onClick={handleEngineStarted} className="engine-started">
           <div className="engine-started-text" 
-          >Start Audio Engine</div>
+          >Click to start audio engine</div>
         </div>
       )}
 
