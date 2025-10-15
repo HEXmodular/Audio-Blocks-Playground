@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import styles from './TrackerControl.module.css';
 
 interface TrackerControlProps {
   rows: number;
@@ -26,67 +26,54 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
     colIndex: number
   ) => {
     const newGrid = grid.map((cell, cIdx) => {
-          if (cIdx === colIndex) {
-            return e.target.value;
-          }
-          return cell;
-        });
+      if (cIdx === colIndex) {
+        return e.target.value;
+      }
+      return cell;
+    });
     setGrid(newGrid);
     if (onDataChange) {
       onDataChange(newGrid);
     }
   };
 
-  const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-      fontFamily: 'monospace',
-      display: 'inline-block',
-      border: '1px solid #ccc',
-      padding: '10px',
-    },
-    table: {
-      borderCollapse: 'collapse',
-    },
-    cell: {
-      border: '1px solid #eee',
-      padding: '0',
-    },
-    activeCell: {
-      backgroundColor: '#d3e3ff',
-    },
-    input: {
-      width: '50px',
-      height: '25px',
-      textAlign: 'center',
-      border: 'none',
-      background: 'transparent',
-      fontFamily: 'monospace',
-    },
-    button: {
-      margin: '5px',
-      padding: '5px 10px',
-      fontFamily: 'monospace',
-    },
+  const handleFocus = (rowIndex: number) => {
+    if (grid[rowIndex] === '..') {
+      const newGrid = [...grid];
+      newGrid[rowIndex] = '';
+      setGrid(newGrid);
+    }
   };
 
+  const handleBlur = (rowIndex: number) => {
+    if (grid[rowIndex] === '') {
+      const newGrid = [...grid];
+      newGrid[rowIndex] = '..';
+      setGrid(newGrid);
+      if (onDataChange) {
+        onDataChange(newGrid);
+      }
+    }
+  };
+
+
   return (
-    <div style={styles.container}>
+    <div>
       {grid.map((cell, rowIndex) => (
         <>
-            <div
-              key={rowIndex}
-              style={{
-                ...styles.cell,
-                ...(rowIndex === activeRow ? styles.activeCell : {}),
-              }}
-            >
-              <input
-                type="text"
-                value={cell}
-                onChange={(e) => handleNoteChange(e, rowIndex)}
-                style={styles.input}
-              />
-            </div>
+          <div
+            key={rowIndex}
+            className={`${styles.cell} ${rowIndex === activeRow ? styles.activeCell : ''}`}
+          >
+            <input
+              type="text"
+              value={cell}
+              onChange={(e) => handleNoteChange(e, rowIndex)}
+              onFocus={() => handleFocus(rowIndex)}
+              onBlur={() => handleBlur(rowIndex)}
+              className={styles.input}
+            />
+          </div>
         </>
       ))}
     </div>
