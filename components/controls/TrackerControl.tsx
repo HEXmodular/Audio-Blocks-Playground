@@ -23,10 +23,10 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
 
   const handleNoteChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    colIndex: number
+    rowIndex: number
   ) => {
     const newGrid = grid.map((cell, cIdx) => {
-      if (cIdx === colIndex) {
+      if (cIdx === rowIndex) {
         return e.target.value;
       }
       return cell;

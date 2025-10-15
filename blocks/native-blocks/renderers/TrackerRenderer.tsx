@@ -14,10 +14,7 @@ const TrackerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockD
       return;
     }
 
-    BlockStateManager.updateBlockInstance(
-      blockInstance.instanceId,
-      { parameters: [{ ...dataParam, currentValue: newData }] }
-    );
+    BlockStateManager.updateBlockInstanceParameter(blockInstance.instanceId, 'data', newData);
   };
 
   const rows = rowsParam?.currentValue as number || 8;
