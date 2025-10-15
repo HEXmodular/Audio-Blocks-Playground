@@ -2,3 +2,13 @@
     padding: 4px 8px;
     width: 100%;
 }
+
+.param-controls-button {
+    padding: 4px 8px;
+    width: 100%;
+}
+
+.param-controls-button:active {
+    background-color: #007bff;
+    border-color: #007bff;
+}

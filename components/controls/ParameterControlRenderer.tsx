@@ -63,34 +63,31 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
       );
     case 'toggle':
       return (
-          <button
-            type="button"
-            onClick={() => handleParameterChange(param.id, !param.currentValue)}
-            className={`param-controls-toggle 
+        <button
+          type="button"
+          onClick={() => handleParameterChange(param.id, !param.currentValue)}
+          className={`param-controls-toggle 
               ${param.currentValue ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500'} 
               ${param.currentValue && 'active'} 
               rounded border-2`}
-            aria-pressed={param.currentValue}
-            aria-label={`${param.name} toggle`}
-          >
-            <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
-          </button>
+          aria-pressed={param.currentValue}
+          aria-label={`${param.name} toggle`}
+        >
+          <span className="text-xs">{param.currentValue ? 'On' : 'Off'}</span>
+        </button>
       );
-      case 'button':
-        return (
-            <button
-              type="button"
-              onClick={() => handleParameterChange(param.id, "click", param.emitterId)}
-              className={`param-controls-toggle 
-                ${param.currentValue ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500'} 
-                ${param.currentValue && 'active'} 
-                rounded border-2`}
-              aria-pressed={param.currentValue}
-              aria-label={`${param.name} toggle`}
-            >
-              <span className="text-xs">{param.name}</span>
-            </button>
-        );  
+    case 'button':
+      return (
+        <button
+          type="button"
+          onClick={() => handleParameterChange(param.id, "click", param.emitterId)}
+          className={`param-controls-button bg-gray-600 border-gray-500 rounded border-2`}
+          aria-pressed={param.currentValue}
+          aria-label={`${param.name} toggle`}
+        >
+          <span className="text-xs">{param.name}</span>
+        </button>
+      );
     case 'select':
 
       return (
