@@ -48,9 +48,9 @@ export class FreeverbBlock extends Tone.Freeverb implements NativeBlock {
                     }
                     break;
                 case 'dampening':
-                    // if (this.dampening.value !== Number(param.currentValue)) {
-                    //     this.dampening.value = 1; //Number(param.currentValue);
-                    // }
+                    if (this.dampening !== Number(param.currentValue)) {
+                        this.dampening = Number(param.currentValue);
+                    }
                     break;
                 case 'wet':
                     if (this.wet.value !== Number(param.currentValue)) {
