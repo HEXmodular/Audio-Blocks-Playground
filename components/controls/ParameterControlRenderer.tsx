@@ -155,14 +155,7 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
     }
     case 'step_sequencer_ui': {
       let stepsArray = Array.isArray(param.currentValue) ? param.currentValue : [];
-      const numStepsFromParamDef = Array.isArray(param.defaultValue) ? param.defaultValue.length : 4;
-      const displayNumSteps = numStepsFromParamDef;
 
-      if (stepsArray.length < displayNumSteps) {
-        stepsArray = [...stepsArray, ...Array(displayNumSteps - stepsArray.length).fill(false)];
-      } else if (stepsArray.length > displayNumSteps) {
-        stepsArray = stepsArray.slice(0, displayNumSteps);
-      }
 
       const currentStepIndexFromState = param?.storage?.currentStep || 0; //blockInstance.internalState?.currentStepIndex;
       // const isRule110TypeInitialPattern =
@@ -223,6 +216,7 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
                           ${stepStyle}`}
               aria-pressed={isPatternStepActive}
               aria-label={stepTitle}
+              key={index}
             />
           </div>
         );
@@ -231,8 +225,8 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
       return (
         <div>
           <div className={`flex flex-wrap ${isRule110TypeInitialPattern ? 'items-start' : 'items-end'}`} role="toolbar" aria-label={`${param.name} step sequencer`}>
-            {Array.from({ length: displayNumSteps }).map((_, index) => {
-              const isPatternStepActive = stepsArray[index] === true;
+            { stepsArray.map((step, index) => {
+              const isPatternStepActive = step === true;
               const isSequencerPlayingStep = index === currentStepIndexFromState && !isRule110TypeInitialPattern;
               return renderStepButton(index, isPatternStepActive, isSequencerPlayingStep);
             })}

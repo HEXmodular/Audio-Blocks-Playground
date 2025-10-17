@@ -249,14 +249,7 @@ export class BlockStateManager {
                 ? savedInstParam.currentValue
                 : defParamCopy.defaultValue;
             } else if (defParamCopy.type === 'step_sequencer_ui') {
-              if (Array.isArray(savedInstParam.currentValue) && savedInstParam.currentValue.every((v: any) => typeof v === 'boolean')) {
                 rehydratedCurrentValue = [...savedInstParam.currentValue];
-              } else if (Array.isArray(defParamCopy.defaultValue) && defParamCopy.defaultValue.every((v: any) => typeof v === 'boolean')) {
-                rehydratedCurrentValue = [...defParamCopy.defaultValue];
-              } else {
-                const numSteps = typeof defParamCopy.steps === 'number' && defParamCopy.steps > 0 ? defParamCopy.steps : 4;
-                rehydratedCurrentValue = Array(numSteps).fill(false);
-              }
             }
             return { ...defParamCopy, currentValue: rehydratedCurrentValue };
           }

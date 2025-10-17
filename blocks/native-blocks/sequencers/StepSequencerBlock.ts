@@ -191,26 +191,6 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
             }
         }
 
-        const stepsParam = parameters.find(p => p.id === 'steps');
-        if (stepsParam) {
-            const newNumSteps = Number(stepsParam.currentValue);
-            if (newNumSteps !== this._sequence.length) {
-                const oldSequence = [...this._sequence];
-                this._sequence = Array(newNumSteps).fill(false);
-                for (let i = 0; i < Math.min(newNumSteps, oldSequence.length); i++) {
-                    this._sequence[i] = oldSequence[i];
-                }
-                // Ensure currentStep is within new bounds
-                if (this._currentStep >= newNumSteps) {
-                    this._currentStep = 0;
-                }
-                // TODO: Consider if the 'sequence' parameter in BlockInstance
-                // also needs to be updated here if its source of truth is the UI
-                // and this change (from 'steps') should reflect back.
-                // This depends on the application's state management flow.
-            }
-        }
-
         const sequenceParam = parameters.find(p => p.id === 'sequence');
         if (sequenceParam && Array.isArray(sequenceParam.currentValue)) {
             // Only update if the sequence actually changed to avoid unnecessary processing
@@ -219,7 +199,26 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
                 // Ensure currentStep is within new bounds if sequence length changed
                 if (this._currentStep >= this._sequence.length) {
                     this._currentStep = 0;
+                    BlockStateManager.updateBlockInstanceParameter(this._instance.instanceId, 'currentStep', 0);
                 }
+            }
+        }
+        // update sequence after sequenceParam
+        const stepsParam = parameters.find(p => p.id === 'steps');
+        if (stepsParam) {
+            const newNumSteps = Number(stepsParam.currentValue);
+            if (newNumSteps !== this._sequence.length) {
+                const oldSequence = this._sequence;
+                this._sequence = Array(newNumSteps).fill(false);
+                for (let i = 0; i < Math.min(newNumSteps, oldSequence.length); i++) {
+                    this._sequence[i] = oldSequence[i];
+                }
+                // Ensure currentStep is within new bounds
+                if (this._currentStep >= newNumSteps) {
+                    this._currentStep = 0;
+                    BlockStateManager.updateBlockInstanceParameter(this._instance.instanceId, 'currentStep', 0);
+                }
+                BlockStateManager.updateBlockInstanceParameter(this._instance.instanceId, 'sequence', [...this._sequence]);
             }
         }
     }
@@ -241,6 +240,7 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
             this._sequence = [...state.sequence];
             if (this._currentStep >= this._sequence.length) {
                 this._currentStep = 0; // Reset if out of bounds
+                BlockStateManager.updateBlockInstanceParameter(this._instance.instanceId, 'currentStep', 0);
             }
         }
     }
