@@ -20,5 +20,12 @@
 [ ] интерфейс для ввода/вывода миди
 [ ] автоматизации чисто чтобы туда сюда их не гонять
 
-https://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-filehttps://github.com/j-p-higgins/SoundThread?tab=readme-ov-file
+[ ] сохранение темпа проекта
+[ ] обработка изменения количества шагов в секвенсоре
+[ ] для блоков без UI внутри отображать название коннекта
+[ ] библиотека визуального тестирования, что используется в гугл агенте для паралельного выполнения задач
+[ ] сетка для трекера
+[ ] перенос по 8 блоков в строку для трекера
 
+
+https://github.com/j-p-higgins/SoundThread?tab=readme-ov-file

@@ -9,11 +9,11 @@ import { createParameterDefinitions } from '@constants/constants';
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'tone-feedbackdelay-v1',
-    name: 'FeedbackDelay',
-    description: 'A Tone.js FeedbackDelay node.',
+    name: 'Feedback Delay',
+    description: 'A Feedback Delay node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.FeedbackDelay input.' },
+        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Feedback Delay input.' },
     ],
     outputs: [
         { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
