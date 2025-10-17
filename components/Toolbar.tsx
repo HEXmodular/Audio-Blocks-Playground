@@ -20,7 +20,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
   const [toneTransportStatus, setToneTransportStatus] = useState<string>(Tone.getTransport().state); // Initialize with Tone.js context state
-  const [bpm, setBpm] = useState<number>(Tone.getTransport().bpm.value);
+  const [bpm, setBpm] = useState<number>(AudioEngineService.getTransportBpm());
   const [timeSignature, setTimeSignature] = useState<[number, number]>(() => {
     const ts = Tone.getTransport().timeSignature;
     return Array.isArray(ts) ? [ts[0], ts[1]] : [ts, 4]; // Normalize to [beats, unit]
@@ -45,7 +45,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const handleBpmInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseFloat(event.target.value);
     if (!isNaN(newBpm)) {
-      Tone.getTransport().bpm.value = newBpm;
+      AudioEngineService.setTransportBpm(newBpm);
       setBpm(newBpm);
     }
   };

@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import AudioGraphConnectorService from '@services/AudioGraphConnectorService';
 import AudioNodeCreator from '@services/AudioNodeCreator';
+import GlobalStateManager from '@services/GlobalStateManager'; // Import GlobalStateManager
 
 import { AudioEngineState, OutputDevice } from '@interfaces/common';
 
@@ -57,6 +58,9 @@ class AudioEngineService {
         console.error('Tone.Transport is not available after context initialization.'); // Kept error
         throw new Error('Failed to initialize Tone.Transport.');
       }
+
+      // Set initial tempo from GlobalStateManager
+      Tone.getTransport().bpm.value = GlobalStateManager.getTempo();
 
       this.isAudioGloballyEnabled = true;
       // console.log(`[AudioEngineService initialize] Initialized successfully (node setup and connections handled by setupNodes). Tone.getContext().state: ${Tone.getContext().state}`); // REMOVED
@@ -233,9 +237,14 @@ class AudioEngineService {
     return Tone.getTransport().state;
   }
 
+  public getTransportBpm(): number {
+    return GlobalStateManager.getTempo();
+  }
+
   public setTransportBpm(bpm: number): void {
     try {
       Tone.getTransport().bpm.value = bpm;
+      GlobalStateManager.setTempo(bpm); // Save tempo to GlobalStateManager
       console.log(`Tone.Transport BPM set to ${bpm}.`);
     } catch (error) {
       console.error('Error setting Tone.Transport BPM:', error);
