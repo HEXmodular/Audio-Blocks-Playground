@@ -375,8 +375,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       <div
         style={{ minHeight: `calc(100% - ${COMPACT_BLOCK_HEADER_HEIGHT}px)`, position: 'relative' }} // Ensure body fills available space
       >
-        {CompactRendererComponent(blockDefinition.compactRendererId)}
-        {blockDefinition.category === 'container' && (
+        {CompactRendererComponent(blockDefinition?.compactRendererId)}
+        {blockDefinition?.category === 'container' && (
           <div className="">
             {childInstances.map(child => (
               <BlockInstanceComponent
