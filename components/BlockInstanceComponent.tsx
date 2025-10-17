@@ -301,29 +301,6 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
     }
   }, [isDragging, isResizing, handleInteractionEnd]);
 
-
-  if (!blockDefinition && blockInstance) {
-    // const errorBlockHeight = calculateBlockHeight(false); // Not used with current size state
-    return (
-      <div
-        style={{
-          transform: `translate(${position?.x}px, ${position?.y}px)`,
-          width: `${size.width}px`,
-          minHeight: `${size.height}px`,
-        }}
-        className="absolute bg-red-800 border-2 border-red-600 rounded-md shadow-lg p-3 text-white text-xs flex flex-col justify-center items-center"
-      >
-        <p className="text-center">Error: Def '{blockInstance.definitionId}' not found for '{blockInstance.name}'.</p>
-        <button
-          // onClick={() => onDeleteInstance(blockInstance.instanceId)}
-          className="mt-1.5 bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-xs js-interactive-element"
-        >
-          Delete
-        </button>
-      </div>
-    );
-  }
-
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
     const marginTop = 10;
