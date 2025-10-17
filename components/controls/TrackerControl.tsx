@@ -58,7 +58,7 @@ const TrackerControl: React.FC<TrackerControlProps> = ({
 
 
   return (
-    <div>
+    <div className={styles.trackerControlContainer}>
       {grid.map((cell, rowIndex) => (
         <>
           <div

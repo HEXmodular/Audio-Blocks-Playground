@@ -1,3 +1,9 @@
+.trackerControlContainer {
+  display: grid;
+  grid-template-rows: repeat(8, min-content); 
+  grid-auto-flow: column; 
+}
+
 .cell {
   border: 1px solid #eee;
   padding: 0;
