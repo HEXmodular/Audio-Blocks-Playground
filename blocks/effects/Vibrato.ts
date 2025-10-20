@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Vibrato input.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'frequency', name: 'Frequency', type: 'slider', toneParam: { minValue: 0, maxValue: 100 }, step: 0.1, defaultValue: 5, description: 'Vibrato frequency (Hz).' },

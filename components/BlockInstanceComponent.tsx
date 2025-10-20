@@ -70,6 +70,8 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
   const draggedOverPort = ConnectionDragHandler.draggedOverPort; // Renamed to avoid conflict with prop
   const onStartConnectionDrag = ConnectionDragHandler.handleStartConnectionDrag;
 
+  const isDefaltCompactRenderer = !blockDefinition?.compactRendererId || !compactRendererRegistry[blockDefinition?.compactRendererId];
+
   const { updateBlockInstance } = BlockStateManager;
 
   const childInstances = useMemo(() => {
@@ -303,9 +305,9 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
   const getPortY = (index: number, count: number, totalBlockHeight: number) => {
     const usableHeight = totalBlockHeight; //- COMPACT_BLOCK_HEADER_HEIGHT;
-    const marginTop = 10;
-    const portAreaHeight = usableHeight * 0.70;
-    if (count === 0) return marginTop + portAreaHeight / 2;
+    const marginTop = count >= 2 ?  22 : 10;
+    const portAreaHeight = usableHeight * 0.50;
+    // if (count === 0) return marginTop + portAreaHeight / 2;
     if (count === 1) return marginTop + portAreaHeight / 2;
     return marginTop + (portAreaHeight / (count - 1)) * index;
   };
@@ -426,7 +428,9 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             title={`Input: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
             onMouseDown={(e) => handlePortInteractionStart(e, port, false)}
             onTouchStart={(e) => handlePortInteractionStart(e, port, false)}
-          />
+          >
+            {isDefaltCompactRenderer ? <span className={styles.portInputName}>{port.name}</span> : null}
+          </div>
         );
       })}
 
@@ -455,7 +459,9 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
             title={`Output: ${port.name} (${port.type})${port.description ? ` - ${port.description}` : ''}`}
             onMouseDown={(e) => handlePortInteractionStart(e, port, true)}
             onTouchStart={(e) => handlePortInteractionStart(e, port, true)}
-          />
+          >
+            {isDefaltCompactRenderer ? <span className={styles.portOutputName}>{port.name}</span> : null}
+          </div>
         );
       })}
     </div>

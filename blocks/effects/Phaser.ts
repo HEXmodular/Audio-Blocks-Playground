@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Phaser input.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'frequency', name: 'Frequency', type: 'slider', toneParam: { minValue: 0, maxValue: 20 }, step: 0.1, defaultValue: 0.5, description: 'The speed of the phasing effect.' },

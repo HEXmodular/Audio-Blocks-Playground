@@ -45,4 +45,21 @@
     padding: 0 4px;
 }
 
+.portInputName, .portOutputName {
+    text-transform: uppercase;
+    font-size: 9px;
+    position: absolute;
+    width: 60px;
+    color: #9ca3af;
+}
+
+.portInputName {
+    margin-left: 15px;
+}
+
+.portOutputName {
+    margin-right: 15px;
+    left: -60px;
+    text-align: right;
+}
 

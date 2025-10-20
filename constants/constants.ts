@@ -44,7 +44,7 @@ BPM_FRACTIONS.sort((a, b) => b.value - a.value); // Sort from longest to shortes
 //     { id: 'number_in', name: 'Number In', type: 'number', description: 'Numeric value to output as constant audio.' }
 //   ],
 //   outputs: [
-//     { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Constant audio signal.' }
+//     { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Constant audio signal.' }
 //   ],
 //   parameters: createParameterDefinitions([
 //     { id: 'gain', name: 'Gain', type: 'slider', min: 0, max: 1, step: 0.01, defaultValue: 1, description: 'Gain applied to the constant audio signal.' },

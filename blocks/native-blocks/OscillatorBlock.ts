@@ -15,7 +15,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     { id: 'detune', name: 'Detune CV', type: 'audio', description: 'Modulates Oscillator detune.' }
   ],
   outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The generated audio signal.' }
+    { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'The generated audio signal.' }
   ],
   parameters: createParameterDefinitions([
     {

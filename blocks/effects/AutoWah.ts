@@ -18,7 +18,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         // TODO: Add CV inputs for parameters
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'baseFrequency', name: 'Base Frequency', type: 'slider', toneParam: { minValue: 20, maxValue: 20000 }, step: 1, defaultValue: 100, description: 'Base filter frequency.' },

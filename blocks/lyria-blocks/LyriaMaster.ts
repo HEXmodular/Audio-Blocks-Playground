@@ -36,7 +36,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     { id: 'prompts', name: 'Prompts In', type: 'string', description: 'Array of Lyria WeightedPrompt objects [{text: string, weight: number}]' },
   ],
   outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Generated audio from Lyria LiveMusicService.' }
+    { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Generated audio from Lyria LiveMusicService.' }
   ],
   parameters: createParameterDefinitions([
     { id: 'initial_prompt_text', name: 'Initial Prompt Text', type: 'text_input', defaultValue: 'cinematic lofi hip hop', description: 'Default text prompt for Lyria session.' },

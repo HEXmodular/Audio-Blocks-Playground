@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.JCReverb input.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'roomSize', name: 'Room Size', type: 'slider', toneParam: { minValue: 0, maxValue: 1 }, step: 0.01, defaultValue: 0.5, description: 'The room size (0-1).' },

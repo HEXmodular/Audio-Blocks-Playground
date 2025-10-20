@@ -226,7 +226,7 @@
 //     { id: 'rate_cv_in', name: 'Rate CV', type: 'audio', description: 'Controls update rate of the Rule 110 automaton (higher CV = faster updates).' }
 //   ],
 //   outputs: [
-//     { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Generated audio signal from the automaton.' }
+//     { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Generated audio signal from the automaton.' }
 //   ],
 //   parameters: createParameterDefinitions([
 //     { id: 'core_length', name: 'Core Length (N)', type: 'slider', min: 1, max: 16, step: 1, defaultValue: 8, description: 'Number of core cells for the automaton.' },

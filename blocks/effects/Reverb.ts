@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Reverb input.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'decay', name: 'Decay', type: 'slider', toneParam: { minValue: 0.001, maxValue: 10 }, step: 0.001, defaultValue: 1.5, description: 'Reverb decay time in seconds.' },

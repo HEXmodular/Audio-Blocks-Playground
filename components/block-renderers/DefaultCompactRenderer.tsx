@@ -13,9 +13,9 @@ const DefaultCompactRenderer: React.FC<CompactRendererProps> = ({ blockInstance,
       style={{ height: `${DEFAULT_PARAM_DISPLAY_HEIGHT}px` }}
       title={`Block: ${blockDefinition?.name} - Instance: ${blockInstance.name}`}
     >
-      <span className="text-[10px] text-gray-400 truncate">
+      {/* <span className="text-[10px] text-gray-400 truncate">
         {blockInstance.name}
-      </span>
+      </span> */}
       {/* You could add more default info here if desired, e.g., block type */}
       {/* <span className="text-[9px] text-gray-500 truncate ml-1">
         ({blockDefinition.name})

@@ -14,7 +14,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     // { id: 'frequency', name: 'Frequency', type: 'audio', description: 'Modulates synth frequency.' },
   ],
   outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The generated audio signal.' },
+    { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'The generated audio signal.' },
   ],
   parameters: createParameterDefinitions([
     {

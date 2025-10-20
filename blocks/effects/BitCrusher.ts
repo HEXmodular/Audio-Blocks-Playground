@@ -18,7 +18,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         // TODO: Add CV inputs for parameters
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'bits', name: 'Bits', type: 'slider', toneParam: { minValue: 1, maxValue: 16 }, step: 1, defaultValue: 4, description: 'Number of bits.' },

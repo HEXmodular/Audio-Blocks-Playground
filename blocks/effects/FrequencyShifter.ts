@@ -16,7 +16,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.FrequencyShifter input.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'frequency', name: 'Frequency', type: 'slider', toneParam: { minValue: -5000, maxValue: 5000 }, step: 1, defaultValue: 0, description: 'The frequency shift amount in Hz.' },

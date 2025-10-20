@@ -24,7 +24,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'gain', name: 'Gain CV', type: 'audio', description: 'Modulates filter gain.'}
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'frequency', name: 'Frequency', type: 'slider', toneParam: { minValue: 20, maxValue: 20000 }, step: 1, defaultValue: 350, description: 'Filter cutoff/center frequency in Hz.', isFrequency: true },

@@ -26,7 +26,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'wet', name: 'Wet CV', type: 'audio', description: 'Modulates wet/dry mix.' },
     ],
     outputs: [
-        { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'Output.' }
+        { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }
     ],
     parameters: createParameterDefinitions([
         { id: 'pitch', name: 'Pitch (Semitones)', type: 'slider', toneParam: { minValue: -24, maxValue: 24 }, step: 1, defaultValue: 0, description: 'Pitch shift amount in semitones.' },

@@ -13,7 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     { id: 'stop', name: 'Stop trigger In', type: 'trigger', description: 'Stops the recorded audio.' }
   ],
   outputs: [
-    { id: 'audio_out', name: 'Audio Output', type: 'audio', description: 'The recorded audio signal.' },
+    { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'The recorded audio signal.' },
   ],
   parameters: createParameterDefinitions([
     {
