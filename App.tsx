@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { getContext } from 'tone';
+
 import Toolbar from '@components/Toolbar';
 import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import BlockDetailPanel from '@components/BlockDetailPanel';
@@ -11,7 +13,9 @@ import './App.css';
 import AudioEngineService from './services/AudioEngineService';
 
 const App: React.FC = () => {
-  const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const isAudioContextSuspended =  getContext().state === 'suspended';
+
   const [engineStarted, setEngineStarted] = useState<boolean>(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>();
   const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>(BlockStateManager.getBlockInstances());
@@ -71,9 +75,13 @@ const App: React.FC = () => {
   }, []);
 
   const handleEngineStarted = useCallback(() => {
-    AudioEngineService.initialize(); 
+    AudioEngineService.initialize();
     setEngineStarted(true);
   }, []);
+
+  if (!isAudioContextSuspended && !engineStarted) {
+    handleEngineStarted();
+  }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handlePanMove(e);
@@ -106,7 +114,7 @@ const App: React.FC = () => {
 
       {!engineStarted && (
         <div onClick={handleEngineStarted} className="engine-started">
-          <div className="engine-started-text" 
+          <div className="engine-started-text"
           >Click to start audio engine</div>
         </div>
       )}
