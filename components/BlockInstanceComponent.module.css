@@ -47,7 +47,7 @@
 
 .portInputName, .portOutputName {
     text-transform: uppercase;
-    font-size: 9px;
+    font-size: 8px;
     position: absolute;
     width: 60px;
     color: #9ca3af;
