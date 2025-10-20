@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { BlockParameter, BlockInstance, BlockDefinition } from '@interfaces/block';
 
-import './ParameterControlRenderer.css';
+import styles from './ParameterControlRenderer.module.css';
 
 
 export interface RenderParameterControlProps {
@@ -66,9 +66,9 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
         <button
           type="button"
           onClick={() => handleParameterChange(param.id, !param.currentValue)}
-          className={`param-controls-toggle 
+          className={`${styles.paramControlsToggle} 
               ${param.currentValue ? 'bg-sky-500 border-sky-400' : 'bg-gray-600 border-gray-500'} 
-              ${param.currentValue && 'active'} 
+              ${param.currentValue && styles.active} 
               rounded border-2`}
           aria-pressed={param.currentValue}
           aria-label={`${param.name} toggle`}
@@ -81,7 +81,7 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
         <button
           type="button"
           onClick={() => handleParameterChange(param.id, "click", param.emitterId)}
-          className={`param-controls-button bg-gray-600 border-gray-500 rounded border-2`}
+          className={`${styles.paramControlsButton} bg-gray-600 border-gray-500 rounded border-2`}
           aria-pressed={param.currentValue}
           aria-label={`${param.name} toggle`}
         >

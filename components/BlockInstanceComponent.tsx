@@ -7,7 +7,7 @@ import BlockStateManager from '@state/BlockStateManager';
 import ConnectionDragHandler from '@utils/ConnectionDragHandler';
 import { debounce } from '@utils/utils';
 import { compactRendererRegistry } from '@/services/block-definitions/compactRendererRegistry';
-import './BlockInstanceComponent.css';
+import styles from './BlockInstanceComponent.module.css';
 
 const GRID_STEP = 20;
 const COMPACT_BLOCK_WIDTH = 120;
@@ -341,7 +341,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
         width: `${size.width}px`,
         minHeight: `${size.height}px`, // Use height from state
       }}
-      className={`block-instance-container ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
+      className={`${styles.blockInstanceContainer} ${isSelected ? styles.selected : ''} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''}`}
 
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
@@ -359,7 +359,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
       >
         <h3
           id={`${blockInstance.instanceId}-compact-name`}
-          className="block-instance-name"
+          className={styles.blockInstanceName}
           title={blockInstance.name}
         >
           {blockInstance.name}
@@ -393,7 +393,7 @@ const BlockInstanceComponent: React.FC<BlockInstanceComponentProps> = ({
 
       {/* Resize Handle */}
       <div
-        className="resize-handle"
+        className={styles.resizeHandle}
         onMouseDown={handleResizeMouseDown}
         onTouchStart={handleResizeTouchStart}
         title="Resize Block"

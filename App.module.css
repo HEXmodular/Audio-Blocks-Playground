@@ -1,12 +1,4 @@
-.grid-svg {
-  position: absolute;
-  /* top: 0;
-  left: 0; */
-  width: 200vw;
-  height: 200vh;
-}
-
-.engine-started {
+.engineStarted {
   position: absolute;
   top: 0;
   left: 0;

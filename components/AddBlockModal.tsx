@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Add useCallback
 import BlockStateManager from '@state/BlockStateManager';
 import { BlockDefinition } from '@interfaces/block';
-import './AddBlockModal.css';
+import styles from './AddBlockModal.module.css';
 
 // Local BlockDefinition interface removed, using imported one.
 
@@ -110,12 +110,12 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
                     <h3 className="text-xl font-semibold text-sky-300 mt-2 mb-3 sticky top-0 bg-gray-750 py-2 z-10"> {/* Adjusted padding and margin for header */}
                       {groupTitle.toUpperCase()}
                     </h3>
-                    <div className="block-group"
+                    <div className={styles.blockGroup}
                     // className="flex flex-wrap gap-3"
                     > {/* Changed to gap-3 for slightly more spacing */}
                       {blocksInGroup.map((def) => (
                         <div // Changed div to button for clickability and semantics
-                          className="block-title"
+                          className={styles.blockTitle}
                           key={def.id}
                           onClick={() => handleSelectBlock(def)}
                           // className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"

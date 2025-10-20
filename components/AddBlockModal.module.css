@@ -1,9 +1,8 @@
-.block-group {
+.blockGroup {
     column-count: 6;
     column-gap: 20px;
 }
 
-.block-title {
-    /* margin-bottom: 5px; */
+.blockTitle {
     cursor: pointer;
 }

@@ -9,7 +9,7 @@ import BlockStateManager from '@state/BlockStateManager';
 import { BlockInstance } from '@interfaces/block';
 import PubSubService from '@services/PubSubService';
 
-import './App.css';
+import styles from './App.module.css';
 import AudioEngineService from './services/AudioEngineService';
 
 const App: React.FC = () => {
@@ -113,8 +113,8 @@ const App: React.FC = () => {
       )} */}
 
       {!engineStarted && (
-        <div onClick={handleEngineStarted} className="engine-started">
-          <div className="engine-started-text"
+        <div onClick={handleEngineStarted} className={styles.engineStarted}>
+          <div className={styles.engineStartedText}
           >Click to start audio engine</div>
         </div>
       )}

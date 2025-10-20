@@ -1,5 +1,4 @@
-
-.block-instance-container {
+.blockInstanceContainer {
     user-select: none;
     background-color: #1f2937;
     border: 1px solid #374151;
@@ -12,7 +11,7 @@
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; /* Smooth transitions */
 }
 
-.resize-handle {
+.resizeHandle {
     position: absolute;
     bottom: 0;
     right: 0;
@@ -21,22 +20,22 @@
     cursor: se-resize;
 }
 
-.block-instance-container.selected {
+.blockInstanceContainer.selected {
     border-color: #3b82f6; /* Sky-400 */
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* Ring effect */
 }
 
-.block-instance-container.dragging {
+.blockInstanceContainer.dragging {
     cursor: grabbing;
     opacity: 0.8; /* Slight transparency when dragging */
 }
 
-.block-instance-container.resizing {
+.blockInstanceContainer.resizing {
     /* Optional: could change cursor for the whole block, but handle provides specific cursor */
 }
 
 
-.block-instance-name {
+.blockInstanceName {
     font-size: 9px;
     color: #fff;
     text-overflow: ellipsis;
