@@ -4,14 +4,14 @@ import { NativeBlock, BlockDefinition, BlockInstance } from '@interfaces/block';
 const BLOCK_DEFINITION: BlockDefinition = {
   id: 'tone-split-v1',
   name: 'Split',
-  description: 'Splits a stereo audio signal into two separate mono signals (left and right channels).',
+  description: 'Splits a stereo audio signal into two separate mono signals (left and R Channels).',
   category: 'i/o',
   inputs: [
     { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'The stereo audio signal to split.' }
   ],
   outputs: [
-    { id: 'left', name: 'Left Channel', type: 'audio', description: 'The left channel of the audio signal.' },
-    { id: 'right', name: 'Right Channel', type: 'audio', description: 'The right channel of the audio signal.' }
+    { id: 'left', name: 'L Channel', type: 'audio', description: 'The L Channel of the audio signal.' },
+    { id: 'right', name: 'R Channel', type: 'audio', description: 'The R Channel of the audio signal.' }
   ],
   parameters: [],
 };
