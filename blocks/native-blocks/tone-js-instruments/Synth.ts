@@ -8,8 +8,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   description: 'A basic synthesizer.',
   category: 'instrument',
   inputs: [
-        { id: 'note_in', name: 'Note In', type: 'note', description: 'Triggers the synth note.' },
-
+    { id: 'note_in', name: 'Note In', type: 'note', description: 'Triggers the synth note.' },
     // { id: 'gate', name: 'Gate', type: 'gate', description: 'Triggers the synth.' },
     // { id: 'frequency', name: 'Frequency', type: 'audio', description: 'Modulates synth frequency.' },
   ],
@@ -71,11 +70,20 @@ export class SynthBlock extends Synth implements NativeBlock {
     super();
 
     this._emitter.on('note_in', (data) => {
-      if (data) {
-        // this.triggerAttack(this.frequency.value);
-        this.triggerAttackRelease(data.note, data.duration, data.time);
-      } else {
+      // console.log("[SynthBlock] note_in", data);
+
+      // midi note on/off
+      if (data?.noteOn === true) {
+        this.triggerAttack(data.note);
+      }
+      else if (data?.noteOn === false) {
         this.triggerRelease();
+      }
+      // note from tracker with duration
+      else if (data?.duration) {
+        console.log("[SynthBlock] note_in with duration", data);
+
+        this.triggerAttackRelease(data.note, data.duration, data.time);
       }
     });
   }
@@ -83,12 +91,10 @@ export class SynthBlock extends Synth implements NativeBlock {
   public static getDefinition(): BlockDefinition {
     return BLOCK_DEFINITION;
   }
-
   public on(event: any, callback: (...args: any[]) => void) {
     this._emitter.on(event, callback);
     return this;
   }
-
   public emit(event: any, ...args: any[]) {
     this._emitter.emit(event, args?.[0]);
     return this;

@@ -36,12 +36,13 @@ import { TremoloBlock } from '@/blocks/effects/Tremolo';
 import { VibratoBlock } from '@/blocks/effects/Vibrato';
 import { ContainerBlock } from '@/blocks/native-blocks/ContainerBlock';
 import { LyriaMasterBlock } from '@blocks/lyria-blocks/LyriaMaster';
-import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
 import { ChaosBlock } from '@/blocks/8bit/ChaosBlock';
 import { NeuralArpeggiatorBlock } from '@/blocks/magenta/NeuralArpeggiatorBlock';
 import { MergeBlock } from '@/blocks/native-blocks/tone-js-components/MergeBlock';
 import { SynthBlock } from '@/blocks/native-blocks/tone-js-instruments/Synth';
 
+import { MidiCcInputBlock } from '@/blocks/midi/MidiCcInputBlock';
+import { MidiNoteInputBlock } from '@/blocks/midi/MidiNoteInputBlock';
 
 const BLOCK_HANDLERS: Map<string, any> = new Map([
     [AudioOutputBlock.getDefinition().id, AudioOutputBlock as any],
@@ -95,6 +96,7 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
 
     // midi
     [MidiCcInputBlock.getDefinition().id, MidiCcInputBlock as any],
+    [MidiNoteInputBlock.getDefinition().id, MidiNoteInputBlock as any],
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array
