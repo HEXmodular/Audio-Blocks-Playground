@@ -91,16 +91,32 @@ class AudioGraphConnectorService {
         || outputPortDef.type === 'number'
         || outputPortDef.type === 'note'
       ) {
-        // const emitter = fromInstance.instance?.getEmitter?.(conn.fromOutputId)
         fromInstance.instance?.on?.(conn.fromOutputId, (data: any) => {
-          toInstance.instance?.emit(conn.toInputId, data)
+          let outputValue = data;
+
+          // для преобразования значения сс в значение в диапазоне от minValue до maxValue
+          if (inputPortDef.type === 'сс') {
+            const toneParam = toDef.parameters.find(p => p.id === conn.toInputId)?.toneParam
+            if (!toneParam || !toneParam.minValue || !toneParam.maxValue) return;
+
+            outputValue = toneParam?.minValue + (toneParam?.maxValue - toneParam?.minValue) * data
+          }
+
+          toInstance.instance?.emit?.(conn.toInputId, outputValue)
         })
+
         return;
-      } else if (outputPortDef.type === 'audio' && ['audio', 'number'].includes(inputPortDef.type)) {
+      } else if (['audio', 'сс'].includes(outputPortDef.type) && ['audio', 'number'].includes(inputPortDef.type)) {
         const sourceNode = fromInstance.instance?.output as ConnectableSource | undefined;//fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
 
         if (!sourceNode) return;
 
+        let scale;
+        if (outputPortDef.type === 'сс') {
+          const toneParam = toDef.parameters.find(p => p.id === conn.toInputId)?.toneParam
+          if (!toneParam || !toneParam.minValue || !toneParam.maxValue) return;
+          scale = new Tone.Scale(toneParam?.minValue, toneParam?.maxValue);
+        }
 
         const targetParam = (toInstance.instance as any)?.[inputPortDef.id] as ConnectableParam | undefined;
 
@@ -112,7 +128,13 @@ class AudioGraphConnectorService {
 
         if (sourceNode && targetParam) {
           try {
-            (sourceNode as any).connect(targetParam as any);
+            // для преобразования значения в диапазоне от minValue до maxValue
+            if (scale) {
+              sourceNode.connect(scale as any);
+              scale.connect(targetParam as any);
+            } else {
+              (sourceNode as any).connect(targetParam as any);
+            }
             console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target param ${inputPortDef.id} of ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
             newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetParam: targetParam });
           } catch (e) {

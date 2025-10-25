@@ -1,9 +1,10 @@
-
-import { BlockDefinition, BlockInstance, NativeBlock, WithEmitter } from '@interfaces/block';
-import { createParameterDefinitions } from '@constants/constants';
-import { Midi } from 'tone';
+import { Emitter, Signal } from 'tone';
 import { WebMidi } from 'webmidi';
+import { BlockDefinition, BlockInstance } from '@interfaces/block';
+import { createParameterDefinitions } from '@constants/constants';
 import BlockStateManager from '@state/BlockStateManager';
+
+const DEFAULT_MIDI_DEVICE = null;
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'midi-cc-input-v1',
@@ -12,21 +13,23 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'Receives MIDI CC messages and outputs their value.',
     inputs: [],
     outputs: [
-        { id: 'value', name: 'Value', type: 'number', description: 'The CC value.' },
+        { id: 'value', name: 'Value', type: 'сс', description: 'The CC value.' },
     ],
     parameters: createParameterDefinitions([
         {
             id: 'midiDevice',
             name: 'MIDI Device',
             type: 'select',
-            defaultValue: 'default',
+            defaultValue: DEFAULT_MIDI_DEVICE,
             options: [], // This will be populated dynamically
             getOptionsAsync: async () => {
                 await WebMidi.enable()
-                return WebMidi.inputs.map(input => ({
-                    value: input.id,
-                    label: input.name,
-                }));
+                return WebMidi.inputs ?
+                    WebMidi.inputs.map(input => ({
+                        value: input.id,
+                        label: input.name,
+                    }))
+                    : [{ value: "", label: "" }];
             },
             description: 'The MIDI input device.'
         },
@@ -40,30 +43,28 @@ const BLOCK_DEFINITION: BlockDefinition = {
     ]),
 };
 
-export class MidiCcInputBlock extends WithEmitter implements NativeBlock {
-    name = BLOCK_DEFINITION.name;
-    input = undefined;
-    output = undefined;
+export class MidiCcInputBlock extends Signal {
+    readonly name = BLOCK_DEFINITION.name;
 
+    private _instanceId: string | null = null;
     private _ccNumber: number;
     private _midiDevice: string;
     private _listener: any;
+
+    private emitter = new Emitter();
 
     constructor() {
         super();
         this._ccNumber = BLOCK_DEFINITION.parameters.find(p => p.id === 'ccNumber')?.defaultValue as number;
         this._midiDevice = BLOCK_DEFINITION.parameters.find(p => p.id === 'midiDevice')?.defaultValue as string;
-        this.enableMidi();
+
     }
 
     public static getDefinition(): BlockDefinition {
         const definition = { ...BLOCK_DEFINITION };
-        console.log("👩‍🦳 [MidiCcInputBlock] definition", definition);
         if (WebMidi.enabled) {
             const midiDeviceParam = definition.parameters.find(p => p.id === 'midiDevice');
-            console.log("👩‍🦳 [MidiCcInputBlock] midiDeviceParam", midiDeviceParam);
             if (midiDeviceParam) {
-                console.log("👩‍🦳 [MidiCcInputBlock] WebMidi.inputs", WebMidi.inputs);
                 midiDeviceParam.options = WebMidi.inputs.map(input => ({
                     value: input.id,
                     label: input.name,
@@ -74,19 +75,20 @@ export class MidiCcInputBlock extends WithEmitter implements NativeBlock {
     }
 
     private enableMidi() {
-        if (WebMidi.enabled) {
-            this.setupControlChangeListener();
-        } else {
-            WebMidi.enable()
-                .then(() => {
-                    console.log('WebMidi enabled');
-                    // console.log("👩‍🦳 [MidiCcInputBlock] WebMidi.inputs", WebMidi.inputs);
-                    this.setupControlChangeListener();
-                })
-                .catch(err => {
-                    console.error('WebMidi could not be enabled.', err);
-                });
-        }
+        WebMidi.enable()
+            .then(() => {
+                if (!WebMidi.inputs.length) {
+                    return
+                }
+                if (this._midiDevice === DEFAULT_MIDI_DEVICE && this._instanceId !== null) {
+                    this._midiDevice = WebMidi.inputs[0].id;
+                    BlockStateManager.updateBlockInstanceParameter(this._instanceId, 'midiDevice', this._midiDevice);
+                }
+                this.setupControlChangeListener();
+            })
+            .catch(err => {
+                console.error('WebMidi could not be enabled.', err);
+            });
     }
 
     private setupControlChangeListener() {
@@ -94,36 +96,26 @@ export class MidiCcInputBlock extends WithEmitter implements NativeBlock {
         if (input) {
             this._listener = input.addListener('controlchange', e => {
                 if (e.controller.number === this._ccNumber) {
-                    this.emit('value', e.value);
+                    this.emitter.emit ('value', e.value);
+                    this.value = Number(e.value);
                 }
             });
         }
     }
 
     public updateFromBlockInstance(instance: BlockInstance): void {
+        if (!instance.instanceId) {
+            return
+        }
+
+        this._instanceId = instance.instanceId;
+        this.enableMidi();
+
         if (instance.parameters) {
 
             const midiDeviceParam = instance.parameters.find(p => p.id === 'midiDevice');
             const ccNumberParam = instance.parameters.find(p => p.id === 'ccNumber');
 
-            // if (WebMidi.enabled) {
-
-            //     const currentMidiDevices = WebMidi.inputs.map(input => ({
-            //         value: input.id,
-            //         label: input.name,
-            //     }))
-            //     const previousMidiDevices = midiDeviceParam?.options
-            //     debugger
-            //     if (JSON.stringify(previousMidiDevices) !== JSON.stringify(currentMidiDevices)) {
-            //         BlockStateManager.updateBlockInstance(instance.instanceId, {
-            //             parameters: [ccNumberParam,
-            //             {
-            //                 ...midiDeviceParam,
-            //                 options: currentMidiDevices
-            //             }]
-            //         });
-            //     }
-            // }
 
             if (ccNumberParam) {
                 this._ccNumber = Number(ccNumberParam.currentValue);
