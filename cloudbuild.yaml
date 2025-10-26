@@ -1,0 +1,28 @@
+steps:
+  # Шаг 1: Сборка Docker-образа
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/react-frontend:$COMMIT_SHA', '.']
+
+  # Шаг 2: Отправка Docker-образа в Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/react-frontend:$COMMIT_SHA']
+
+  # Шаг 3: Развертывание в Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'react-frontend-service' # Имя вашего сервиса Cloud Run
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/react-frontend:$COMMIT_SHA'
+      - '--region'
+      - 'YOUR_CLOUD_RUN_REGION' # Например, us-central1
+      - '--platform'
+      - 'managed'
+      # - '--allow-unauthenticated' # Раскомментируйте, если сервис должен быть публичным
+      # - '--port=8080' # Укажите порт, если ваш Nginx слушает не 8080
+      # - '--memory=256Mi' # Опционально: настройте объем памяти
+      # - '--cpu=1' # Опционально: настройте количество ядер CPU
+images:
+  - 'gcr.io/$PROJECT_ID/react-frontend:$COMMIT_SHA'
