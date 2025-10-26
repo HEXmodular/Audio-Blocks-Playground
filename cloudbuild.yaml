@@ -17,11 +17,11 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/react-frontend:$COMMIT_SHA'
       - '--region'
-      - 'YOUR_CLOUD_RUN_REGION' # Например, us-central1
+      - 'europe-north1' # Например, us-central1
       - '--platform'
       - 'managed'
-      # - '--allow-unauthenticated' # Раскомментируйте, если сервис должен быть публичным
-      # - '--port=8080' # Укажите порт, если ваш Nginx слушает не 8080
+      - '--allow-unauthenticated' # Раскомментируйте, если сервис должен быть публичным
+      - '--port=80' # Укажите порт, если ваш Nginx слушает не 8080
       # - '--memory=256Mi' # Опционально: настройте объем памяти
       # - '--cpu=1' # Опционально: настройте количество ядер CPU
 images:

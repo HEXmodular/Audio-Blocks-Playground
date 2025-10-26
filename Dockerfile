@@ -16,7 +16,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Скопируйте собранные статические файлы из этапа сборки в директорию Nginx
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /dist /usr/share/nginx/html
 
 # Опционально: скопируйте вашу пользовательскую конфигурацию Nginx
 # Если у вас есть файл nginx.conf в корне проекта:
