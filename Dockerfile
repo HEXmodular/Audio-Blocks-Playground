@@ -1,5 +1,5 @@
 # Этап сборки: Сборка React-приложения
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Скопируйте собранные статические файлы из этапа сборки в директорию Nginx
-COPY --from=builder /dist /usr/share/nginx/html
+COPY dist /usr/share/nginx/html
 
 # Опционально: скопируйте вашу пользовательскую конфигурацию Nginx
 # Если у вас есть файл nginx.conf в корне проекта:
