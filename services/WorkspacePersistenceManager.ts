@@ -36,11 +36,16 @@ class WorkspacePersistenceManager {
     public exportWorkspace = () => {
         const workspace = {
             blockDefinitions: this.blockStateManager.getBlockDefinitions().filter(def => def.isAiGenerated),
-            blockInstances: this.blockStateManager.getBlockInstances(),
+            blockInstances: this.blockStateManager.getBlockInstances().map(inst => ({
+                ...inst,
+                instance: null,
+                lastChanges: null,
+            })),
             connections: this.connectionState.getConnections(),
             globalBpm: Tone.getTransport().bpm.value, // Get BPM directly from Tone.Transport
             selectedSinkId: this.audioEngineService.selectedSinkId,
         };
+        console.log("Workspace:", workspace.blockInstances);
         const jsonString = JSON.stringify(workspace, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const href = URL.createObjectURL(blob);
