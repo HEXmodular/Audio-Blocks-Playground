@@ -433,7 +433,7 @@ export class BlockStateManager {
     updatedBlock = { 
       ...originalBlock, 
       ...changes,
-      lastChanges: changes
+      // lastChanges: changes
     };
 
     // Handle parentId changes

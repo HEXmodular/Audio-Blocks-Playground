@@ -45,7 +45,6 @@ class WorkspacePersistenceManager {
             globalBpm: Tone.getTransport().bpm.value, // Get BPM directly from Tone.Transport
             selectedSinkId: this.audioEngineService.selectedSinkId,
         };
-        console.log("Workspace:", workspace.blockInstances);
         const jsonString = JSON.stringify(workspace, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const href = URL.createObjectURL(blob);

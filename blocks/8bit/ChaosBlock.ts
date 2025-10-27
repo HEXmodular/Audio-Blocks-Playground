@@ -114,6 +114,8 @@ export class ChaosBlock implements NativeBlock {
     // }
 
     // Check if there are any changes to process
+        
+    // no more lastChanges
     if (!instance.lastChanges) {
       return;
     }

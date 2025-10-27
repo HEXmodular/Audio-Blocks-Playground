@@ -110,6 +110,7 @@ export class NeuralArpeggiatorBlock implements NativeBlock {
       return;
     }
 
+    // no more lastChanges
     if (!instance.lastChanges) {
       return;
     }
