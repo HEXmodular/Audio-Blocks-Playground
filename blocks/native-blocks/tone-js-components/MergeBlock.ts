@@ -7,8 +7,8 @@ const BLOCK_DEFINITION: BlockDefinition = {
   description: 'Merges two mono audio signals into a stereo signal.',
   category: 'i/o',
   inputs: [
-    { id: 'left', name: 'L Channel', type: 'audio', description: 'The L Channel of the audio signal.' },
-    { id: 'right', name: 'R Channel', type: 'audio', description: 'The R Channel of the audio signal.' }
+    { id: 'left', name: 'Left', type: 'audio', description: 'The L Channel of the audio signal.' },
+    { id: 'right', name: 'Right', type: 'audio', description: 'The R Channel of the audio signal.' }
   ],
   outputs: [
     { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'The stereo audio signal.' },
