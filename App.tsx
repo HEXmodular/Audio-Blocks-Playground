@@ -46,13 +46,10 @@ const App: React.FC = () => {
     // hide detail panel
     if ((e.target as HTMLElement).closest('#main-workspace-area')) {
       setSelectedInstanceId(null);
-      return;
     }
     if ((e.target as HTMLElement).closest('[data-instance-id]')) {
       return;
     }
-    e.preventDefault();
-    e.stopPropagation();
     setIsPanning(true);
     const point = 'touches' in e ? e.touches[0] : e;
     setPanStart({
