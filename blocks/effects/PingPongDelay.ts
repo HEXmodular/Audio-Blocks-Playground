@@ -13,7 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Tone.js PingPongDelay node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.PingPongDelay input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Tone.PingPongDelay input.' },
     ],
     outputs: [
         { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }

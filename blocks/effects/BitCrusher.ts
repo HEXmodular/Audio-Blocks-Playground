@@ -14,7 +14,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Tone.js BitCrusher node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.BitCrusher input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Tone.BitCrusher input.' },
         // TODO: Add CV inputs for parameters
     ],
     outputs: [

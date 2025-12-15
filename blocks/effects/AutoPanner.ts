@@ -14,7 +14,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Tone.js AutoPanner node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.AutoPanner input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Tone.AutoPanner input.' },
         // TODO: Add CV inputs for parameters
     ],
     outputs: [

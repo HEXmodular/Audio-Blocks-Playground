@@ -19,7 +19,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Tone.js PitchShift node, for near-realtime pitch shifting.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.PitchShift input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Tone.PitchShift input.' },
         { id: 'pitch', name: 'Pitch', type: 'number', description: 'Modulates pitch shift amount (semitones).' },
         { id: 'windowSize', name: 'Delay Time', type: 'number', description: 'Modulates delay time.' },
         { id: 'feedback', name: 'Feedback', type: 'number', description: 'Modulates feedback amount.' },

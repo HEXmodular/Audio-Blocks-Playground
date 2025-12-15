@@ -15,7 +15,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     category: 'i/o',
     description: 'Outputs the incoming audio signal.',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to output.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Signal to output.' },
         // { id: 'volume_cv_in', name: 'Volume CV', type: 'audio', description: 'Modulates output volume.', audioParamTarget: 'volume' }
     ],
     outputs: [],

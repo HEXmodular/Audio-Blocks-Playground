@@ -7,11 +7,11 @@ const BLOCK_DEFINITION: BlockDefinition = {
   description: 'Splits a stereo audio signal into two separate mono signals (left and R Channels).',
   category: 'i/o',
   inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'The stereo audio signal to split.' }
+    { id: 'audio_in', name: 'Audio', type: 'audio', description: 'The stereo audio signal to split.' }
   ],
   outputs: [
-    { id: 'left', name: 'L Channel', type: 'audio', description: 'The L Channel of the audio signal.' },
-    { id: 'right', name: 'R Channel', type: 'audio', description: 'The R Channel of the audio signal.' }
+    { id: 'left', name: 'Left', type: 'audio', description: 'The L Channel of the audio signal.' },
+    { id: 'right', name: 'Right', type: 'audio', description: 'The R Channel of the audio signal.' }
   ],
   parameters: [],
 };

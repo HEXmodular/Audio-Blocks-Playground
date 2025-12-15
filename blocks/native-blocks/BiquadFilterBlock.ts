@@ -15,7 +15,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Filter, providing various filter types.',
     category: 'filter',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Filter input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Filter input.' },
         // For CV inputs, we need to ensure they are represented in the definition
         // if AudioGraphConnectorService relies on this for creating connections.
         // The getCvInput method will provide the actual Tone.Param/Signal.

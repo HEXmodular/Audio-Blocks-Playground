@@ -13,7 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Tone.js Reverb node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Tone.Reverb input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Tone.Reverb input.' },
     ],
     outputs: [
         { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }

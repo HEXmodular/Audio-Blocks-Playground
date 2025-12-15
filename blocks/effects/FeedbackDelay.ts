@@ -13,7 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A Feedback Delay node.',
     category: 'effects',
     inputs: [
-        { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Connects to Feedback Delay input.' },
+        { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Connects to Feedback Delay input.' },
     ],
     outputs: [
         { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'Output.' }

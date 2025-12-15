@@ -12,7 +12,7 @@
 //         id: 'analyser-oscilloscope-v1',
 //         name: 'Oscilloscope (Analyser)',
 //         description: 'Visualizes an audio signal waveform using a native AnalyserNode. The UI is shown in the block detail panel.',
-//         inputs: [ { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'Signal to visualize.' } ],
+//         inputs: [ { id: 'audio_in', name: 'Audio', type: 'audio', description: 'Signal to visualize.' } ],
 //         outputs: [],
 //         parameters: createParameterDefinitions([
 //           {

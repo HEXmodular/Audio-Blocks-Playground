@@ -8,7 +8,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   description: 'Records audio from its input and allows downloading the result.',
   category: 'i/o',
   inputs: [
-    { id: 'audio_in', name: 'Audio Input', type: 'audio', description: 'The audio signal to record.' },
+    { id: 'audio_in', name: 'Audio', type: 'audio', description: 'The audio signal to record.' },
     { id: 'play', name: 'Play trigger In', type: 'trigger', description: 'Plays the recorded audio.' },
     { id: 'stop', name: 'Stop trigger In', type: 'trigger', description: 'Stops the recorded audio.' }
   ],
