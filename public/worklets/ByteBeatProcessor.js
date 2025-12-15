@@ -69,11 +69,11 @@ class ByteBeatProcessor extends AudioWorkletProcessor {
       for (let i = 0; i < outputChannel.length; i++) {
         // Evaluate the formula at the current time `this.t`
         // The result is typically a byte (0-255), so we scale it to the -1 to 1 range for audio.
-        const value = formulaFn(this.t);
+        const value = formulaFn(this.t * step);
         outputChannel[i] = (value & 0xFF) / 128.0 - 1.0;
 
         // Increment time `t` based on the 8000Hz fixed rate, adapted for the current block processing.
-        this.t += step;
+        this.t += 1;
       }
     } catch (e) {
       console.error(`[ByteBeatProcessor] Error evaluating formula: "${this.formula}"`, e);
