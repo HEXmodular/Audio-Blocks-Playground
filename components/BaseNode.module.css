@@ -1,0 +1,29 @@
+.node {
+  min-width: 160px;
+  min-height: 60px;
+  font-size: 12px;
+  text-transform: uppercase;
+
+  border: 1px solid white;
+  border-radius: 4px;
+  background-color: #374151;
+}
+
+.header {
+  text-align: center;
+  background-color: #0ea5e9;
+}
+
+.portIn, .portOut{
+  position: relative;
+  font-size: 10px;
+}
+
+.portIn {
+  padding-left: 8px;
+}
+
+.portOut {
+  text-align: right;
+  padding-right: 8px;
+}

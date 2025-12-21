@@ -69,6 +69,17 @@ export class BlockStateManager {
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
 
+  private _onInstanceAdded(instance: BlockInstance): void {
+    // console.log("[BlockStateManager] _onInstancesChange", instances);
+      if (!instance.instance) {
+        // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+        return;
+      }
+      instance.instance.updateFromBlockInstance(instance);
+      // console.log('[BlockStateManager] _onInstanceChange', instance);
+    PubSubService.publish('insctance-added', [instance]);
+  }
+
   // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
   private _onInstanceChange(instance: BlockInstance): void {
     // console.log("[BlockStateManager] _onInstancesChange", instances);
@@ -391,7 +402,7 @@ export class BlockStateManager {
     }
 
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    this._onInstanceAdded(newInstance);
     return newInstance;
   }
 
@@ -491,7 +502,7 @@ export class BlockStateManager {
   public setAllBlockInstances(newInstances: BlockInstance[]): void {
     this._blockInstances = newInstances;
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    // if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
   }
 
   public setAllBlockDefinitions(newDefinitions: BlockDefinition[]): void {

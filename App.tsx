@@ -1,75 +1,98 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getContext } from 'tone';
+import {
+  ReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  reconnectEdge,
+  Background,
+  BackgroundVariant
+} from '@xyflow/react';
 
 import Toolbar from '@components/Toolbar';
-import BlockInstanceComponent from '@components/BlockInstanceComponent';
 import BlockDetailPanel from '@components/BlockDetailPanel';
-import ConnectionsRenderer from '@components/ConnectionsRenderer';
-import BlockStateManager from '@state/BlockStateManager';
+import BaseNode from '@components/BaseNode';
+
+import { Connection } from '@interfaces/connection';
 import { BlockInstance } from '@interfaces/block';
+
+import BlockStateManager from '@state/BlockStateManager';
+
+import ConnectionState from '@services/ConnectionState';
 import PubSubService from '@services/PubSubService';
+import AudioEngineService from '@services/AudioEngineService';
 
 import styles from './App.module.css';
-import AudioEngineService from './services/AudioEngineService';
+import '@xyflow/react/dist/style.css';
+
+const nodeTypes = {
+  base: BaseNode,
+};
 
 const App: React.FC = () => {
-
-  const isAudioContextSuspended =  getContext().state === 'suspended';
+  const edgeReconnectSuccessful = useRef(true);
+  const isAudioContextSuspended = getContext().state === 'suspended';
 
   const [engineStarted, setEngineStarted] = useState<boolean>(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>();
-  const [appBlockInstances, setAppBlockInstances] = useState<BlockInstance[]>(BlockStateManager.getBlockInstances());
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
+
+  const updateNodes = (appBlockInstances: BlockInstance[]) => {
+    setNodes(appBlockInstances
+      .filter(instance => instance.instanceId)
+      .map(instance => ({
+        id: instance.instanceId,
+        position: { x: instance.position?.x, y: instance.position?.y },
+        data: { label: instance.name, definition: instance.definition },
+        type: 'base'
+      })))
+  };
+
+  // TODO сделать адаптер для перевода из разных форматов
+  const updateEdges = (connections: Connection[]) => {
+    setEdges(connections?.map(connection => ({
+      id: connection.id,
+      source: connection.fromInstanceId,
+      target: connection.toInstanceId,
+      sourceHandle: connection.fromOutputId,
+      targetHandle: connection.toInputId,
+    })));
+  }
 
   useEffect(() => {
-    setAppBlockInstances(BlockStateManager.getBlockInstances());
-  }, [BlockStateManager.getBlockInstances()]);
+    updateNodes(BlockStateManager.getBlockInstances());
+    updateEdges(ConnectionState.getConnections());
+  }, []);
+
+  // useEffect(() => {
+  //   updateNodes(BlockStateManager.getBlockInstances());
+  // }, [BlockStateManager.getBlockInstances()]);
 
   // механизм для обновления только одного блока
   PubSubService.subscribe('insctance-changed', (instance: BlockInstance) => {
-    if (instance === undefined) {
-      debugger
-      return;
+    // if (instance === undefined) {
+    //   debugger
+    //   return;
+    // }
+    if (!instance.instanceId) return;
+    const node = {
+      id: instance.instanceId,
+      position: { x: instance.position?.x, y: instance.position?.y },
+      data: { label: instance.name, definition: instance.definition },
+      type: 'base'
     }
-    setAppBlockInstances([...appBlockInstances, instance]);
+    setNodes([...nodes, node]);
   });
 
-  PubSubService.subscribe('insctances-changed', (instances: BlockInstance[]) => {
-    setAppBlockInstances(instances);
-  });
+  // PubSubService.subscribe('insctances-changed', (instances: BlockInstance[]) => {
+  //   updateNodes(instances);
+  // });
 
-  const handlePanStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    // click on main workspace area
-    // hide detail panel
-    if ((e.target as HTMLElement).closest('#main-workspace-area')) {
-      setSelectedInstanceId(null);
-    }
-    if ((e.target as HTMLElement).closest('[data-instance-id]')) {
-      return;
-    }
-    setIsPanning(true);
-    const point = 'touches' in e ? e.touches[0] : e;
-    setPanStart({
-      x: point.clientX - panOffset.x,
-      y: point.clientY - panOffset.y,
-    });
-  }, [panOffset]);
-
-  const handlePanMove = useCallback((e: MouseEvent | TouchEvent) => {
-    if (isPanning) {
-      const point = 'touches' in e ? e.touches[0] : e;
-      const newX = point.clientX - panStart.x;
-      const newY = point.clientY - panStart.y;
-      setPanOffset({ x: newX, y: newY });
-    }
-  }, [isPanning, panStart]);
-
-  const handlePanEnd = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  PubSubService.subscribe('connections-changed', (connections: Connection[]) => {
+    // console.log("connections-changed", connections);
+  })
 
   const handleEngineStarted = useCallback(() => {
     AudioEngineService.initialize();
@@ -80,34 +103,71 @@ const App: React.FC = () => {
     handleEngineStarted();
   }
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => handlePanMove(e);
-    const handleMouseUp = () => handlePanEnd();
-    const handleTouchMove = (e: TouchEvent) => handlePanMove(e);
-    const handleTouchEnd = () => handlePanEnd();
+  const onNodesChange = useCallback(
+    (changes: any) => setNodes((nodesSnapshot) => {
+      const nodes = applyNodeChanges(changes, nodesSnapshot)
 
-    if (isPanning) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('touchend', handleTouchEnd);
+      const positionChange =  changes.find((change: any) => change.type === 'position')
+      if (!positionChange) return nodes;
+
+      const {id, position} = positionChange;
+      BlockStateManager.updateBlockInstance(id, {position})
+
+      return nodes
+    }), [],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: any) => setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
+    [],
+  );
+
+  const updateConnections = (edges) => {
+    const connections = edges.map(connection => ({
+      id: connection.id,
+      fromInstanceId: connection.source,
+      toInstanceId: connection.target,
+      fromOutputId: connection.sourceHandle,
+      toInputId: connection.targetHandle,
+    }))
+    ConnectionState.updateConnections(connections);
+  }
+
+  const onConnect = useCallback(
+    (params) => setEdges((edgesSnapshot) => {
+      const edges = addEdge(params, edgesSnapshot)
+      updateConnections(edges);
+      return edges
+    }), [],
+  );
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  const onReconnect = useCallback((oldEdge, newConnection) => {
+    edgeReconnectSuccessful.current = true;
+    setEdges((els) => {
+      const edges = reconnectEdge(oldEdge, newConnection, els)
+      updateConnections(edges);
+      return els;
+    });
+  }, []);
+
+  const onReconnectEnd = useCallback((_, edge) => {
+    if (!edgeReconnectSuccessful.current) {
+      setEdges((eds) => {
+        const edges = eds.filter((e) => e.id !== edge.id)
+        updateConnections(edges);
+        return edges;
+      });
     }
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isPanning, handlePanMove, handlePanEnd]);
+    edgeReconnectSuccessful.current = true;
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 relative overflow-hidden">
-      {/* {globalError && (
-        <div className="absolute top-0 left-0 right-0 bg-red-600 text-white p-2 text-center text-sm z-50">
-          Global Error: {globalError} <button onClick={() => setGlobalError(null)}>&times;</button>
-        </div>
-      )} */}
 
       {!engineStarted && (
         <div onClick={handleEngineStarted} className={styles.engineStarted}>
@@ -117,41 +177,23 @@ const App: React.FC = () => {
       )}
 
       <Toolbar />
-      <main
-        className="flex-grow pt-14 relative"
-        id="main-workspace-area"
-        onMouseDown={handlePanStart}
-        onTouchStart={handlePanStart}
-      >
-        <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none">
-          <ConnectionsRenderer
-            svgRef={svgRef as React.RefObject<SVGSVGElement>}
-          />
-          <defs>
-            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform={`translate(${panOffset.x % 20},${panOffset.y % 20})`}>
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="lightgray" strokeWidth="0.1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-
-        <div
-          className="absolute top-0 left-0"
-          style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}
+      <div style={{ width: '100vw', height: '100vh' }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onReconnect={onReconnect}
+          onReconnectStart={onReconnectStart}
+          onReconnectEnd={onReconnectEnd}
+          snapToGrid
+          fitView
         >
-          {appBlockInstances.filter(instance => instance).map(instance => (
-            <BlockInstanceComponent
-              key={instance.instanceId}
-              blockInstance={instance}
-              isSelected={instance.instanceId == selectedInstanceId}
-              onSelect={(id: string | null) => {
-                if (selectedInstanceId === id) return;
-                setSelectedInstanceId(id);
-              }}
-            />
-          ))}
-        </div>
-      </main>
+          <Background color="#999" variant={BackgroundVariant.Dots} />
+        </ReactFlow>
+      </div>
 
       {selectedInstanceId && <BlockDetailPanel
         selectedInstanceId={selectedInstanceId}
