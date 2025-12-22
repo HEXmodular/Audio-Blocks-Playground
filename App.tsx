@@ -199,6 +199,16 @@ const App: React.FC = () => {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          onSelectionChange={({nodes, edges}) => {
+            if (nodes.length === 0) {
+              setSelectedInstanceId(null);
+              return;
+            }
+            if (nodes.length === 1) {
+              setSelectedInstanceId(nodes[0].id);
+              return;
+            }
+          }}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
