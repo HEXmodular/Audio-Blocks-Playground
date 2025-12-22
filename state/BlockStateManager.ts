@@ -69,15 +69,12 @@ export class BlockStateManager {
   private _debouncedSaveInstances: () => void;
   private _debouncedSaveDefinitions: () => void;
 
-  private _onInstanceAdded(instance: BlockInstance): void {
-    // console.log("[BlockStateManager] _onInstancesChange", instances);
-      // if (!instance.instance) {
-      //   // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
-      //   return;
-      // }
-      // instance.instance.updateFromBlockInstance(instance);
-      // console.log('[BlockStateManager] _onInstanceAdded', instance);
-    PubSubService.publish('insctance-added', instance);
+  private _onInstanceCreate(instance: BlockInstance): void {
+    PubSubService.publish('instance-created', instance);
+  }
+
+  private _onInstanceDelete(instance: BlockInstance): void {
+    PubSubService.publish('instance-delete', instance);
   }
 
   // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
@@ -89,7 +86,7 @@ export class BlockStateManager {
       }
       instance.instance.updateFromBlockInstance(instance);
       // console.log('[BlockStateManager] _onInstanceChange', instance);
-    PubSubService.publish('insctance-changed', [instance]);
+    PubSubService.publish('instance-changed', [instance]);
   }
 
   private _onInstancesChange(instances: BlockInstance[]): void {
@@ -101,7 +98,7 @@ export class BlockStateManager {
       }
       instance.instance.updateFromBlockInstance(instance);
     });
-    PubSubService.publish('insctance-changed', [...this._blockInstances]);
+    PubSubService.publish('instance-changed', [...this._blockInstances]);
   }
 
   public static getInstance(): BlockStateManager {
@@ -402,7 +399,7 @@ export class BlockStateManager {
     }
 
     this._saveInstancesToLocalStorage();
-    this._onInstanceAdded(newInstance);
+    this._onInstanceCreate(newInstance);
     return newInstance;
   }
 
@@ -497,6 +494,7 @@ export class BlockStateManager {
     this._blockInstances = this._blockInstances.filter(b => b?.instanceId !== instanceId);
     this._saveInstancesToLocalStorage();
     if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    this._onInstanceDelete(blockToDelete);
   }
 
   public setAllBlockInstances(newInstances: BlockInstance[]): void {

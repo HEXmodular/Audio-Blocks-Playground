@@ -72,7 +72,7 @@ const App: React.FC = () => {
 
   // TODO переписать на адаптер и вынести общий код
   // механизм для обновления только одного блока
-  PubSubService.subscribe('insctance-changed', (instance: BlockInstance) => {
+  PubSubService.subscribe('instance-changed', (instance: BlockInstance) => {
     // if (instance === undefined) {
     //   debugger
     //   return;
@@ -87,7 +87,7 @@ const App: React.FC = () => {
     setNodes([...nodes, node]);
   });
 
-  PubSubService.subscribe('insctance-added', (instance: BlockInstance) => {
+  PubSubService.subscribe('instance-created', (instance: BlockInstance) => {
     // if (instance === undefined) {
     //   debugger
     //   return;
@@ -101,9 +101,14 @@ const App: React.FC = () => {
     }
     setNodes([...nodes, node]);
   });
-  
 
-  // PubSubService.subscribe('insctances-changed', (instances: BlockInstance[]) => {
+  PubSubService.subscribe('instance-delete', (instance: BlockInstance) => {
+    if (!instance.instanceId) return;
+    setNodes(nodes.filter(n => n.id !== instance.instanceId));
+  })
+
+
+  // PubSubService.subscribe('instances-changed', (instances: BlockInstance[]) => {
   //   updateNodes(instances);
   // });
 
