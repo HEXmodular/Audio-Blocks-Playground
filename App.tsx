@@ -70,6 +70,7 @@ const App: React.FC = () => {
   //   updateNodes(BlockStateManager.getBlockInstances());
   // }, [BlockStateManager.getBlockInstances()]);
 
+  // TODO переписать на адаптер и вынести общий код
   // механизм для обновления только одного блока
   PubSubService.subscribe('insctance-changed', (instance: BlockInstance) => {
     // if (instance === undefined) {
@@ -85,6 +86,22 @@ const App: React.FC = () => {
     }
     setNodes([...nodes, node]);
   });
+
+  PubSubService.subscribe('insctance-added', (instance: BlockInstance) => {
+    // if (instance === undefined) {
+    //   debugger
+    //   return;
+    // }
+    if (!instance.instanceId) return;
+    const node = {
+      id: instance.instanceId,
+      position: { x: instance.position?.x, y: instance.position?.y },
+      data: { label: instance.name, definition: instance.definition },
+      type: 'base'
+    }
+    setNodes([...nodes, node]);
+  });
+  
 
   // PubSubService.subscribe('insctances-changed', (instances: BlockInstance[]) => {
   //   updateNodes(instances);

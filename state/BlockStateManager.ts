@@ -71,13 +71,13 @@ export class BlockStateManager {
 
   private _onInstanceAdded(instance: BlockInstance): void {
     // console.log("[BlockStateManager] _onInstancesChange", instances);
-      if (!instance.instance) {
-        // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
-        return;
-      }
-      instance.instance.updateFromBlockInstance(instance);
-      // console.log('[BlockStateManager] _onInstanceChange', instance);
-    PubSubService.publish('insctance-added', [instance]);
+      // if (!instance.instance) {
+      //   // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+      //   return;
+      // }
+      // instance.instance.updateFromBlockInstance(instance);
+      // console.log('[BlockStateManager] _onInstanceAdded', instance);
+    PubSubService.publish('insctance-added', instance);
   }
 
   // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
