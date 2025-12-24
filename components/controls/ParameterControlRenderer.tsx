@@ -89,7 +89,6 @@ export const RenderParameterControl = (props: RenderParameterControlProps): Reac
         </button>
       );
     case 'select':
-
       return (
         <select
           id={`${blockInstance.instanceId}-${param.id}-panel-control`}

@@ -266,11 +266,11 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
     }
 
     public handleResetIn(time?: number) {
-        this.handleTriggerIn(time, true );
+        this.handleTriggerIn(time, true);
     }
 
     // next step
-    public handleTriggerIn(time?: number, isReset?: boolean ): void { // time parameter is from Transport callback
+    public handleTriggerIn(time?: number, isReset?: boolean): void { // time parameter is from Transport callback
         // console.log(`[StepSequencerBlock ${this._instance?.instanceId}] handleTriggerIn. Enabled: ${this._isEnabled}, Loop: ${this._loop}, Transport: ${Transport.state}`);
 
         // If looping, only advance if Tone.Transport is started.
@@ -286,13 +286,18 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
 
         this._currentStep = (this._currentStep + 1) % this._sequence.length;
         if (this._instance) {
+            // для хранения текущего шага секвенсора добавлено свойство storage.currentStep
             this._instance.parameters = this._instance.parameters.map(param =>
                 param.id === 'sequence' ? ({ ...param, storage: { ...param.storage, currentStep: isReset ? 0 : this._currentStep } }) : param
             );
 
-            // синхранизирует с моментом следующей отрисовки
+            const sequenceParam = this._instance.parameters.find(param => param.id === 'sequence')
+
+            // синхронизирует с моментом следующей отрисовки
             getDraw().schedule(() => {
-                BlockStateManager.updateBlockInstance(this._instance.instanceId, { parameters: this._instance.parameters }); // Use context function
+                // в качестве коммуникации между компонентом реакта отвечающим за отрисовку и этим классом, управляющим всей логикой
+                // я выбрал события для отправки через эммитер
+                this._emitter.emit('step_change', { ...sequenceParam });
             }, time || 0)
 
         }

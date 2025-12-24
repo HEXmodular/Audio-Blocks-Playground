@@ -7,7 +7,8 @@ import {
   addEdge,
   reconnectEdge,
   Background,
-  BackgroundVariant
+  BackgroundVariant,
+  Edge
 } from '@xyflow/react';
 
 import Toolbar from '@components/Toolbar';
@@ -45,7 +46,7 @@ const App: React.FC = () => {
       .map(instance => ({
         id: instance.instanceId,
         position: { x: instance.position?.x, y: instance.position?.y },
-        data: { label: instance.name, definition: instance.definition },
+        data: { label: instance.name, definition: instance.definition, instance},
         type: 'base'
       })))
   };
@@ -81,7 +82,7 @@ const App: React.FC = () => {
     const node = {
       id: instance.instanceId,
       position: { x: instance.position?.x, y: instance.position?.y },
-      data: { label: instance.name, definition: instance.definition },
+      data: { label: instance.name, definition: instance.definition, instance},
       type: 'base'
     }
     setNodes([...nodes, node]);
@@ -144,13 +145,13 @@ const App: React.FC = () => {
     [],
   );
 
-  const updateConnections = (edges) => {
+  const updateConnections = (edges: Edge[]) => {
     const connections = edges.map(connection => ({
       id: connection.id,
       fromInstanceId: connection.source,
       toInstanceId: connection.target,
-      fromOutputId: connection.sourceHandle,
-      toInputId: connection.targetHandle,
+      fromOutputId: connection.sourceHandle as string,
+      toInputId: connection.targetHandle as string,
     }))
     ConnectionState.updateConnections(connections);
   }
@@ -205,16 +206,21 @@ const App: React.FC = () => {
           edges={edges}
           nodeTypes={nodeTypes}
           onSelectionChange={({nodes, edges}) => {
-            if (nodes.length === 0) {
-              setSelectedInstanceId(null);
-              return;
-            }
-            if (nodes.length === 1) {
-              setSelectedInstanceId(nodes[0].id);
-              return;
-            }
+            console.log("onSelectionChange", nodes, edges);
+            // if (nodes.length === 0) {
+            //   setSelectedInstanceId(null);
+            //   return;
+            // }
+            // if (nodes.length === 1) {
+            //   setSelectedInstanceId(nodes[0].id);
+            //   return;
+            // }
           }}
           onNodesChange={onNodesChange}
+          onNodeClick={(event, node) => {
+            console.log("onNodeClick", node);
+            setSelectedInstanceId(node.id);
+          }}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onReconnect={onReconnect}

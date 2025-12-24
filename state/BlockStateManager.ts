@@ -80,13 +80,24 @@ export class BlockStateManager {
   // для обработки только одного блока, чтобы не обновлялись вообще все блоки 
   private _onInstanceChange(instance: BlockInstance): void {
     // console.log("[BlockStateManager] _onInstancesChange", instances);
-      if (!instance.instance) {
-        // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
-        return;
-      }
-      instance.instance.updateFromBlockInstance(instance);
-      // console.log('[BlockStateManager] _onInstanceChange', instance);
-    PubSubService.publish('instance-changed', [instance]);
+    if (!instance.instance) {
+      // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+      return;
+    }
+    instance.instance.updateFromBlockInstance(instance);
+    // console.log('[BlockStateManager] _onInstanceChange', instance);
+    PubSubService.publish('instance-changed', instance);
+  }
+
+  // для обновления параметров данных внутри блока, исключение позиция блока
+  private _onInstanceParameterChange(instance: BlockInstance): void {
+    // console.log("[BlockStateManager] _onInstancesChange", instances);
+    if (!instance.instance) {
+      // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+      return;
+    }
+    instance.instance.updateFromBlockInstance(instance);
+    PubSubService.publish('instance-parameter-changed', instance);
   }
 
   private _onInstancesChange(instances: BlockInstance[]): void {
@@ -98,7 +109,7 @@ export class BlockStateManager {
       }
       instance.instance.updateFromBlockInstance(instance);
     });
-    PubSubService.publish('instance-changed', [...this._blockInstances]);
+    PubSubService.publish('instances-changed', [...this._blockInstances]);
   }
 
   public static getInstance(): BlockStateManager {
@@ -241,27 +252,32 @@ export class BlockStateManager {
       if (definition) {
         const paramsFromDef = deepCopyParametersAndEnsureTypes(definition.parameters);
         instanceParams = paramsFromDef?.map(defParamCopy => {
-          const savedInstParam = loadedInst?.parameters?.find((p: any) => p.id === defParamCopy.id);
-          if (savedInstParam && savedInstParam.currentValue !== undefined) {
-            let rehydratedCurrentValue = savedInstParam.currentValue;
-            // Type coercion for loaded parameter values
-            if (defParamCopy.type === 'slider' || defParamCopy.type === 'knob' || defParamCopy.type === 'number_input') {
-              const parsedSaved = parseFloat(savedInstParam.currentValue as string);
-              rehydratedCurrentValue = isNaN(parsedSaved) ? defParamCopy.defaultValue : parsedSaved;
-            } else if (defParamCopy.type === 'toggle') {
-              rehydratedCurrentValue = typeof savedInstParam.currentValue === 'boolean'
-                ? savedInstParam.currentValue
-                : (String(savedInstParam.currentValue).toLowerCase() === 'true');
-            } else if (defParamCopy.type === 'select') {
-              rehydratedCurrentValue = defParamCopy.options?.find(opt => opt.value === savedInstParam.currentValue)
-                ? savedInstParam.currentValue
-                : defParamCopy.defaultValue;
-            } else if (defParamCopy.type === 'step_sequencer_ui') {
+          try {
+            const savedInstParam = loadedInst?.parameters?.find((p: any) => p.id === defParamCopy.id);
+            if (savedInstParam && savedInstParam.currentValue !== undefined) {
+              let rehydratedCurrentValue = savedInstParam.currentValue;
+              // Type coercion for loaded parameter values
+              if (defParamCopy.type === 'slider' || defParamCopy.type === 'knob' || defParamCopy.type === 'number_input') {
+                const parsedSaved = parseFloat(savedInstParam.currentValue as string);
+                rehydratedCurrentValue = isNaN(parsedSaved) ? defParamCopy.defaultValue : parsedSaved;
+              } else if (defParamCopy.type === 'toggle') {
+                rehydratedCurrentValue = typeof savedInstParam.currentValue === 'boolean'
+                  ? savedInstParam.currentValue
+                  : (String(savedInstParam.currentValue).toLowerCase() === 'true');
+              } else if (defParamCopy.type === 'select') {
+                rehydratedCurrentValue = defParamCopy.options?.find(opt => opt.value === savedInstParam.currentValue)
+                  ? savedInstParam.currentValue
+                  : defParamCopy.defaultValue;
+              } else if (defParamCopy.type === 'step_sequencer_ui') {
                 rehydratedCurrentValue = [...savedInstParam.currentValue];
+              }
+              return { ...defParamCopy, currentValue: rehydratedCurrentValue };
             }
-            return { ...defParamCopy, currentValue: rehydratedCurrentValue };
+            return defParamCopy; // If no saved value or value is undefined, return the definition's default
+          } catch (error) {
+            console.warn(`[👨🏿‍💼 BlockStateManager]: Error processing parameter ${defParamCopy.id} for instance ${loadedInst?.name}: ${(error as Error).message}`);
+            return [];
           }
-          return defParamCopy;
         });
       } else {
         instanceParams = loadedInst?.parameters || [];
@@ -306,7 +322,7 @@ export class BlockStateManager {
     if (!this._initializationDone) return;
     try {
       // instance это ссылка на объект, который не нужно сохранять в localStorage, поэтому мы удаляем его из каждого экземпляра
-      const blockInstances = [...this._blockInstances].map(instance => ({ ...instance, instance: null, lastChanges: null}))
+      const blockInstances = [...this._blockInstances].map(instance => ({ ...instance, instance: null, lastChanges: null }))
       localStorage.setItem('audioBlocks_instances', JSON.stringify(blockInstances));
     } catch (error) {
       console.error(`[👨🏿‍💼 BlockStateManager]: Failed to save block instances to localStorage: ${(error as Error).message}`);
@@ -404,12 +420,21 @@ export class BlockStateManager {
   }
 
   // для обновления одного параметра блока
-  public updateBlockInstanceParameter(instanceId: string, parameterId: string, value: any): void {
-    this._blockInstances = this._blockInstances.map(b =>
-      b?.instanceId === instanceId ? { ...b, parameters: b.parameters.map(p => p.id === parameterId ? { ...p, currentValue: value } : p) } : b
-    );
+  public updateBlockInstanceParameter(instanceId: string, parameterId: string, value: any, callback?: (parameter: BlockParameter) => void): void {
+    const instance = this._blockInstances.find(b => b?.instanceId === instanceId);
+    if (!instance) return;
+    const parameter = instance.parameters.find(p => p.id === parameterId);
+    if (!parameter) return;
+    parameter.currentValue = value;
+    // instance.parameters = instance.parameters.map(p => p.id === parameterId ? { ...p, currentValue: value } : p);
+
     this._saveInstancesToLocalStorage();
-    if (this._onInstancesChange) this._onInstancesChange([...this._blockInstances]);
+    if (callback) {
+      console.log(  "[BlockStateManager] updateBlockInstanceParameter calling callback", parameter.currentValue);
+      callback({...parameter});
+    } else {
+      if (this._onInstanceParameterChange) this._onInstanceParameterChange(instance);
+    }
   }
 
   // отправляет теперь только обновления, а не по каждому блоку
@@ -421,7 +446,7 @@ export class BlockStateManager {
     let changes: Partial<BlockInstance> = {};
 
     delete originalBlock.lastChanges;
-    
+
     // для передачи в рендер только изменений, чтобы только на них на них реагировать
     if (typeof updates === 'function') {
       updatedBlock = updates(originalBlock);
@@ -436,10 +461,10 @@ export class BlockStateManager {
       updatedBlock = { ...originalBlock, ...updates };
       changes = updates;
     }
-    
+
     // Create new field to store the changes and remove old data
-    updatedBlock = { 
-      ...originalBlock, 
+    updatedBlock = {
+      ...originalBlock,
       ...changes,
       // lastChanges: changes
     };
@@ -469,7 +494,7 @@ export class BlockStateManager {
     );
 
     // console.log("[👨🏿‍💼 BlockStateManager] Updating block instance:", updatedBlock);
-    if (this._onInstanceChange) this._onInstanceChange(updatedBlock);  
+    if (this._onInstanceChange) this._onInstanceChange(updatedBlock);
     this._saveInstancesToLocalStorage();
   }
 

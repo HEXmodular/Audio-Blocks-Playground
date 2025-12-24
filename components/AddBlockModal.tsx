@@ -141,14 +141,14 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
           )}
         </div>
 
-        <button
+        {/* <button
           onClick={() => {
             onToggleGeminiPanel();
           }}
           className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-md transition-colors flex items-center justify-center text-lg flex-shrink-0"
         >
           <span className="mr-2 text-xl">✨</span> Create with AI
-        </button>
+        </button> */}
       </div>
     </div>
   );
