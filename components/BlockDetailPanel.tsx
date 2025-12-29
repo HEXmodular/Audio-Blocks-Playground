@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useRef } from 'react';
 import type { BlockInstance, BlockPort } from '@interfaces/block';
 import { BlockView } from '@interfaces/block';
 import type { Connection } from '@interfaces/connection';
@@ -11,11 +11,12 @@ import { parseFrequencyInput } from '@utils/noteUtils';
 import BlockStateManager from '@state/BlockStateManager';
 import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
 import ConnectionState from '@services/ConnectionState';
-// import AudioNodeCreator from '@services/AudioNodeCreator'; // Changed from NativeNodeManager
+
+import { useBlocks } from '@stores/useBlocks';
 
 interface BlockDetailPanelProps {
   // Props are removed as per the task
-  selectedInstanceId: string | null;
+  blockInstance: BlockInstance | null;
   onClosePanel: () => void;
   onDeleteBlockInstance: () => void;
 }
@@ -31,11 +32,10 @@ const isDefaultOutputValue = (value: any, portType: BlockPort['type']): boolean 
   }
 };
 
-const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId, onClosePanel, onDeleteBlockInstance }) => {
+const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ blockInstance, onClosePanel, onDeleteBlockInstance }) => {
+  const { blocks, updateBlockInstanceParameter } = useBlocks((state) => state);
 
-  const blockInstances = BlockStateManager.getBlockInstances();
   const connections = ConnectionState.getConnections();
-  const blockInstance = blockInstances.find(b => b.instanceId === selectedInstanceId) || null;
 
   const updateBlockInstance = BlockStateManager.updateBlockInstance.bind(BlockStateManager);
   const ctxDeleteBlockInstance = BlockStateManager.deleteBlockInstance.bind(BlockStateManager);
@@ -85,21 +85,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
       return;
     }
 
-    updateBlockInstance(blockInstance.instanceId, (prevInstance) => {
-      const updatedParams = prevInstance.parameters.map(p =>
-        p.id === paramId ? { ...p, currentValue: value } : p
-      );
-      const changedParamDef = blockDefinition.parameters.find(pDef => pDef.id === paramId);
-      if (changedParamDef && changedParamDef.type === 'number_input') {
-        setNumberInputTextValues(prevTextValues => ({
-          ...prevTextValues,
-          [paramId]: String(value)
-        }));
-      }
-      // для отображения изменения параметров контролов
-      // setBlockInstance({ ...prevInstance, parameters: updatedParams });
-      return { ...prevInstance, parameters: updatedParams };
-    });
+    updateBlockInstanceParameter(blockInstance.instanceId, paramId, value);
   };
 
   const handleNameDoubleClick = () => {
@@ -209,7 +195,6 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
       );
     }
 
-
     return (
       <div className="space-y-3">
         {blockInstance.error && (
@@ -230,7 +215,7 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
           if (paramDef.type === 'internal') return null;
           return (
             <div key={paramDef.id}>
-              {(paramDef.label === undefined || paramDef.label !== '') && 
+              {(paramDef.label === undefined || paramDef.label !== '') &&
                 <label htmlFor={`${blockInstance.instanceId}-${paramDef.id}-panel-control`} className="block text-xs font-medium text-gray-400 mb-1">{paramDef.label || paramDef.name}</label>
               }
               <RenderParameterControl
@@ -325,9 +310,9 @@ const BlockDetailPanel: React.FC<BlockDetailPanelProps> = ({ selectedInstanceId,
   };
 
   const renderConnectionsView = () => {
-    const findConnectedBlockName = (instanceId: string) => blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
+    const findConnectedBlockName = (instanceId: string) => blocks.find((b: BlockInstance) => b?.instanceId === instanceId)?.name || 'Unknown Block'; // Use context blockInstances, added type for b
     const getPortDefinitionFromList = (instanceId: string, portId: string, isOutput: boolean): BlockPort | undefined => {
-      const instance = blockInstances.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
+      const instance = blocks.find((b: BlockInstance) => b?.instanceId === instanceId); // Use context blockInstances, added type for b
       if (!instance) return undefined;
       const def = instance.definition; // Use context function
       if (!def) return undefined;

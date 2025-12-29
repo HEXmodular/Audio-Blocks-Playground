@@ -91,9 +91,8 @@ export class BlockStateManager {
 
   // для обновления параметров данных внутри блока, исключение позиция блока
   private _onInstanceParameterChange(instance: BlockInstance): void {
-    // console.log("[BlockStateManager] _onInstancesChange", instances);
     if (!instance.instance) {
-      // console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
+      console.warn(`[👨🏿‍💼 BlockStateManager] No handler found for definition ID '${instance.definition?.id}'.`);
       return;
     }
     instance.instance.updateFromBlockInstance(instance);
@@ -420,7 +419,7 @@ export class BlockStateManager {
   }
 
   // для обновления одного параметра блока
-  public updateBlockInstanceParameter(instanceId: string, parameterId: string, value: any, callback?: (parameter: BlockParameter) => void): void {
+  public updateBlockInstanceParameter(instanceId: string, parameterId: string, value: any): void {
     const instance = this._blockInstances.find(b => b?.instanceId === instanceId);
     if (!instance) return;
     const parameter = instance.parameters.find(p => p.id === parameterId);
@@ -429,12 +428,7 @@ export class BlockStateManager {
     // instance.parameters = instance.parameters.map(p => p.id === parameterId ? { ...p, currentValue: value } : p);
 
     this._saveInstancesToLocalStorage();
-    if (callback) {
-      console.log(  "[BlockStateManager] updateBlockInstanceParameter calling callback", parameter.currentValue);
-      callback({...parameter});
-    } else {
-      if (this._onInstanceParameterChange) this._onInstanceParameterChange(instance);
-    }
+    this._onInstanceParameterChange(instance);
   }
 
   // отправляет теперь только обновления, а не по каждому блоку

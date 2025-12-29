@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
           '@constants': path.resolve(__dirname, './constants'),
           '@state': path.resolve(__dirname, './state'),
           '@blocks': path.resolve(__dirname, './blocks'),
+          '@stores': path.resolve(__dirname, './stores'),
         }
       }
     };

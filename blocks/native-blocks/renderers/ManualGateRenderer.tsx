@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
 import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
-import BlockStateManager from '@state/BlockStateManager';
-
-
-const GAIN_PARAM_DISPLAY_HEIGHT = 20; // Consistent height
+import { useBlocks } from '@stores/useBlocks';
 
 const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
   const gateParam = blockInstance?.parameters.find(p => p.id === 'gate_active');
   const [paramValue, setParamValue] = useState(gateParam);
+  const { updateBlockInstanceParameter } = useBlocks((state) => state);
 
   const handleParameterChange = (paramId: string, value: any) => {
     if (!gateParam) {
@@ -16,11 +14,8 @@ const ManualGateRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blo
       return;
     }
 
-    BlockStateManager.updateBlockInstanceParameter(
-      blockInstance.instanceId, gateParam.id, value, (updatedParam) => {
-        setParamValue(updatedParam);
-      }
-    );
+    updateBlockInstanceParameter(blockInstance.instanceId, gateParam.id, value);
+    setParamValue({ ...gateParam, currentValue: value });
   };
 
   if (gateParam === undefined) {

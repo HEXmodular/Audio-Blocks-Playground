@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import type { CompactRendererProps } from '@interfaces/block';
-import BlockStateManager from '@state/BlockStateManager';
 import { RenderParameterControl } from '@components/controls/ParameterControlRenderer';
+import { useBlocks } from '@stores/useBlocks';
 
 const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, blockDefinition }) => {
   const sequenceParam = blockInstance?.parameters.find(p => p.id === 'sequence');
   const [paramValue, setParamValue] = useState(sequenceParam);
-  
+  const { updateBlockInstanceParameter } = useBlocks((state) => state);
+
   // для коммуникации между классом и компонентом реакта использую события
   blockInstance?.instance?.on('step_change', (sequenceParam: any) => {
     // re-render when step changes
+    console.log("step_change", sequenceParam);
     setParamValue(sequenceParam)
   });
 
@@ -26,7 +28,8 @@ const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, 
       console.warn('Gate parameter not found in block instance parameters');
       return;
     }
-    BlockStateManager.updateBlockInstanceParameter(blockInstance.instanceId, sequenceParam.id, value);
+    updateBlockInstanceParameter(blockInstance.instanceId, sequenceParam.id, value);
+    setParamValue(sequenceParam);
   };
 
   return (

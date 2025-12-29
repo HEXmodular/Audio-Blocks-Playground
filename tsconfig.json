@@ -38,6 +38,7 @@
       "@state/*" :  ["./state/*"],
       "@hooks/*": ["./hooks/*"],
       "@blocks/*": ["./blocks/*"],
+      "@stores/*": ["./stores/*"],
     }
   }
 }
