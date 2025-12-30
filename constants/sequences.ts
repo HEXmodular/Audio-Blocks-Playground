@@ -12,7 +12,7 @@
 //   ],
 //   outputs: [
 //     { id: 'trigger_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger when an active step is played.' },
-//     { id: 'gate_out', name: 'Gate Output', type: 'gate', description: 'Outputs a gate signal (high for active step duration, low otherwise).' }
+//     { id: 'gate_out', name: '', type: 'gate', description: 'Outputs a gate signal (high for active step duration, low otherwise).' }
 //   ],
 //   parameters: createParameterDefinitions([
 //     { id: 'steps_pattern', name: 'Steps Pattern', type: 'step_sequencer_ui', defaultValue: [true, false, true, false, true, false, true, false], steps: 8, description: 'Pattern of active steps.' },

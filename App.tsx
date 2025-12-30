@@ -38,7 +38,7 @@ const App: React.FC = () => {
   const [engineStarted, setEngineStarted] = useState<boolean>(false);
   const [selectedInstance, setSelectedInstance] = useState<BlockInstance | null>();
 
-  const {blocks, updateBlockInstance} = useBlocks((state) => state);
+  const { blocks, updateBlockInstance } = useBlocks((state) => state);
 
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -54,7 +54,6 @@ const App: React.FC = () => {
       })))
   };
 
-  // TODO сделать адаптер для перевода из разных форматов
   const updateEdges = (connections: Connection[]) => {
     setEdges(connections?.map(connection => ({
       id: connection.id,
@@ -67,70 +66,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     updateNodes(blocks);
+  }, [blocks]);
+
+  useEffect(() => {
     updateEdges(ConnectionState.getConnections());
   }, []);
-
-  // useEffect(() => {
-  //   updateNodes(BlockStateManager.getBlockInstances());
-  // }, [BlockStateManager.getBlockInstances()]);
-
-  // TODO переписать на адаптер и вынести общий код
-  // механизм для обновления только одного блока
-  // PubSubService.subscribe('instance-changed', (instance: BlockInstance) => {
-  //   // if (instance === undefined) {
-  //   //   debugger
-  //   //   return;
-  //   // }
-  //   if (!instance.instanceId) return;
-  //   const node = {
-  //     id: instance.instanceId,
-  //     position: { x: instance.position?.x, y: instance.position?.y },
-  //     data: { label: instance.name, definition: instance.definition, instance },
-  //     type: 'base'
-  //   }
-  //   setNodes([...nodes, node]);
-
-  //   if (selectedInstance?.instanceId === instance.instanceId) {
-  //     setSelectedInstance(instance);
-  //   }
-  // });
-
-  // PubSubService.subscribe('instance-parameter-changed', (instance: BlockInstance) => {
-  //   if (!instance.instanceId) return;
-
-  //   if (selectedInstance?.instanceId === instance.instanceId) {
-  //     console.log("Updating selected instance in detail panel", instance);
-  //     setSelectedInstance({ ...instance });
-  //   }
-  // });
-
-  // PubSubService.subscribe('instance-created', (instance: BlockInstance) => {
-  //   // if (instance === undefined) {
-  //   //   debugger
-  //   //   return;
-  //   // }
-  //   if (!instance.instanceId) return;
-  //   const node = {
-  //     id: instance.instanceId,
-  //     position: { x: instance.position?.x, y: instance.position?.y },
-  //     data: { label: instance.name, definition: instance.definition },
-  //     type: 'base'
-  //   }
-  // });
 
   PubSubService.subscribe('instance-delete', (instance: BlockInstance) => {
     if (!instance.instanceId) return;
     setNodes(nodes.filter(n => n.id !== instance.instanceId));
   })
-
-
-  // PubSubService.subscribe('instances-changed', (instances: BlockInstance[]) => {
-  //   updateNodes(instances);
-  // });
-
-  // PubSubService.subscribe('connections-changed', (connections: Connection[]) => {
-    // console.log("connections-changed", connections);
-  // })
 
   const handleEngineStarted = useCallback(() => {
     AudioEngineService.initialize();
@@ -219,21 +164,14 @@ const App: React.FC = () => {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          // onSelectionChange={({ nodes, edges }) => {
-            // console.log("onSelectionChange", nodes, edges);
-            // if (nodes.length === 0) {
-            //   setSelectedInstanceId(null);
-            //   return;
-            // }
-            // if (nodes.length === 1) {
-            //   setSelectedInstanceId(nodes[0].id);
-            //   return;
-            // }
-          // }}
           onNodesChange={onNodesChange}
           onNodeClick={(event, node) => {
-            // console.log("onNodeClick", node);
             setSelectedInstance(node.data.instance);
+          }}
+          onSelectionChange={({ nodes }) => {
+            if (nodes?.length === 0) {
+              setSelectedInstance(null);
+            }
           }}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}

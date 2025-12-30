@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Add useCallback
 import BlockStateManager from '@state/BlockStateManager';
 import { BlockDefinition } from '@interfaces/block';
+import { useBlocks } from '@stores/useBlocks';
+
 import styles from './AddBlockModal.module.css';
 
 // Local BlockDefinition interface removed, using imported one.
@@ -20,6 +22,7 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
   onToggleGeminiPanel,
   onClose,
 }) => {
+  const { addBlockInstance } = useBlocks((state) => state);
   const [filterText, setFilterText] = useState('');
   const [blockDefinitions, setBlockDefinitions] = useState<BlockDefinition[]>([]);
 
@@ -29,7 +32,8 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
   }, []); // Empty dependency array means this runs once on mount
 
   const handleSelectBlock = useCallback((definition: BlockDefinition) => {
-    BlockStateManager.addBlockInstance(definition);
+    addBlockInstance(definition);
+    // BlockStateManager.addBlockInstance(definition);
     onClose(); // Call the onClose prop to close the modal
   }, [onClose]); // Dependency: onClose prop
 
@@ -103,10 +107,10 @@ const AddBlockModal: React.FC<AddBlockModalProps> = ({
               const blocksInGroup = groupedAndFilteredBlocks[groupTitle];
               if (blocksInGroup && blocksInGroup.length > 0) {
                 return (
-                  <div key={groupTitle} 
+                  <div key={groupTitle}
                   // className="mb-4"
-                  
-                  > 
+
+                  >
                     <h3 className="text-xl font-semibold text-sky-300 mt-2 mb-3 sticky top-0 bg-gray-750 py-2 z-10"> {/* Adjusted padding and margin for header */}
                       {groupTitle.toUpperCase()}
                     </h3>

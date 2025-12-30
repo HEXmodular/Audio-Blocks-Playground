@@ -11,7 +11,6 @@ const StepSequencerRenderer: React.FC<CompactRendererProps> = ({ blockInstance, 
   // для коммуникации между классом и компонентом реакта использую события
   blockInstance?.instance?.on('step_change', (sequenceParam: any) => {
     // re-render when step changes
-    console.log("step_change", sequenceParam);
     setParamValue(sequenceParam)
   });
 

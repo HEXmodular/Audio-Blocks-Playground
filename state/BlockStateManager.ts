@@ -392,7 +392,6 @@ export class BlockStateManager {
       initialOutputs[outPort.id] = getDefaultOutputValue(outPort.type);
     });
 
-
     const newInstance: BlockInstance = {
       instanceId: `inst_${uuidv4()}`,
       instance: null, // This will be set later when the instance is created

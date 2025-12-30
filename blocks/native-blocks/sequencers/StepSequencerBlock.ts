@@ -12,13 +12,13 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'A native step sequencer with gate and trigger inputs/outputs.',
     category: 'data',
     inputs: [
-        { id: 'next', name: 'Next trigger In', type: 'trigger', description: 'Advances the sequencer to the next step.' },
-        { id: 'reset', name: 'Reset trigger In', type: 'trigger', description: 'Resets the sequencer to the next step.' },
-        { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
+        { id: 'next', name: 'Next trigger', type: 'trigger', description: 'Advances the sequencer to the next step.' },
+        { id: 'reset', name: 'Reset trigger', type: 'trigger', description: 'Resets the sequencer to the next step.' },
+        { id: 'enable', name: 'Enable gate', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
     ],
     outputs: [
-        { id: 'gate_change', name: 'Gate Output', type: 'gate', description: 'Outputs the gate state of the current step.' },
-        { id: 'trigger_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
+        { id: 'gate_change', name: 'Step gate', type: 'gate', description: 'Outputs the gate state of the current step.' },
+        { id: 'trigger_out', name: 'Step trigger', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
         // The 'sequence' output was typed as 'string', which is unusual for a boolean array.
         // If it's meant to be an event-based output of the current sequence array,
         // it would need its own emitter. For now, assuming it's a parameter.

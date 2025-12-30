@@ -1,7 +1,6 @@
 import { BlockDefinition, BlockParameter, BlockInstance, NativeBlock } from '@interfaces/block';
 import { createParameterDefinitions } from '@constants/constants';
 import { Emitter, ToneAudioNode, Time, getTransport, getDraw } from 'tone';
-import BlockStateManager from '@state/BlockStateManager';
 
 const DEFAULT_STEPS = 4;
 const DEFAULT_SEQUENCE = Array(DEFAULT_STEPS).fill("");
@@ -12,14 +11,14 @@ const BLOCK_DEFINITION: BlockDefinition = {
     category: 'data',
     description: 'A native data sequencer with gate and trigger inputs/outputs.',
     inputs: [
-        { id: 'next', name: 'Next trigger In', type: 'trigger', description: 'Advances the sequencer to the next step.' },
-        { id: 'reset', name: 'Reset trigger In', type: 'trigger', description: 'Resets the sequencer to the next step.' },
-        { id: 'enable', name: 'Gate In', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
+        { id: 'next', name: 'Next trigger', type: 'trigger', description: 'Advances the sequencer to the next step.' },
+        { id: 'reset', name: 'Reset trigger', type: 'trigger', description: 'Resets the sequencer to the next step.' },
+        { id: 'enable', name: 'Enable gate', type: 'gate', description: 'Enables/disables the sequencer.' }, // сильно под вопросом
     ],
     outputs: [
-        { id: 'output_string', name: 'Data Output string', type: 'string', description: 'Outputs the data of the current step.' },
-        { id: 'output_number', name: 'Data Output number', type: 'number', description: 'Outputs the data of the current step.' },
-        { id: 'next_out', name: 'Trigger Output', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
+        { id: 'output_string', name: 'Data string', type: 'string', description: 'Outputs the data of the current step.' },
+        { id: 'output_number', name: 'Data number', type: 'number', description: 'Outputs the data of the current step.' },
+        { id: 'next_out', name: 'Step trigger', type: 'trigger', description: 'Outputs a trigger signal on each step change.' },
         // The 'sequence' output was typed as 'string', which is unusual for a boolean array.
         // If it's meant to be an event-based output of the current sequence array,
         // it would need its own emitter. For now, assuming it's a parameter.

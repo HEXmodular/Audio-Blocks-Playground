@@ -9,7 +9,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   category: 'logic',
   inputs: [],
   outputs: [
-    { id: 'gate_out', name: 'Gate Output', type: 'gate', description: 'Boolean gate signal.' }
+    { id: 'gate_out', name: 'Gate', type: 'gate', description: 'Boolean gate signal.' }
   ],
   parameters: createParameterDefinitions([
     { id: 'gate_active', name: 'Gate Active', type: 'toggle', defaultValue: false, description: 'Controls the state of the gate output.' }
