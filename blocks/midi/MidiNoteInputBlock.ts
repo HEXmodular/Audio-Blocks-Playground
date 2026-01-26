@@ -13,7 +13,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     description: 'Receives MIDI Note On/Off messages and outputs their value.',
     inputs: [],
     outputs: [
-        { id: 'note_out', name: 'Note Out', type: 'note', description: 'The Note value.' },
+        { id: 'note_out', name: 'Note', type: 'note', description: 'The Note value.' },
     ],
     parameters: createParameterDefinitions([
         {

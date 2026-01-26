@@ -4,6 +4,7 @@ import { BlockDefinition, BlockInstance, NativeBlock } from '@interfaces/block';
 
 import BlockStateManager from '@state/BlockStateManager';
 import { AudioOutputBlock } from '@blocks/native-blocks/AudioOutputBlock';
+import { WsAudioOutputBlock } from '@blocks/web-socket/WsAudioOutputBlock';
 import { RecorderBlock } from '@blocks/native-blocks/tone-js-components/RecorderBlock';
 import { SplitBlock } from '@blocks/native-blocks/tone-js-components/SplitBlock';
 // import { OscilloscopeNativeBlock } from '@services/native-blocks/OscilloscopeNativeBlock';
@@ -97,6 +98,10 @@ const BLOCK_HANDLERS: Map<string, any> = new Map([
     // midi
     [MidiCcInputBlock.getDefinition().id, MidiCcInputBlock as any],
     [MidiNoteInputBlock.getDefinition().id, MidiNoteInputBlock as any],
+
+    // wifi audio interface
+    [WsAudioOutputBlock.getDefinition().id, WsAudioOutputBlock as any],
+
 ])
 
 export const ALL_NATIVE_BLOCK_DEFINITIONS: BlockDefinition[] = Array

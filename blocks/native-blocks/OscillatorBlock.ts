@@ -20,7 +20,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
   parameters: createParameterDefinitions([
     {
       id: 'frequency', name: 'Frequency', type: 'slider',
-      toneParam: { minValue: 20, maxValue: 5000, units: 'frequency' }, // Tone.Param options
+      toneParam: { minValue: 1, maxValue: 5000, units: 'frequency' }, // Tone.Param options
       defaultValue: 440, description: 'Base frequency in Hz.', isFrequency: true
     },
     {

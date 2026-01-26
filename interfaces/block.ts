@@ -38,6 +38,7 @@ export interface BlockPort {
     type: 'number' | 'string' | 'boolean' | 'audio' | 'trigger' | 'gate' | 'note'| 'part' | 'сс' | 'any';
     description?: string;
     audioParamTarget?: string;  // выяснить
+    portIndex?: number;
 }
 
 

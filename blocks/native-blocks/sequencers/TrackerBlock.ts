@@ -19,7 +19,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
         { id: 'reset', name: 'Reset', type: 'trigger' },
     ],
     outputs: [
-        { id: 'note_out', name: 'Note Out', type: 'note' },
+        { id: 'note_out', name: 'Note', type: 'note' },
         { id: 'on_step', name: 'On Step', type: 'trigger' },
     ],
     parameters: [

@@ -142,7 +142,7 @@ class AudioGraphConnectorService {
           }
         } else if (sourceNode && targetNode) {
           try {
-            (sourceNode as any).connect(targetNode as any);
+            (sourceNode as any).connect(targetNode as any, inputPortDef.portIndex || 0, outputPortDef.portIndex || 0);
             console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
             newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
           } catch (e) {
