@@ -10,11 +10,9 @@ interface WsAudioOutputNodeOptions extends Tone.ToneAudioNodeOptions {
 }
 
 const UPSCALE = 1;
-const WS_BUFFER_SIZE = UPSCALE * 256; // x2 bytes on send
-const WEB_AUDIO_API_BUFFER_SIZE = 256; // Int16 size = Float32 * 2
-const CHANN_COUNT = 4;
 
-const WS_URL = 'ws://192.168.4.1:81/ws';
+
+const WS_URL = 'http://192.168.4.1/ws';
 
 
 const BLOCK_DEFINITION: BlockDefinition = {
@@ -37,11 +35,14 @@ const BLOCK_DEFINITION: BlockDefinition = {
 export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBlock {
     readonly name: string = BLOCK_DEFINITION.name; // Keep name consistent
     // private wsBuffer = new Int16Array(WS_BUFFER_SIZE * CHANN_COUNT);
-    private _gain1 = new Tone.Gain();
-    private _gain2 = new Tone.Gain();
-    private _gain3 = new Tone.Gain();
-    private _gain4 = new Tone.Gain();
-    input: Tone.ToneAudioNode[] = [this._gain1, this._gain2, this._gain3, this._gain4];
+    private _workletNode: AudioWorkletNode | undefined;
+
+    input: [
+        { input: this._workletNode, index: 0 },
+        { input: this._workletNode, index: 1 },
+        { input: this._workletNode, index: 2 },
+        { input: this._workletNode, index: 3 }
+    ]
     output: Tone.OutputNode | undefined;
     get numberOfInputs(): number {
         return 4;
@@ -59,7 +60,6 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
 
     private socket = new WebSocket(WS_URL);
 
-
     // readonly scriptNode = this.context.rawContext.createScriptProcessor(256, 1, 1);
 
     async setupAudio() {
@@ -72,40 +72,23 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
         await context.addAudioWorkletModule('worklets/PCMProcessor.js');
 
         const workletNode = context.createAudioWorkletNode('pcm-processor', {
-            // numberOfInputs: 1,
-            // numberOfOutputs: 1,
+            numberOfInputs: 4,
+            numberOfOutputs: 0,
             // outputChannelCount:  [2],
             // ot
-
         });
+
+        this._workletNode = workletNode;
 
         // Слушаем сообщения из ворклета и шлем в сокет
         workletNode.port.onmessage = (event) => {
+            // console.log(event);
             if (this.socket.readyState === WebSocket.OPEN) {
                 // event.data — это уже готовый ArrayBuffer (Int16)
-                // console.log(event);
-
                 const int16Buf = event.data;
 
-                const wsBuffer = new Int16Array(UPSCALE * int16Buf[0].length * CHANN_COUNT * 2);
-                // console.log("int16Buf wsBuffer", int16Buf.length, wsBuffer.length)
+                    this.socket.send(int16Buf);//this.wsBuffer);
 
-                for (let i = 0; i < CHANN_COUNT; i++) {
-                    wsBuffer.set(int16Buf[i], i * WS_BUFFER_SIZE); //+ this.wsBufferOffset);
-                }
-                // this.wsBuffer.set(event.data, this.wsBufferOffset);
-
-
-                this.wsBufferOffset += WEB_AUDIO_API_BUFFER_SIZE;
-
-                if (this.wsBufferOffset > WS_BUFFER_SIZE) {
-                    // console.log("Буфер заполнен");
-                    // return;
-                    this.socket.send(wsBuffer.buffer);//this.wsBuffer);
-                    // console.log(this.wsBuffer);
-
-                    this.wsBufferOffset = 0;
-                }
             } else if (this.socket.readyState === WebSocket.CLOSED) {
                 this.socket = new WebSocket(WS_URL);
             }
@@ -119,44 +102,26 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
             workletNode?.disconnect(); // Disconnect worklet node on transport stop
         })
         Tone.getTransport().on('start', () => {
-            // const osc = new Tone.Oscillator(2);
-            // const gain = new Tone.Gain(1);
-            // osc.connect(gain);
-            // gain.connect(workletNode);
-            // // osc.connect(workletNode);
-            // osc.type = "sine"
-            // osc.start();
-            this.input.connect(workletNode);
+            const osc = new Tone.Oscillator(2);
+            osc.connect(workletNode);
+            // osc.connect(workletNode, 0, 1);
+            // osc.connect(workletNode, 0, 2);
+            // osc.connect(workletNode, 0, 3);
+            osc.type = "sine"
+            osc.start();
+
+            // workletNode.connect(gain1.input)
+            
+            // this.input.connect(workletNode);
+
             // workletNode.connect(this.output);
             workletNode?.port.postMessage('start'); // Notify worklet to start processing on transport start
         })
-
-        // // this.input
-        // new Tone.Oscillator(440).connect(workletNode);
-        // workletNode.connect(this.output);
-
-        // workletNode?.port.postMessage('start'); // Notify worklet to start processing on transport start
-
-
-
-
-        // workletNode.connect(this.output.input.context.destination);
-
-
-        // .connect();
-        // Tone.connect(this.input, workletNode);
-        // Uncaught (in promise) InvalidAccessError
-
-        // Важно: AudioWorkletNode нужно подключить к destination, 
-        // чтобы он начал "качать" данные, даже если звук не нужен в динамиках
-        // const internalGain = new Tone.Gain(1)
-        // Tone.connect(workletNode, internalGain);
-        // workletNode.connect(internalGain.input.)
-        // workletNode.connect(internalGain);
     }
 
-    constructor(options?: WsAudioOutputNodeOptions) {
+    constructor(options?: Partial<Tone.ToneAudioNodeOptions>) {
         super(options);
+        console.log(this);
 
         if (Tone.getContext().state !== 'running') {
             console.warn(`[WsAudioOutputBlock constructor] Tone.js context is not running. Audio Output may not function correctly.`);
@@ -166,11 +131,6 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
 
 
         this.setupAudio();
-
-        // const internalGain = new Tone.Gain(1)
-        // internalGain.connect(Tone.getDestination());
-        // this.input = internalGain;//Tone.getDestination(); // Assign internal gain to the input proxy
-
     }
 
     public static getDefinition(): BlockDefinition {
