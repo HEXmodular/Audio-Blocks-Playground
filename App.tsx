@@ -193,7 +193,7 @@ const App: React.FC = () => {
             }
           }}
           onEdgesChange={onEdgesChange}
-          onConnectEnd={onEdgesDeleted}
+          // onConnectEnd={onEdgesDeleted}
           // onEdgesDelete={onEdgesDeleted}
           onConnect={onConnect}
           onReconnect={onReconnect}
