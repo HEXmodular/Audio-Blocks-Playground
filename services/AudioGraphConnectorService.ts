@@ -209,7 +209,7 @@ class AudioGraphConnectorService {
         // console.log(`[AudioGraphConnectorService] Disconnected source from target node for ${connId}`); // REMOVED
       }
     } catch (e) {
-      console.warn(`[🕸 AudioGraphConnectorService] Error during disconnection of ${connId}:`, e);
+      console.warn(`[🕸 AudioGraphConnectorService] Error during disconnection of ${connectionId}:`, e);
     }
 
     this.activeWebAudioConnections.delete(connectionId);

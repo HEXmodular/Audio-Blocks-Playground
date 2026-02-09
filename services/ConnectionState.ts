@@ -61,7 +61,7 @@ class ConnectionState {
       this.connections = updater;
     }
     this.persistToLocalStorage();
-    PubSubService.publish('connections-changed', this.connections); // Notify subscribers
+    AudioGraphConnectorService.updateConnections();
   }
 
   public setAllConnections(newConnections: Connection[]): void {
@@ -72,7 +72,7 @@ class ConnectionState {
 
   public deleteConnection(connectionId: string): void {
     AudioGraphConnectorService.deleteConnection(connectionId);
-    this.connections = this.connections.filter(conn => conn.id !== connectionId);
+    this.connections = [...this.connections.filter(conn => conn.id !== connectionId)];
     this.persistToLocalStorage();
   }
 
