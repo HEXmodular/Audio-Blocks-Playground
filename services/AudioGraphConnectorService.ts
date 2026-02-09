@@ -108,7 +108,6 @@ class AudioGraphConnectorService {
         return;
       } else if (['audio', 'сс'].includes(outputPortDef.type) && ['audio', 'number'].includes(inputPortDef.type)) {
         const sourceNode = fromInstance.instance?.output as ConnectableSource | undefined;//fromNativeInfo.nodeForOutputConnections as ConnectableSource | undefined;
-
         if (!sourceNode) return;
 
         let scale;
@@ -125,9 +124,11 @@ class AudioGraphConnectorService {
 
         if (!targetNode && !targetParam) return;
         // у блоков множество отдельных входовов и/или выходов
-        if (sourceNode && targetParam && (outputPortDef.portIndex !== undefined || inputPortDef.portIndex !== undefined)) {
+        if (sourceNode && targetNode) {
           try {
-            console.log(targetNode, inputPortDef.portIndex, outputPortDef.portIndex);
+            if (inputPortDef.portIndex || outputPortDef.portIndex) {
+              console.log("[🕸 AudioGraphConnectorService] with multiple ports", targetNode, inputPortDef.portIndex, outputPortDef.portIndex);
+            }
             sourceNode.connect(targetNode as any, outputPortDef.portIndex || 0, inputPortDef.portIndex || 0);
 
             console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
