@@ -81,8 +81,6 @@ export class SynthBlock extends Synth implements NativeBlock {
       }
       // note from tracker with duration
       else if (data?.duration) {
-        console.log("[SynthBlock] note_in with duration", data);
-
         this.triggerAttackRelease(data.note, data.duration, data.time);
       }
     });

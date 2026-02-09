@@ -29,7 +29,6 @@ class PCMProcessor extends AudioWorkletProcessor {
             for (let i = 0; i < 128; i++) {
                 let s = Math.max(-1, Math.min(1, float32Data[i]));
                 int16Buffer[chann * 128 + i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                // int16Buffer[i] = s < 0 ? 0x8000 : 0x7FFF;
             }
 
         }

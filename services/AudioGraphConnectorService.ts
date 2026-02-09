@@ -123,10 +123,19 @@ class AudioGraphConnectorService {
         const targetNode = toInstance.instance?.input as ConnectableTargetNode | undefined;
         // console.log(`[AudioGraphConnectorService] Target node identified for ${toInstance.instanceId} (NativeNode):`, targetNode); // REMOVED
 
-
         if (!targetNode && !targetParam) return;
+        // у блоков множество отдельных входовов и/или выходов
+        if (sourceNode && targetParam && (outputPortDef.portIndex !== undefined || inputPortDef.portIndex !== undefined)) {
+          try {
+            console.log(targetNode, inputPortDef.portIndex, outputPortDef.portIndex);
+            sourceNode.connect(targetNode as any, outputPortDef.portIndex || 0, inputPortDef.portIndex || 0);
 
-        if (sourceNode && targetParam) {
+            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
+            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
+          } catch (e) {
+            console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
+          }
+        } else if (sourceNode && targetParam) {
           try {
             // для преобразования значения в диапазоне от minValue до maxValue
             if (scale) {
@@ -139,14 +148,6 @@ class AudioGraphConnectorService {
             newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetParam: targetParam });
           } catch (e) {
             console.error(`[🕸 AudioGraphConnectorService] Error (Param) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name} (Param: ${inputPortDef.audioParamTarget})`);
-          }
-        } else if (sourceNode && targetNode) {
-          try {
-            (sourceNode as any).connect(targetNode as any, inputPortDef.portIndex || 0, outputPortDef.portIndex || 0);
-            console.log(`[🕸 AudioGraphConnectorService] Successfully connected source ${fromInstance.instanceId} to target node ${toInstance.instanceId}. ID: ${conn.id}`); // REMOVED
-            newActiveConnections.set(conn.id, { connectionId: conn.id, sourceNode: sourceNode, targetNode: targetNode });
-          } catch (e) {
-            console.error(`[AudioGraphConnectorService Conn] Error (Node) for ID ${conn.id}: ${(e as Error).message}. From: ${fromDef.name}, To: ${toDef.name}`);
           }
         }
       }
