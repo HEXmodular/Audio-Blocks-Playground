@@ -100,7 +100,19 @@ const App: React.FC = () => {
   );
 
   const onEdgesChange = useCallback(
-    (changes: any) => setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
+    (changes: any) => {
+      console.log(changes);
+      setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot))
+    },
+    [],
+  );
+
+  const onEdgesDeleted = useCallback(
+    (param1, param2) => {
+      // туду: нужно корректно отработать добавление связи, без перезагрузки страницы
+      console.log("onEdgesDeleted", param1, param2);
+      // setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot))
+    },
     [],
   );
 
@@ -137,15 +149,23 @@ const App: React.FC = () => {
   }, []);
 
   const onReconnectEnd = useCallback((_, edge) => {
-    if (!edgeReconnectSuccessful.current) {
-      setEdges((eds) => {
-        const edges = eds.filter((e) => e.id !== edge.id)
-        updateConnections(edges);
-        return edges;
-      });
-    }
+    console.log("onReconnectEnd",  edge);
 
-    edgeReconnectSuccessful.current = true;
+    console.log(edges);
+
+    ConnectionState.deleteConnection(edge.id);
+    console.log(edges);
+    // setEdges(edges.filter(edge => edge.id !== edge.id))
+
+    // if (!edgeReconnectSuccessful.current) {
+    //   setEdges((eds) => {
+    //     const edges = eds.filter((e) => e.id !== edge.id)
+    //     updateConnections(edges);
+    //     return edges;
+    //   });
+    // }
+
+    // edgeReconnectSuccessful.current = true;
   }, []);
 
   return (
@@ -174,6 +194,8 @@ const App: React.FC = () => {
             }
           }}
           onEdgesChange={onEdgesChange}
+          onConnectEnd={onEdgesDeleted}
+          // onEdgesDelete={onEdgesDeleted}
           onConnect={onConnect}
           onReconnect={onReconnect}
           onReconnectStart={onReconnectStart}

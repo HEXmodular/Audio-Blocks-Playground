@@ -7,6 +7,7 @@
  */
 import { Connection } from '@interfaces/connection';
 import PubSubService from '@services/PubSubService';
+import AudioGraphConnectorService from './AudioGraphConnectorService';
 
 const LOCAL_STORAGE_KEY = 'audioBlocks_connections';
 
@@ -67,7 +68,12 @@ class ConnectionState {
     this.connections = [...newConnections]; // Ensure it's a new array
     this.persistToLocalStorage();
     PubSubService.publish('connections-changed', this.connections); // Notify subscribers
+  }
 
+  public deleteConnection(connectionId: string): void {
+    AudioGraphConnectorService.deleteConnection(connectionId);
+    this.connections = this.connections.filter(conn => conn.id !== connectionId);
+    this.persistToLocalStorage();
   }
 
 }

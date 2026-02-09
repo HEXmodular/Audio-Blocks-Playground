@@ -191,6 +191,30 @@ class AudioGraphConnectorService {
     this.activeWebAudioConnections.clear();
     // console.log('[AudioGraphConnectorService] All connections cleared.'); // REMOVED
   }
+
+  public deleteConnection(connectionId: string): void {
+    const connInfo = this.activeWebAudioConnections.get(connectionId);
+    if (!connInfo) return;
+    try {
+    } catch (e) {
+      console.warn(`[🕸 AudioGraphConnectorService] Error during deleteConnection of ${connectionId}:`, e);
+    }
+
+    try {
+      if (connInfo.targetParam) {
+        (connInfo.sourceNode as any).disconnect(connInfo.targetParam as any);
+        // console.log(`[AudioGraphConnectorService] Disconnected source from target param for ${connId}`); // REMOVED
+      } else if (connInfo.targetNode) {
+        (connInfo.sourceNode as any).disconnect(connInfo.targetNode as any);
+        // console.log(`[AudioGraphConnectorService] Disconnected source from target node for ${connId}`); // REMOVED
+      }
+    } catch (e) {
+      console.warn(`[🕸 AudioGraphConnectorService] Error during disconnection of ${connId}:`, e);
+    }
+
+    this.activeWebAudioConnections.delete(connectionId);
+  }
+
 }
 
 export default AudioGraphConnectorService.getInstance();
