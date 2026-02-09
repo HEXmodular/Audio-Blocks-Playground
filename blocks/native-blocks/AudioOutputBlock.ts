@@ -11,7 +11,7 @@ interface AudioOutputNodeOptions extends Tone.ToneAudioNodeOptions {
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'system-audio-output-tone-v1',
-    name: 'Audio Out',
+    name: 'Audio',
     category: 'i/o',
     description: 'Outputs the incoming audio signal.',
     inputs: [
@@ -33,7 +33,7 @@ export class AudioOutputBlock extends Tone.ToneAudioNode<AudioOutputNodeOptions>
         super(options);
 
         if (Tone.getContext().state !== 'running') {
-            console.warn(`[AudioOutputBlock constructor] Tone.js context is not running. Audio Output may not function correctly.`);
+            console.warn(`[AudioOutputBlock constructor] Tone.js context is not running. Audioput may not function correctly.`);
 
         }
 

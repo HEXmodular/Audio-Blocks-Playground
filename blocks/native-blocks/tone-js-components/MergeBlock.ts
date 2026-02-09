@@ -11,7 +11,7 @@ const BLOCK_DEFINITION: BlockDefinition = {
     { id: 'right', name: 'Right', type: 'audio', description: 'The R Channel of the audio signal.' }
   ],
   outputs: [
-    { id: 'audio_out', name: 'Audio Out', type: 'audio', description: 'The stereo audio signal.' },
+    { id: 'audio_out', name: 'Audio', type: 'audio', description: 'The stereo audio signal.' },
   ],
   parameters: [],
 };

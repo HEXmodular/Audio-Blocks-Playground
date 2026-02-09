@@ -10,7 +10,7 @@ const WS_URL = 'http://192.168.4.1/ws';
 
 const BLOCK_DEFINITION: BlockDefinition = {
     id: 'ws-audio-output-v1',
-    name: 'Wifi Audio Out',
+    name: 'Wifi Audio',
     category: 'i/o',
     description: 'Outputs to wi-fi the incoming audio signal.',
     inputs: [
@@ -119,7 +119,7 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
         super(options);
 
         if (Tone.getContext().state !== 'running') {
-            console.warn(`[WsAudioOutputBlock constructor] Tone.js context is not running. Audio Output may not function correctly.`);
+            console.warn(`[WsAudioOutputBlock constructor] Tone.js context is not running. Audioput may not function correctly.`);
         }
 
         this.socket.binaryType = 'arraybuffer'; // Важно для передачи бинарных данных

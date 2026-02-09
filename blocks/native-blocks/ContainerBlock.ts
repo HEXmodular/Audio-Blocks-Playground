@@ -11,7 +11,7 @@ export const BLOCK_DEFINITION: BlockDefinition = {
     { id: 'dataIn', name: 'Data In', type: 'any' },
   ],
   outputs: [
-    { id: 'audioOut', name: 'Audio Out', type: 'audio' },
+    { id: 'audioOut', name: 'Audio', type: 'audio' },
     { id: 'dataOut', name: 'Data Out', type: 'any' },
   ],
   parameters: [],

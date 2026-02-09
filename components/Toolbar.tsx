@@ -199,7 +199,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         />
       </div>
 
-      {/* Audio Output Device Selector */}
+      {/* Audioput Device Selector */}
       {/* {availableOutputDevices.length > 0 && (typeof AudioContext !== 'undefined' && (AudioContext.prototype as any).setSinkId) && (
         <div className="flex items-center ml-2">
           <label htmlFor="output-device-select" className="text-xs text-gray-400 mr-1.5">Output:</label>
@@ -209,7 +209,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             onChange={handleOutputDeviceChange}
             className="bg-gray-700 text-white text-xs px-2 py-1 rounded-md border border-gray-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 max-w-[150px] truncate"
             title={selectedSinkId === 'default' ? 'Default Output Device' : availableOutputDevices.find(d => d.deviceId === selectedSinkId)?.label || selectedSinkId}
-            aria-label="Select Audio Output Device"
+            aria-label="Select Audioput Device"
           >
             {availableOutputDevices.map(device => (
               <option key={device.deviceId} value={device.deviceId}>
