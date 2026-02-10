@@ -70,6 +70,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     updateEdges(ConnectionState.getConnections());
+    if (!isAudioContextSuspended && !engineStarted) {
+      handleEngineStarted();
+    }
   }, []);
 
   PubSubService.subscribe('instance-delete', (instance: BlockInstance) => {
@@ -80,11 +83,12 @@ const App: React.FC = () => {
   const handleEngineStarted = useCallback(() => {
     AudioEngineService.initialize();
     setEngineStarted(true);
+    // баг слишком сложно найти, это исправляет проблему с тем, что при запуске UI не отображает изменения в блоках
+    if (!blocks[0]) return;
+    updateBlockInstance(blocks[0]);
   }, []);
 
-  if (!isAudioContextSuspended && !engineStarted) {
-    handleEngineStarted();
-  }
+
 
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nodesSnapshot) => {
