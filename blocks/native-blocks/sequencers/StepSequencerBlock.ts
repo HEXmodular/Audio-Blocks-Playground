@@ -125,7 +125,6 @@ export class StepSequencerBlock extends ToneAudioNode implements NativeBlock {
 
     // для выходящий соединений отправляю
     public on(event: any, callback: (...args: any[]) => void) {
-        console.log("[StepSequencerBlock]--->")
         this._emitter.on(event, callback)
         return this
     };

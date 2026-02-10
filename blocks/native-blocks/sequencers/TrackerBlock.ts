@@ -79,7 +79,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     readonly output: undefined;
     private _emitter = new Emitter();
 
-    private _activeRow: number = 0;
+    activeRow: number = 0;
     private _data: string[] = DEFAULT_DATA;
     private _rows: number = DEFAULT_ROWS;
     private _loop: boolean = false;
@@ -120,7 +120,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
         this.updateParameters(instance.parameters);
         const state = instance.internalState as TrackerInternalState | undefined;
         if (state) {
-            this._activeRow = state.activeRow;
+            this.activeRow = state.activeRow;
         }
     }
 
@@ -213,13 +213,13 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
     };
 
     public handleResetIn(time?: number): void {
-        this._activeRow = 0;
+        this.activeRow = 0;
         this.updateStateInBlockManager(time);
     }
 
     public handleTriggerIn(time?: number): void {
-        this._activeRow = (this._activeRow + 1) % this._rows;
-        const note = this._data[this._activeRow];
+        this.activeRow = (this.activeRow + 1) % this._rows;
+        const note = this._data[this.activeRow];
         if (note && note !== '..') {
             const noteData = { note, duration: '8n', time: time };
             this._emitter.emit('note_out', noteData);
@@ -231,7 +231,7 @@ export class TrackerBlock extends ToneAudioNode implements NativeBlock {
 
     private updateStateInBlockManager(time?: number) {
         if (this._instanceId) {
-            const internalState: TrackerInternalState = { activeRow: this._activeRow };
+            const internalState: TrackerInternalState = { activeRow: this.activeRow };
             // console.log('[TrackerBlock] updateStateInBlockManager', internalState);
             BlockStateManager.updateBlockInstance(this._instanceId, { internalState });
         }
