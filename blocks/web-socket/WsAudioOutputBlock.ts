@@ -35,9 +35,9 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
     input = new Tone.Merge(4);
     outputMerge = new Tone.Merge(4)
     output = this.outputMerge.connect(new Tone.Split(4));
-    player = new Tone.Player().toDestination();
+    players = Array(4).map((_, index) => new Tone.Player().connect(this.outputMerge, index, index)); // toDestination();
 
-    private nextPlayTime = 0; // time of next scheduled play
+    private nextPlayTimes = Array(4).fill(0); // time of next scheduled play
 
     get numberOfInputs(): number {
         return 4;
@@ -89,29 +89,34 @@ export class WsAudioOutputBlock extends Tone.ToneAudioNode implements NativeBloc
 
 
         this.socket.onmessage = (event) => {
+            console.log("this.socket.onmessage");
             const int8Array = new Int8Array(event.data);
-            const float32Array = new Float32Array(int8Array.length / 2);
+            const float32Arrays = Array(4).fill(new Float32Array(int8Array.length / 4));
 
-            for (let i = 0; i < int8Array.length / 2; i++) {
-                float32Array[i] = (int8Array[i] - 127) / 128; // Для Int8 нормализация на 128
+            const buffLen = int8Array.length / 4;
+            const toneBuffers = Array(4); 
+
+            for (let j = 0; j < 4; j++) {
+                for (let i = 0; i < buffLen / 4; i++) {
+                    float32Arrays[j][i] = (int8Array[j * buffLen + i] - 127) / 128; // Для Int8 нормализация на 128
+                }
+
+                toneBuffers[j] = new Tone.ToneAudioBuffer().fromArray(float32Arrays[j]);
+                // bufferQueue.push(toneBuffer);
+
+                // Рассчитываем время старта: сразу после предыдущего звука
+                // или сейчас, если очередь пуста.
+                const startTime = Math.max(Tone.now(), this.nextPlayTimes[j]);
+
+                // Планируем событие на транспорте
+                getTransport().scheduleOnce((time: number) => {
+                    this.players[j].buffer = toneBuffers[j];
+                    this.players[j].start(time);
+                }, startTime);
+
+                // Обновляем время конца очереди
+                this.nextPlayTimes[j] = startTime + toneBuffers[j].duration;
             }
-
-            const toneBuffer = new Tone.ToneAudioBuffer().fromArray(float32Array);
-            // bufferQueue.push(toneBuffer);
-
-
-            // Рассчитываем время старта: сразу после предыдущего звука
-            // или сейчас, если очередь пуста.
-            const startTime = Math.max(Tone.now(), this.nextPlayTime);
-
-            // Планируем событие на транспорте
-            getTransport().scheduleOnce((time: number) => {
-                this.player.buffer = toneBuffer;
-                this.player.start(time);
-            }, startTime);
-
-            // Обновляем время конца очереди
-            this.nextPlayTime = startTime + toneBuffer.duration;
         };
     }
 
